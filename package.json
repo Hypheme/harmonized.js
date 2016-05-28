@@ -4,8 +4,8 @@
   "description": "state, storage and server manager for react and react-native based on mobx.js",
   "main": "src/index.js",
   "scripts": {
-    "test": " ./node_modules/jasmine/bin/jasmine.js JASMINE_CONFIG_PATH=jasmine.json",
-    "basic-example": "node examples/entry.js basic"
+    "test": " ./node_modules/karma/bin/karma start",
+    "basic-example": "node examples/example.js basic"
   },
   "repository": {
     "type": "git",
@@ -35,12 +35,24 @@
     "babel-register": "^6.9.0",
     "body-parser": "^1.15.1",
     "eslint": "^2.10.2",
+    "eslint-config-airbnb": "^9.0.1",
+    "eslint-plugin-import": "^1.8.1",
+    "eslint-plugin-jsx-a11y": "^1.2.2",
     "eslint-plugin-react": "^5.1.1",
     "express": "^4.13.4",
-    "jasmine": "^2.4.1",
+    "jasmine-core": "^2.4.1",
+    "karma": "^0.13.22",
+    "karma-chrome-launcher": "^1.0.1",
+    "karma-coverage": "^1.0.0",
+    "karma-firefox-launcher": "^1.0.0",
+    "karma-jasmine": "^1.0.2",
+    "karma-safari-launcher": "^1.0.0",
     "react": "^15.1.0",
     "react-dom": "^15.1.0",
     "webpack": "^1.13.1",
     "webpack-dev-middleware": "^1.6.1"
+  },
+  "dependencies": {
+    "node-uuid": "^1.4.7"
   }
 }
