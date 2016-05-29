@@ -86,8 +86,32 @@ myItem.title = 'new title'; // => gets stored and synced
 myItem.autoSave = false;
 myItem.title = 'another title';
 myItem.data = 'moar data';
-myItem.autoSave = true; // => gets stored and synced
+myItem.autoSave = true;
 myItem.title = 'new title again'; // => gets stored and synced
+
+myItem.autoSave = false;
+myItem.title = 'another title';
+myItem.data = 'moar data';
+myItem.enableAutoSaveAndSave();  // => gets stored and synced
+myItem.title = 'new title again'; // => gets stored and synced
+
+myItem.autoSave = true;
+myItem.set({
+  title: 'another title',
+  data: 'some data',
+}); // just 1 sync, autoSave == true
+
+myItem.autoSave = false;
+myItem.set({
+  title: 'another title',
+  data: 'some data',
+}); // no sync at all, autoSave == false
+myItem.save(); // items get synced
+
+myItem.save({
+  title: 'another title',
+  data: 'some data',
+}); // shortcut for myItem.set({...}).save();
 
 myItem.autoSave = false;
 myItem.title = 'another title';
