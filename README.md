@@ -121,7 +121,7 @@ myItem.remove(); // => gets deleted in store, local storage and synced
 myItem.title = 'another title'; // nothing happens anymore
 ```
 
-## fetch items
+### fetch items
 
 If your item is out of sync with the transporter you can trigger a fetch again. This is basically the same as store.fetch(item);
 
