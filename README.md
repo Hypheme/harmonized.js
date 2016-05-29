@@ -19,21 +19,25 @@ A store needs three different classes:
 It can be passed optional store instances which can be used in the items for relation.
 
 ```javascript
-import * as harmonized from 'harmonized';
+import {Store, NoLocalStorage} from 'harmonized';
+import MyTransporter from './MyTransporter';
+import MyItemClass from './MyItemClass';
+import myOtherStore from '../myOtherStore';
 
 const myStore = new Store({
   Transporter: MyTransporter,
-  LocalStorage: harmonized.NonLocalStorage,
+  LocalStorage: NoLocalStorage,
   Item: MyItemClass,
   stores: {myOtherStore},
-  })
+});
+export myStore;
 ```
 
 Each Store creates its own transporter and local storage instance. It then fetches the data of the store and transporter and creates items out of each entry. It fetches three times and passes the results to the next fetch. This way the transporter and the local storage can decide how to initiate the state of the store. Fetches go in the following order:
 
 - localStorage.initialFetch()
-- transporter.initialFetch()
-- localStorage.followUpFetch()
+- transporter.initialFetch(localStorageItems)
+- localStorage.followUpFetch(transporterItems)
 
 ### fetch the store
 
@@ -123,5 +127,5 @@ If your item is out of sync with the transporter you can trigger a fetch again. 
 
 ```javascript
 myItem.fetch(); // gets the item from the transporter, saves it in the item and  
-myItem.title = 'another title'; // nothing happens while fetching
+myItem.title = 'another title'; // will get overwritten by the fetch as soon as it arrives
 ```
