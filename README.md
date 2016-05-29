@@ -133,7 +133,7 @@ myItem.saveLocal({title:'another title'});
 myItem.autoSave = false;
 myItem.title = 'another title';
 myItem._syncStatus = 0;
-myItem.autoSave = true;
+myItem.enableAutoSaveAndSave();
 ```
 
 ### remove and delete an item

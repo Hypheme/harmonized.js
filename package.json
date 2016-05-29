@@ -55,6 +55,7 @@
     "webpack-dev-middleware": "^1.6.1"
   },
   "dependencies": {
-    "node-uuid": "^1.4.7"
+    "mobx": "^2.2.2",
+    "mobx-react": "^3.3.0"
   }
 }

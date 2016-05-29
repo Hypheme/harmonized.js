@@ -1,1 +1,1 @@
-export * from './test.view';
+export default from './Test.View';
