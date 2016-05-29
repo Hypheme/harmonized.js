@@ -94,19 +94,18 @@ myItem.title = 'new title again'; // autoSave still off
 
 You can save the items content locally at any point with saveLocal(content = undefined)
 This is useful if you want to update some local information, which the transporter doesn't need anyway,
-like information from incoming notifications (the server send this, so he already knows...).
+like information from incoming notifications (the server sent this, so he already knows...).
 
 ```js
 myItem.saveLocal();
 
  // change item content before saving
 myItem.saveLocal({title:'another title'});
-// short fore
+// short for
 myItem.autoSave = false;
 myItem.title = 'another title';
+myItem._syncStatus = 0;
 myItem.autoSave = true;
-myItem.saveLocal();
-
 ```
 
 ### remove and delete an item
