@@ -120,7 +120,27 @@ describe('Item', function () {
     });
 
     describe('save', function () {
-      // TODO chris
+      it('should call the set method and deliver value as parameter', function () {
+        this.item.save({
+          content: 'my new content',
+          title: 'my new title',
+        }).then(() => {
+          expect(this.item.save).toHaveBeenCalledWith({
+            content: 'my new content',
+            title: 'my new title',
+          });
+        });
+      });
+
+      it('should keep the current autoSave value', function () {
+        this.item.autoSave = false;
+        this.item.save({
+          content: 'my new content',
+          title: 'my new title',
+        }).then(() => {
+          expect(this.item.autoSave).toBe(false);
+        });
+      });
     });
 
     describe('saveLocal', function () {

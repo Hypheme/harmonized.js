@@ -42,6 +42,14 @@ export default class Item {
     return this._synchronize(2, 2);
   }
 
+  save(values) {
+    const autoSave = this.autoSave;
+    this.autoSave = false;
+    this.set(values);
+    this.autoSave = autoSave;
+    return new Promise((resolve) => resolve());
+  }
+
   set(values) {
     const autoSave = this.autoSave;
     this.autoSave = false;
