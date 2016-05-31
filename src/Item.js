@@ -8,6 +8,9 @@ export default class Item {
     } else {
       this._storeState = 1;
     }
+    if (values._syncState === -2) {
+      values._syncState = 3;
+    }
     const keys = this.rawItemKeys;
     keys.push('id', '_id', '_syncState');
     for (let i = 0; i < keys.length; i++) {
@@ -19,9 +22,19 @@ export default class Item {
     this.dispose = autorun(() => this._stateHandler());
   }
 
+  // //////////////////
+  // PUBLIC METHODS //
+  // //////////////////
+
+  enableAutoSaveAndSave() {
+    this.autoSave = true;
+    return this._synchronize(2, 2);
+  }
+
   // ///////////////////
   // PRIVATE METHODS //
   // ///////////////////
 
   _stateHandler() {}
+  _synchronize() {}
 }

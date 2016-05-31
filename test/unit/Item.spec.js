@@ -1,7 +1,10 @@
-import { Item } from '../../src';
+import Item from '../../src/Item';
+import Store from './helpers/Test.Store';
+import Transporter from './helpers/Test.Transporter';
+import LocalStorage from './helpers/Test.LocalStorage';
 
 describe('Item', function () {
-  fdescribe('constructor', function () {
+  describe('constructor', function () {
     let TestItem;
 
     beforeEach(function () {
@@ -52,11 +55,55 @@ describe('Item', function () {
       expect(typeof testItem.dispose).toBe('function');
       expect(testItem._stateHandler).toHaveBeenCalledTimes(1);
     });
+
+    it('should convert _syncState of -2 to 3', function () {
+      const testItem = new TestItem('myStore', { _syncState: -2 });
+      expect(testItem._syncState).toBe(3);
+    });
   });
 
-  describe('public', function () {
-    describe('enableAutoSaveAndSave', function () {
+  fdescribe('public', function () {
+    beforeEach(function () {
+      class TestItem extends Item {
+        get rawItemKeys() {
+          return ['content'];
+        }
+      }
+      spyOn(TestItem.prototype, '_stateHandler');
+      spyOn(TestItem.prototype, '_synchronize')
+        .and.returnValue(new Promise((resolve) => {
+          resolve();
+        }));
+      this.store = new Store({ Item: TestItem, Transporter, LocalStorage });
+      this.item = new TestItem(this.store, {
+        content: 'my content',
+        _id: 'localId',
+        id: 'serverId',
+        _syncState: 0 });
+    });
 
+    describe('enableAutoSaveAndSave', function () {
+      it('should return a promise', function (done) {
+        this.item.enableAutoSaveAndSave().then(() => {
+          done();
+        });
+      });
+
+      it('should call synchronize with 2, 2', function (done) {
+        this.item.enableAutoSaveAndSave().then(() => {
+          expect(this.item._synchronize).toHaveBeenCalledTimes(1);
+          expect(this.item._synchronize).toHaveBeenCalledWith(2, 2);
+          done();
+        });
+      });
+
+      it('should set autoSave to true', function (done) {
+        this.item.autoSave = false;
+        this.item.enableAutoSaveAndSave().then(() => {
+          expect(this.item.autoSave).toBe(true);
+          done();
+        });
+      });
     });
 
     describe('fetch', function () {
