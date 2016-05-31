@@ -44,10 +44,10 @@ export default class Item {
 
   save(values) {
     const autoSave = this.autoSave;
-    this.autoSave = false;
-    this.set(values);
-    this.autoSave = autoSave;
-    return new Promise((resolve) => resolve());
+    this.autoSave = true; // we want this.set to call _synchronize
+    const promise = this.set(values); // this task is async and we need this promise to be returned
+    this.autoSave = autoSave; // we want autoSave reset asap, therefore in the sync part
+    return promise; // now we return the promise
   }
 
   set(values) {
