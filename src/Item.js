@@ -1,20 +1,20 @@
 import { observable, autorun, computed } from 'mobx';
 
 export default class Item {
-  constructor(store, values = { _syncState: 1 }) {
+  autoSave = true;
+  synced;
+  stored;
+
+  constructor(store, values = {}) {
     this._store = store;
-    if (values._id !== undefined) {
-      this._storeState = 0;
-    } else {
-      this._storeState = 1;
-    }
+    this._storeState = values._id === undefined ? 1 : 0;
+    values._syncState = values._syncState === undefined ? 1 : values._syncState;
     if (values._syncState === -2) {
       values._syncState = 3;
     }
-    const keys = this.rawItemKeys;
-    keys.push('id', '_id', '_syncState');
-    this._set(values, keys);
-    this.dispose = autorun(() => this._stateHandler());
+    this._set(values, [...this.rawItemKeys, 'id', '_id', '_syncState']);
+    let call = 0;
+    this.dispose = autorun(() => this._stateHandler(call++));
   }
 
   // //////////////////
@@ -71,6 +71,7 @@ export default class Item {
     }
   }
 
-  _stateHandler() {}
+  _stateHandler(call) {
+  }
   _synchronize() {}
 }
