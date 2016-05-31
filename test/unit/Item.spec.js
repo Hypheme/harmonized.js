@@ -3,6 +3,8 @@ import Store from './helpers/Test.Store';
 import Transporter from './helpers/Test.Transporter';
 import LocalStorage from './helpers/Test.LocalStorage';
 
+import { observable } from 'mobx';
+
 describe('Item', function () {
   describe('constructor', function () {
     let TestItem;
@@ -62,14 +64,19 @@ describe('Item', function () {
     });
   });
 
-  fdescribe('public', function () {
+  describe('public', function () {
     beforeEach(function () {
       class TestItem extends Item {
+        @observable content;
+        @observable title;
         get rawItemKeys() {
-          return ['content'];
+          return ['content', 'title'];
+        }
+        _stateHandler() {
+          return this.rawItem;
         }
       }
-      spyOn(TestItem.prototype, '_stateHandler');
+      spyOn(TestItem.prototype, '_stateHandler').and.callThrough();
       spyOn(TestItem.prototype, '_synchronize')
         .and.returnValue(new Promise((resolve) => {
           resolve();
@@ -77,18 +84,16 @@ describe('Item', function () {
       this.store = new Store({ Item: TestItem, Transporter, LocalStorage });
       this.item = new TestItem(this.store, {
         content: 'my content',
+        title: 'a title',
         _id: 'localId',
         id: 'serverId',
         _syncState: 0 });
     });
 
     describe('enableAutoSaveAndSave', function () {
-      it('should return a promise', function (done) {
-        this.item.enableAutoSaveAndSave().then(() => {
-          done();
-        });
+      afterEach(function () {
+        expect(this.item._stateHandler).toHaveBeenCalledTimes(1);
       });
-
       it('should call synchronize with 2, 2', function (done) {
         this.item.enableAutoSaveAndSave().then(() => {
           expect(this.item._synchronize).toHaveBeenCalledTimes(1);
@@ -107,32 +112,81 @@ describe('Item', function () {
     });
 
     describe('fetch', function () {
-
+      // TODO chris
     });
 
     describe('remove', function () {
-
+      // TODO chris
     });
 
     describe('save', function () {
-
+      // TODO chris
     });
 
     describe('saveLocal', function () {
-
+      // TODO chris
     });
 
     describe('set', function () {
+      it('should not sync if autoSave is false', function (done) {
+        this.item.autoSave = false;
+        this.item.set({ content: 'new content', title: 'my title' })
+        .then(() => {
+          expect(this.item._stateHandler).toHaveBeenCalledTimes(3);
+          expect(this.item._synchronize).not.toHaveBeenCalled();
+          done();
+        });
+      });
+      it('should sync if autoSave is true', function (done) {
+        this.item.autoSave = true;
+        this.item.set({ content: 'new content', title: 'my title' })
+        .then(() => {
+          expect(this.item._stateHandler).toHaveBeenCalledTimes(3);
+          expect(this.item._synchronize).toHaveBeenCalledTimes(1);
+          done();
+        });
+      });
+      it('should store all given values in keys before synchronizing', function (done) {
+        this.item.autoSave = true;
+        this.item.set({ content: 'new content', title: 'my title', anything: 'else' })
+        .then(() => {
+          expect(this.item.content).toBe('new content');
+          expect(this.item.title).toBe('my title');
+          expect(this.item.anything).toBe(undefined);
+          done();
+        });
+      });
+    });
 
+    describe('rawItem', function () {
+      it('should get all content of rawItemKeys', function () {
+        expect(this.item.rawItem).toEqual({
+          content: 'my content',
+          title: 'a title',
+        });
+      });
     });
 
     describe('toTransporter', function () {
-
+      it('should call rawItem and add id', function () {
+        expect(this.item.toTransporter).toEqual({
+          id: 'serverId',
+          content: 'my content',
+          title: 'a title',
+        });
+      });
     });
 
     describe('toLocalStorage', function () {
-
-    });
+      it('should call rawItem and add id, _id, _syncState', function () {
+        expect(this.item.toLocalStorage).toEqual({
+          id: 'serverId',
+          _id: 'localId',
+          _syncState: 0,
+          content: 'my content',
+          title: 'a title',
+        });
+      }); });
   });
 
   describe('interface methods', function () {
