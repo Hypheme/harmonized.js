@@ -30,16 +30,11 @@ export default class Item {
   }
 
   @computed get toLocalStorage() {
-    const result = this.toTransporter;
-    result._id = this._id;
-    result._syncState = this._syncState;
-    return result;
+    return { ...this.toTransporter, _id: this._id, _syncState: this._syncState };
   }
 
   @computed get toTransporter() {
-    const result = this.rawItem;
-    result.id = this.id;
-    return result;
+    return { ...this.rawItem, id: this.id };
   }
 
   enableAutoSaveAndSave() {
