@@ -221,7 +221,7 @@ describe('Item', function () {
 
   describe('privates', function () {
     beforeEach(function () {
-      const propertySpy = jasmine.createSpy('whatAmI');
+      const propertySpy = jasmine.createSpy('propertySpy');
       this.propertySpy = propertySpy;
       class TestItem extends Item {
         @observable content;
@@ -233,6 +233,20 @@ describe('Item', function () {
           propertySpy('rawItem');
           return super.rawItem;
         }
+        set _syncState(state) {
+          propertySpy('_syncState', state);
+          super._syncState = state;
+        }
+        set _storeState(state) {
+          propertySpy('_storeState', state);
+          super._storeState = state;
+        }
+        get _syncState() {
+          return super._syncState;
+        }
+        get _storeState() {
+          return super._storeState;
+        }
       }
       spyOn(TestItem.prototype, '_stateHandler');
       this.store = new Store({ Item: TestItem, Transporter, LocalStorage });
@@ -242,6 +256,8 @@ describe('Item', function () {
         _id: 'localId',
         id: 'serverId',
         _syncState: 1 });
+      // we dont want constructor related getters/setters to interfere
+      propertySpy.calls.reset();
     });
 
     describe('_stateHandler', function () {
@@ -255,18 +271,18 @@ describe('Item', function () {
         this.item._stateHandler(1);
         this.item._stateHandler(1);
         expect(this.propertySpy).toHaveBeenCalledTimes(1);
-        expect(this.propertySpy).toHaveBeenCalledWith('rawItem');
+        expect(this.propertySpy.calls.mostRecent().args).toEqual(['rawItem']);
       });
       it('should synchronize(x, y) if its the first call', function () {
-        this._storeState = 0;
-        this._syncState = 1;
+        this.item._storeState = 0;
+        this.item._syncState = 1;
         this.item._stateHandler(0);
         expect(this.item._synchronize).toHaveBeenCalledTimes(1);
         expect(this.item._synchronize).toHaveBeenCalledWith(0, 1);
       });
       it('should synchronize(2, 2) if autoSave is on and its not the first call', function () {
-        this._storeState = 0;
-        this._syncState = 1;
+        this.item._storeState = 0;
+        this.item._syncState = 1;
         this.item._stateHandler(1);
         expect(this.item._synchronize).toHaveBeenCalledTimes(1);
         expect(this.item._synchronize).toHaveBeenCalledWith(2, 2);
@@ -275,6 +291,40 @@ describe('Item', function () {
         this.item.autoSave = false;
         this.item._stateHandler(1);
         expect(this.item._synchronize).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('_synchronize', function () {
+      beforeEach(function () {
+        spyOn(this.item, '_synchronizeLocalStorage')
+          .and.returnValue(new Promise(resolve => resolve()));
+        spyOn(this.item, '_synchronizeTransporter')
+          .and.returnValue(new Promise(resolve => resolve()));
+      });
+      it('should set states to given ones', function (done) {
+        this.item._synchronize(1, 2).then(() => {
+          expect(this.propertySpy.calls.argsFor(0))
+            .toEqual(['_storeState', 1]);
+          expect(this.propertySpy.calls.argsFor(1))
+            .toEqual(['_syncState', 2]);
+          done();
+        });
+      });
+      it('should call the _synchronizeLocalStorage and _synchronizeTransporter', function (done) {
+        this.item._synchronize(1, 2).then(() => {
+          expect(this.item._synchronizeLocalStorage)
+            .toHaveBeenCalledTimes(1);
+          expect(this.item._synchronizeTransporter)
+              .toHaveBeenCalledTimes(1);
+          done();
+        });
+      });
+      it('should save the returned promise in this.lastSynchronize', function (done) {
+        delete this.item.lastSynchronize;
+        this.item._synchronize(1, 2);
+        this.item.lastSynchronize.then(() => {
+          done();
+        });
       });
     });
   });

@@ -65,6 +65,19 @@ export default class Item {
   // PRIVATE METHODS //
   // ///////////////////
 
+  get _storeState() {
+    return this.__storeState;
+  }
+  get _syncState() {
+    return this.__syncState;
+  }
+  set _syncState(state) {
+    this.__syncState = state;
+  }
+  set _storeState(state) {
+    this.__storeState = state;
+  }
+
   _set(values = {}, keys) {
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
@@ -84,5 +97,15 @@ export default class Item {
     // there is nothing else to do with the data
   }
 
-  _synchronize() {}
+  _synchronize(storeState, syncState) {
+    this._storeState = storeState;
+    this._syncState = syncState;
+    this.lastSynchronize = this._synchronizeLocalStorage()
+      .then(() => this._synchronizeTransporter());
+    return this.lastSynchronize;
+  }
+
+  _synchronizeLocalStorage() {}
+  _synchronizeTransporter() {}
+
 }
