@@ -392,6 +392,7 @@ describe('Item', function () {
           this.item.id = 'serverId';
           this.item._syncState = 3;
           spyOn(this.store, 'remove');
+          spyOn(this.store, 'delete');
           spyOn(this.store.transporter, 'delete')
             .and.returnValue(new Promise(resolve => resolve({ id: 'serverId' })));
           spyOn(this.store.localStorage, 'delete')
@@ -437,6 +438,12 @@ describe('Item', function () {
         it('should remove item from store in sync part', function () {
           this.item._transporterDelete();
           expect(this.store.remove).toHaveBeenCalledWith(this.item);
+        });
+        it('should delete item from store after async part', function (done) {
+          this.item._transporterDelete().then(() => {
+            expect(this.store.delete).toHaveBeenCalledWith(this.item);
+            done();
+          });
         });
       });
       describe('_transporterSave', function () {
@@ -632,6 +639,46 @@ describe('Item', function () {
           expect(this.item._transporterDelete).not.toHaveBeenCalled();
           done();
         });
+      });
+    });
+
+    describe('_transaction', function () {
+      beforeEach(function () {
+        this.transaction = jasmine.createSpy('transaction')
+          .and.callFake(() => new Promise((resolve) => resolve()));
+      });
+      it('should generate unique transactionId and store it', function () {
+        this.item._transactionId = undefined;
+        this.item._transaction(this.transaction);
+        expect(this.item._transactionId).toBeDefined();
+      });
+      it('should call the given function', function (done) {
+        this.item._transaction(this.transaction)
+          .then(() => {
+            expect(this.transaction).toHaveBeenCalledTimes(1);
+            done();
+          });
+      });
+      it('should resolve if the current transactionId is the generated one', function (done) {
+        this.item._transaction(this.transaction)
+          .then(() => done());
+      });
+      it('should reject if the current transactionId is not the generated one', function (done) {
+        let ends = 0;
+        function end() {
+          if (++ends === 2) {
+            done();
+          }
+        }
+        this.item._transaction(this.transaction)
+          .catch(() => {
+            end();
+          });
+        this.item._transaction(this.transaction)
+          .then(() => {
+            expect(this.transaction).toHaveBeenCalledTimes(2);
+            end();
+          });
       });
     });
   });

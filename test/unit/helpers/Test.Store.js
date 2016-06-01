@@ -6,5 +6,7 @@ export default class TestStore {
     this.transporter = new Transporter(this);
   }
 
+  delete() {}
   remove() {}
+
 }

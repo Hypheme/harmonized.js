@@ -1,4 +1,5 @@
 import { observable, autorun, computed } from 'mobx';
+import uuid from 'uuid-v4';
 
 export default class Item {
   autoSave = true;
@@ -138,8 +139,14 @@ export default class Item {
     }
   }
 
-  _transaction() {
-
+  _transaction(routine) {
+    this._transactionId = uuid();
+    const currentTransaction = this._transactionId;
+    return routine().then(() => {
+      if (this._transactionId !== currentTransaction) {
+        throw new Error('unmatched transactionId');
+      }
+    });
   }
 
   _transporterCreate() {
@@ -158,6 +165,7 @@ export default class Item {
         return this._transaction(() => this._store.localStorage.delete(this.toLocalStorage));
       }).then(() => {
         this._storeState = -1;
+        this._store.delete(this);
       });
   }
   _transporterSave() {
