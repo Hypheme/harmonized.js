@@ -65,7 +65,7 @@ export default class Item {
   // PRIVATE METHODS //
   // ///////////////////
 
-  _set(values, keys) {
+  _set(values = {}, keys) {
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
       if (values[key] !== undefined) {

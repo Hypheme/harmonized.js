@@ -141,6 +141,9 @@ describe('Item', function () {
           expect(this.item.autoSave).toBe(false);
         });
       });
+
+      it('should save with no given values');
+      // TODO this.item.save().then(...);
     });
 
     describe('saveLocal', function () {
