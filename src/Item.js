@@ -66,6 +66,7 @@ export default class Item {
   // PRIVATE METHODS //
   // ///////////////////
 
+  // TODO switch to actual methods, setters/getters are just not useful in this case
   get _storeState() {
     return this.__storeState;
   }
@@ -129,6 +130,7 @@ export default class Item {
         return new Promise(resolve => resolve());
     }
   }
+
   _synchronizeTransporter() {
     switch (this._syncState) {
       case 1: return this._transporterCreate();
@@ -142,10 +144,11 @@ export default class Item {
   _transaction(routine) {
     this._transactionId = uuid();
     const currentTransaction = this._transactionId;
-    return routine().then(() => {
+    return routine().then((response) => {
       if (this._transactionId !== currentTransaction) {
         throw new Error('unmatched transactionId');
       }
+      return response;
     });
   }
 
@@ -157,6 +160,7 @@ export default class Item {
         return this._transaction(() => this._store.localStorage.save(this.toLocalStorage));
       });
   }
+
   _transporterDelete() {
     this._store.remove(this);
     return this._transaction(() => this._store.transporter.delete(this.toTransporter))
@@ -168,6 +172,7 @@ export default class Item {
         this._store.delete(this);
       });
   }
+
   _transporterSave() {
     return this._transaction(() => this._store.transporter.save(this.toTransporter))
       .then(() => {

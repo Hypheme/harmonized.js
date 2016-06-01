@@ -257,9 +257,11 @@ describe('Item', function () {
 
     describe('transactions', function () {
       beforeEach(function () {
-        spyOn(this.item, '_transaction').and.callFake(function (routine) {
-          return routine();
-        });
+        spyOn(this.item, '_transaction')
+          .and.callThrough();
+          // .and.callFake(function (routine) {
+          //   return routine();
+          // });
       });
 
       describe('_localStorageCreate', function () {
@@ -342,7 +344,7 @@ describe('Item', function () {
           spyOn(this.store.transporter, 'create')
             .and.returnValue(new Promise(resolve => resolve({ id: 'serverId' })));
           spyOn(this.store.localStorage, 'save')
-            .and.returnValue(new Promise(resolve => resolve()));
+              .and.returnValue(new Promise(resolve => resolve()));
         });
         it('should wrap async tasks in _transaction', function (done) {
           this.item._transporterCreate().then(() => {
