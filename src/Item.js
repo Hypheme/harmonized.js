@@ -26,15 +26,15 @@ export default class Item {
     for (let i = 0; i < this.rawItemKeys.length; i++) {
       result[this.rawItemKeys[i]] = this[this.rawItemKeys[i]];
     }
-    return { ...result, _id: this._id, _syncState: this._syncState, id: this.id };
+    return result;
   }
 
   @computed get toLocalStorage() {
-    return this.rawItem;
+    return { ...this.toTransporter, _id: this._id, _syncState: this._syncState };
   }
 
   @computed get toTransporter() {
-    return this.rawItem;
+    return { ...this.rawItem, id: this.id };
   }
 
   enableAutoSaveAndSave() {
@@ -142,8 +142,30 @@ export default class Item {
 
   }
 
-  _transporterCreate() {}
-  _transporterDelete() {}
-  _transporterSave() {}
+  _transporterCreate() {
+    return this._transaction(() => this._store.transporter.create(this.toTransporter))
+      .then(({ id }) => {
+        this.id = id;
+        this._syncState = 0;
+        return this._transaction(() => this._store.localStorage.save(this.toLocalStorage));
+      });
+  }
+  _transporterDelete() {
+    this._store.remove(this);
+    return this._transaction(() => this._store.transporter.delete(this.toTransporter))
+      .then(() => {
+        this._syncState = -1;
+        return this._transaction(() => this._store.localStorage.delete(this.toLocalStorage));
+      }).then(() => {
+        this._storeState = -1;
+      });
+  }
+  _transporterSave() {
+    return this._transaction(() => this._store.transporter.save(this.toTransporter))
+      .then(() => {
+        this._syncState = 0;
+        return this._transaction(() => this._store.localStorage.save(this.toLocalStorage));
+      });
+  }
 
 }

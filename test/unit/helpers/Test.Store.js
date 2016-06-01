@@ -5,4 +5,6 @@ export default class TestStore {
     this.localStorage = new LocalStorage(this);
     this.transporter = new Transporter(this);
   }
+
+  remove() {}
 }
