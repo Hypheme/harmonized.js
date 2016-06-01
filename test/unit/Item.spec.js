@@ -260,6 +260,90 @@ describe('Item', function () {
       propertySpy.calls.reset();
     });
 
+    describe('transactions', function () {
+      beforeEach(function () {
+        spyOn(this.item, '_transaction').and.callFake(function (routine) {
+          return routine();
+        });
+      });
+
+      describe('_localStorageCreate', function () {
+        beforeEach(function () {
+          this.item._id = undefined;
+          this.item._storeState = 1;
+          spyOn(this.store.localStorage, 'create')
+          .and.returnValue(new Promise(resolve => resolve({ _id: 'localId' })));
+        });
+        it('should wrap async task in _transaction', function (done) {
+          this.item._localStorageCreate().then(() => {
+            expect(this.item._transaction).toHaveBeenCalled();
+            done();
+          });
+        });
+        it('should save the returned _id in item', function (done) {
+          this.item._localStorageCreate().then(() => {
+            expect(this.item._id).toBe('localId');
+            done();
+          });
+        });
+        it('should create item in local storage', function (done) {
+          this.item._localStorageCreate().then(() => {
+            expect(this.store.localStorage.create).toHaveBeenCalled();
+            expect(this.store.localStorage.create).toHaveBeenCalledWith({
+              content: 'my content',
+              title: 'a title',
+              _id: undefined,
+              id: 'serverId',
+              _syncState: 1,
+            });
+            done();
+          });
+        });
+        it('should set _storeState to 0 after creation', function (done) {
+          this.item._localStorageCreate().then(() => {
+            expect(this.item._storeState).toBe(0);
+            done();
+          });
+        });
+      });
+
+      describe('_localStorageSave', function () {
+        beforeEach(function () {
+          this.item._id = 'localId';
+          this.item._storeState = 2;
+          spyOn(this.store.localStorage, 'save')
+          .and.returnValue(new Promise(resolve => resolve()));
+        });
+        it('should wrap async task in _transaction', function (done) {
+          this.item._localStorageSave().then(() => {
+            expect(this.item._transaction).toHaveBeenCalled();
+            done();
+          });
+        });
+        it('should set _storeState to 0 after creation', function (done) {
+          this.item._localStorageSave().then(() => {
+            expect(this.item._storeState).toBe(0);
+            done();
+          });
+        });
+        it('should save item in localStorage', function (done) {
+          this.item._localStorageSave().then(() => {
+            expect(this.store.localStorage.save).toHaveBeenCalled();
+            expect(this.store.localStorage.save).toHaveBeenCalledWith({
+              content: 'my content',
+              title: 'a title',
+              _id: 'localId',
+              id: 'serverId',
+              _syncState: 1,
+            });
+            done();
+          });
+        });
+      });
+    });
+
+    xdescribe('_set', function () {});
+
     describe('_stateHandler', function () {
       beforeEach(function () {
         this.item._stateHandler.and.callThrough();
@@ -323,6 +407,84 @@ describe('Item', function () {
         delete this.item.lastSynchronize;
         this.item._synchronize(1, 2);
         this.item.lastSynchronize.then(() => {
+          done();
+        });
+      });
+    });
+    describe('_synchronizeLocalStorage', function () {
+      beforeEach(function () {
+        spyOn(this.item, '_localStorageCreate')
+          .and.returnValue(new Promise(resolve => resolve()));
+        spyOn(this.item, '_localStorageSave')
+          .and.returnValue(new Promise(resolve => resolve()));
+      });
+      it('should call _localStorageCreate if storestatus is 1', function (done) {
+        this.item._storeState = 1;
+        this.item._synchronizeLocalStorage().then(() => {
+          expect(this.item._localStorageCreate).toHaveBeenCalled();
+          expect(this.item._localStorageSave).not.toHaveBeenCalled();
+          done();
+        });
+      });
+      it('should call _localStorageSave if storestatus is 2', function (done) {
+        this.item._storeState = 2;
+        this.item._synchronizeLocalStorage().then(() => {
+          expect(this.item._localStorageCreate).not.toHaveBeenCalled();
+          expect(this.item._localStorageSave).toHaveBeenCalled();
+          done();
+        });
+      });
+      it('should do nothing if storestatus is 0', function (done) {
+        this.item._storeState = 0;
+        this.item._synchronizeLocalStorage().then(() => {
+          expect(this.item._localStorageCreate).not.toHaveBeenCalled();
+          expect(this.item._localStorageSave).not.toHaveBeenCalled();
+          done();
+        });
+      });
+    });
+    describe('_synchronizeTransporter', function () {
+      beforeEach(function () {
+        spyOn(this.item, '_transporterCreate')
+          .and.returnValue(new Promise(resolve => resolve()));
+        spyOn(this.item, '_transporterSave')
+          .and.returnValue(new Promise(resolve => resolve()));
+        spyOn(this.item, '_transporterDelete')
+          .and.returnValue(new Promise(resolve => resolve()));
+      });
+      it('should call _transporterCreate if syncstatus is 1', function (done) {
+        this.item._syncState = 1;
+        this.item._synchronizeTransporter().then(() => {
+          expect(this.item._transporterCreate).toHaveBeenCalled();
+          expect(this.item._transporterSave).not.toHaveBeenCalled();
+          expect(this.item._transporterDelete).not.toHaveBeenCalled();
+          done();
+        });
+      });
+      it('should call _transporterSave if syncstatus is 2', function (done) {
+        this.item._syncState = 2;
+        this.item._synchronizeTransporter().then(() => {
+          expect(this.item._transporterCreate).not.toHaveBeenCalled();
+          expect(this.item._transporterSave).toHaveBeenCalled();
+          expect(this.item._transporterDelete).not.toHaveBeenCalled();
+          done();
+        });
+      });
+      it('should call _transporterDelete if syncstatus is 3', function (done) {
+        this.item._syncState = 3;
+        this.item._synchronizeTransporter().then(() => {
+          expect(this.item._transporterCreate).not.toHaveBeenCalled();
+          expect(this.item._transporterSave).not.toHaveBeenCalled();
+          expect(this.item._transporterDelete).toHaveBeenCalled();
+          done();
+        });
+      });
+      it('should do nothing if syncstatus is 0', function (done) {
+        this.item._syncState = 0;
+        this.item._synchronizeTransporter().then(() => {
+          expect(this.item._transporterCreate).not.toHaveBeenCalled();
+          expect(this.item._transporterSave).not.toHaveBeenCalled();
+          expect(this.item._transporterDelete).not.toHaveBeenCalled();
           done();
         });
       });

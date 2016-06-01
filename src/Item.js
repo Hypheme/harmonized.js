@@ -78,6 +78,21 @@ export default class Item {
     this.__storeState = state;
   }
 
+  _localStorageCreate() {
+    return this._transaction(() => this._store.localStorage.create(this.toLocalStorage))
+      .then(({ _id }) => {
+        this._id = _id;
+        this._storeState = 0;
+      });
+  }
+
+  _localStorageSave() {
+    return this._transaction(() => this._store.localStorage.save(this.toLocalStorage))
+      .then(() => {
+        this._storeState = 0;
+      });
+  }
+
   _set(values = {}, keys) {
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
@@ -105,7 +120,30 @@ export default class Item {
     return this.lastSynchronize;
   }
 
-  _synchronizeLocalStorage() {}
-  _synchronizeTransporter() {}
+  _synchronizeLocalStorage() {
+    switch (this._storeState) {
+      case 1: return this._localStorageCreate();
+      case 2: return this._localStorageSave();
+      default:
+        return new Promise(resolve => resolve());
+    }
+  }
+  _synchronizeTransporter() {
+    switch (this._syncState) {
+      case 1: return this._transporterCreate();
+      case 2: return this._transporterSave();
+      case 3: return this._transporterDelete();
+      default:
+        return new Promise(resolve => resolve());
+    }
+  }
+
+  _transaction() {
+
+  }
+
+  _transporterCreate() {}
+  _transporterDelete() {}
+  _transporterSave() {}
 
 }
