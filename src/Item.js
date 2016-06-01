@@ -26,15 +26,15 @@ export default class Item {
     for (let i = 0; i < this.rawItemKeys.length; i++) {
       result[this.rawItemKeys[i]] = this[this.rawItemKeys[i]];
     }
-    return result;
+    return { ...result, _id: this._id, _syncState: this._syncState, id: this.id };
   }
 
   @computed get toLocalStorage() {
-    return { ...this.toTransporter, _id: this._id, _syncState: this._syncState };
+    return this.rawItem;
   }
 
   @computed get toTransporter() {
-    return { ...this.rawItem, id: this.id };
+    return this.rawItem;
   }
 
   enableAutoSaveAndSave() {
@@ -75,6 +75,14 @@ export default class Item {
   }
 
   _stateHandler(call) {
+    if (call === 0) {
+      this._synchronize(this._storeState, this._syncState);
+    } else if (this.autoSave) {
+      this._synchronize(2, 2);
+    }
+    return this.rawItem; // we need this for mobx, and we return it because
+    // there is nothing else to do with the data
   }
+
   _synchronize() {}
 }

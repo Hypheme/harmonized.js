@@ -148,6 +148,8 @@ describe('Item', function () {
 
     describe('saveLocal', function () {
       // TODO chris
+      // NOTE you cant use this.saveLocal as it wont store the server id
+      // use this._localStorageSave() instead. You will need to set the item content yourself though
     });
 
     describe('set', function () {
@@ -184,6 +186,9 @@ describe('Item', function () {
     describe('rawItem', function () {
       it('should get all content of rawItemKeys', function () {
         expect(this.item.rawItem).toEqual({
+          id: 'serverId',
+          _id: 'localId',
+          _syncState: 0,
           content: 'my content',
           title: 'a title',
         });
@@ -191,9 +196,11 @@ describe('Item', function () {
     });
 
     describe('toTransporter', function () {
-      it('should call rawItem and add id', function () {
+      it('should call rawItem', function () {
         expect(this.item.toTransporter).toEqual({
           id: 'serverId',
+          _id: 'localId',
+          _syncState: 0,
           content: 'my content',
           title: 'a title',
         });
@@ -210,6 +217,66 @@ describe('Item', function () {
           title: 'a title',
         });
       }); });
+  });
+
+  describe('privates', function () {
+    beforeEach(function () {
+      const propertySpy = jasmine.createSpy('whatAmI');
+      this.propertySpy = propertySpy;
+      class TestItem extends Item {
+        @observable content;
+        @observable title;
+        get rawItemKeys() {
+          return ['content', 'title'];
+        }
+        get rawItem() {
+          propertySpy('rawItem');
+          return super.rawItem;
+        }
+      }
+      spyOn(TestItem.prototype, '_stateHandler');
+      this.store = new Store({ Item: TestItem, Transporter, LocalStorage });
+      this.item = new TestItem(this.store, {
+        content: 'my content',
+        title: 'a title',
+        _id: 'localId',
+        id: 'serverId',
+        _syncState: 1 });
+    });
+
+    describe('_stateHandler', function () {
+      beforeEach(function () {
+        this.item._stateHandler.and.callThrough();
+        spyOn(this.item, '_synchronize');
+      });
+      it('should get computed rawItem in synchron part', function () {
+        this.item._stateHandler(0);
+        this.item._stateHandler(0);
+        this.item._stateHandler(1);
+        this.item._stateHandler(1);
+        expect(this.propertySpy).toHaveBeenCalledTimes(1);
+        expect(this.propertySpy).toHaveBeenCalledWith('rawItem');
+      });
+      it('should synchronize(x, y) if its the first call', function () {
+        this._storeState = 0;
+        this._syncState = 1;
+        this.item._stateHandler(0);
+        expect(this.item._synchronize).toHaveBeenCalledTimes(1);
+        expect(this.item._synchronize).toHaveBeenCalledWith(0, 1);
+      });
+      it('should synchronize(2, 2) if autoSave is on and its not the first call', function () {
+        this._storeState = 0;
+        this._syncState = 1;
+        this.item._stateHandler(1);
+        expect(this.item._synchronize).toHaveBeenCalledTimes(1);
+        expect(this.item._synchronize).toHaveBeenCalledWith(2, 2);
+      });
+      it('should not synchronize if autoSave is off and its not the first call', function () {
+        this.item.autoSave = false;
+        this.item._stateHandler(1);
+        expect(this.item._synchronize).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('interface methods', function () {
