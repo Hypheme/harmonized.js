@@ -25,6 +25,15 @@ export default class Item {
   // INTERFACE METHODS //
   // /////////////////////
 
+  /**
+   * returns all keys of the raw item data
+   *  excluding id, _id and _synstatus
+   *
+   * example:
+   *  return ['title', 'content'];
+   *
+   * @return {array} item keys
+   */
   get rawItemKeys() {
     throw new Error('ITEM_IMPLEMENTATION_ERROR: get rawItemKeys is not implemented');
   }
