@@ -21,6 +21,14 @@ export default class Item {
     this.dispose = autorun(() => this._stateHandler(call++));
   }
 
+  // /////////////////////
+  // INTERFACE METHODS //
+  // /////////////////////
+
+  get rawItemKeys() {
+    throw new Error('ITEM_IMPLEMENTATION_ERROR: get rawItemKeys is not implemented');
+  }
+
   // //////////////////
   // PUBLIC METHODS //
   // //////////////////

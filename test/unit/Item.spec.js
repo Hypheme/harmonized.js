@@ -766,8 +766,9 @@ describe('Item', function () {
   });
 
   describe('interface methods', function () {
-    it('get rawItem should throw interface error');
-    it('get rawItemKeys should throw interface error');
-    it('get fromRawItem should throw interface error');
+    it('get rawItemKeys should throw interface error', function () {
+      expect(() => Item.prototype.rawItemKeys)
+        .toThrowError('ITEM_IMPLEMENTATION_ERROR: get rawItemKeys is not implemented');
+    });
   });
 });
