@@ -8,12 +8,15 @@ export default class Item {
 
   constructor(store, values = {}) {
     this._store = store;
-    this._storeState = values._id === undefined ? 1 : 0;
+    this._storeState = 0;
+    this._setStoreState(values._id === undefined ? 1 : 0);
     values._syncState = values._syncState === undefined ? 1 : values._syncState;
     if (values._syncState === -2) {
       values._syncState = 3;
     }
-    this._set(values, [...this.rawItemKeys, 'id', '_id', '_syncState']);
+    this._syncState = 0;
+    this._setSyncState(values._syncState);
+    this._set(values, [...this.rawItemKeys, 'id', '_id']);
     let call = 0;
     this.dispose = autorun(() => this._stateHandler(call++));
   }
@@ -66,32 +69,18 @@ export default class Item {
   // PRIVATE METHODS //
   // ///////////////////
 
-  // TODO switch to actual methods, setters/getters are just not useful in this case
-  get _storeState() {
-    return this.__storeState;
-  }
-  get _syncState() {
-    return this.__syncState;
-  }
-  set _syncState(state) {
-    this.__syncState = state;
-  }
-  set _storeState(state) {
-    this.__storeState = state;
-  }
-
   _localStorageCreate() {
     return this._transaction(() => this._store.localStorage.create(this.toLocalStorage))
       .then(({ _id }) => {
         this._id = _id;
-        this._storeState = 0;
+        this._setStoreState(0);
       });
   }
 
   _localStorageSave() {
     return this._transaction(() => this._store.localStorage.save(this.toLocalStorage))
       .then(() => {
-        this._storeState = 0;
+        this._setStoreState(0);
       });
   }
 
@@ -102,6 +91,33 @@ export default class Item {
         this[key] = values[key];
       }
     }
+  }
+
+  _setStoreState(state) {
+    if (this._storeState !== -1) {
+      this._storeState = state;
+    }
+    this.stored = this._storeState === 0;
+  }
+
+  _setSyncState(state) {
+    switch (state) {
+      case -1:
+        this._syncState = -1;
+        break;
+      case 0:
+      case 1:
+      case 2:
+      case 3:
+        if (this._syncState !== -2 && this._syncState !== -1 && this._syncState !== 3) {
+          this._syncState = state;
+        } else if (this._syncState === 3 && state === 3) {
+          this._syncState = -2;
+        }
+        break;
+      default:
+    }
+    this.synced = this._syncState === 0;
   }
 
   _stateHandler(call) {
@@ -115,8 +131,8 @@ export default class Item {
   }
 
   _synchronize(storeState, syncState) {
-    this._storeState = storeState;
-    this._syncState = syncState;
+    this._setStoreState(storeState);
+    this._setSyncState(syncState);
     this.lastSynchronize = this._synchronizeLocalStorage()
       .then(() => this._synchronizeTransporter());
     return this.lastSynchronize;
@@ -156,7 +172,7 @@ export default class Item {
     return this._transaction(() => this._store.transporter.create(this.toTransporter))
       .then(({ id }) => {
         this.id = id;
-        this._syncState = 0;
+        this._setSyncState(0);
         return this._transaction(() => this._store.localStorage.save(this.toLocalStorage));
       });
   }
@@ -165,10 +181,10 @@ export default class Item {
     this._store.remove(this);
     return this._transaction(() => this._store.transporter.delete(this.toTransporter))
       .then(() => {
-        this._syncState = -1;
+        this._setSyncState(-1);
         return this._transaction(() => this._store.localStorage.delete(this.toLocalStorage));
       }).then(() => {
-        this._storeState = -1;
+        this._setStoreState(-1);
         this._store.delete(this);
       });
   }
@@ -176,7 +192,7 @@ export default class Item {
   _transporterSave() {
     return this._transaction(() => this._store.transporter.save(this.toTransporter))
       .then(() => {
-        this._syncState = 0;
+        this._setSyncState(0);
         return this._transaction(() => this._store.localStorage.save(this.toLocalStorage));
       });
   }
