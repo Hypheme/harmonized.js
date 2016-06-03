@@ -6,7 +6,8 @@ export default class Item {
   synced;
   stored;
 
-  constructor(store, values = {}) {
+  constructor(store, values = {}, relations) {
+    // TODO store relations
     this._store = store;
     this._storeState = 0;
     this._setStoreState(values._id === undefined ? 1 : 0);
@@ -16,6 +17,7 @@ export default class Item {
     }
     this._syncState = 0;
     this._setSyncState(values._syncState);
+    // TODO change this to this.fromLocalStorage
     this._set(values, [...this.rawItemKeys, 'id', '_id']);
     let call = 0;
     this.dispose = autorun(() => this._stateHandler(call++));
@@ -30,7 +32,7 @@ export default class Item {
    *  excluding id, _id and _synstatus
    *
    * example:
-   *  return ['title', 'content'];
+   *  return ['title', 'content', 'relationId'];
    *
    * @return {array} item keys
    */
@@ -43,6 +45,7 @@ export default class Item {
   // //////////////////
 
   @computed get rawItem() {
+    // TODO add relations if key is relation find relationId
     const result = {};
     for (let i = 0; i < this.rawItemKeys.length; i++) {
       result[this.rawItemKeys[i]] = this[this.rawItemKeys[i]];
@@ -85,6 +88,10 @@ export default class Item {
   // ///////////////////
   // PRIVATE METHODS //
   // ///////////////////
+
+  // TODO fromRawItem
+  // TODO fromTransporter
+  // TODO fromLocalStorage
 
   _localStorageCreate() {
     return this._transaction(() => this._store.localStorage.create(this.toLocalStorage))
