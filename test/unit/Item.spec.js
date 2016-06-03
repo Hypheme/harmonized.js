@@ -120,19 +120,35 @@ describe('Item', function () {
     });
 
     describe('save', function () {
-      it('should call the set method and deliver value as parameter', function () {
+      beforeEach(function () {
+        spyOn(this.item, 'set').and.returnValue(new Promise((resolve) => resolve('save')));
+      });
+
+      it('should call the set method and deliver value as parameter', function (done) {
         this.item.save({
           content: 'my new content',
           title: 'my new title',
         }).then(() => {
-          expect(this.item.save).toHaveBeenCalledWith({
+          expect(this.item.set).toHaveBeenCalledTimes(1);
+          expect(this.item.set).toHaveBeenCalledWith({
             content: 'my new content',
             title: 'my new title',
           });
+          done();
         });
       });
 
-      it('should keep the current autoSave value', function () {
+      it('should return the promise of the set call', function (done) {
+        this.item.save({
+          content: 'my new content',
+          title: 'my new title',
+        }).then((returnValue) => {
+          expect(returnValue).toBe('save');
+          done();
+        });
+      });
+
+      it('should keep the current autoSave value false', function () {
         this.item.autoSave = false;
         this.item.save({
           content: 'my new content',
@@ -142,8 +158,23 @@ describe('Item', function () {
         });
       });
 
-      it('should save with no given values');
-      // TODO this.item.save().then(...);
+      it('should keep the current autoSave value true', function () {
+        this.item.autoSave = true;
+        this.item.save({
+          content: 'my new content',
+          title: 'my new title',
+        }).then(() => {
+          expect(this.item.autoSave).toBe(true);
+        });
+      });
+
+      it('should save with no given values', function (done) {
+        this.item.autoSave = true;
+        this.item.save().then(() => {
+          expect(this.item.set).toHaveBeenCalledTimes(1);
+          done();
+        });
+      });
     });
 
     describe('saveLocal', function () {
