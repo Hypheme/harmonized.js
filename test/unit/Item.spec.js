@@ -79,7 +79,7 @@ describe('Item', function () {
       spyOn(TestItem.prototype, '_stateHandler').and.callThrough();
       spyOn(TestItem.prototype, '_synchronize')
         .and.returnValue(new Promise((resolve) => {
-          resolve();
+          resolve('_synchronize');
         }));
       this.store = new Store({ Item: TestItem, Transporter, LocalStorage });
       this.item = new TestItem(this.store, {
@@ -111,17 +111,14 @@ describe('Item', function () {
       });
     });
 
-    describe('fetch', function () {
-      // TODO chris
-    });
-
-    describe('remove', function () {
-      // TODO chris
-    });
-
     describe('save', function () {
       beforeEach(function () {
         spyOn(this.item, 'set').and.returnValue(new Promise((resolve) => resolve('save')));
+        spyOn(this.item, 'fromRawItem').and.returnValue({
+          content: 'new content',
+          title: 'my title',
+          anything: 'else',
+        });
       });
 
       it('should call the set method and deliver value as parameter', function (done) {
@@ -178,16 +175,150 @@ describe('Item', function () {
     });
 
     describe('saveLocal', function () {
-      // TODO chris
-      // NOTE you cant use this.saveLocal as it wont store the server id
-      // use this._localStorageSave() instead. You will need to set the item content yourself though
+      beforeEach(function () {
+        spyOn(this.item, 'set').and.returnValue(new Promise((resolve) => resolve({
+          content: 'my content',
+          title: 'my title',
+        })));
+      });
+      it('should call set and deliver a given value as parameter', function (done) {
+        this.item.saveLocal({
+          content: 'my content',
+          title: 'my title',
+        }).then(() => {
+          expect(this.item.set).toHaveBeenCalledTimes(1);
+          expect(this.item.set).toHaveBeenCalledWith({
+            content: 'my content',
+            title: 'my title',
+          });
+          done();
+        });
+      });
+      it('should call _synchronize with the parameter (2,0)', function (done) {
+        this.item.saveLocal({}).then(() => {
+          expect(this.item._synchronize).toHaveBeenCalledTimes(1);
+          expect(this.item._synchronize).toHaveBeenCalledWith(2, 0);
+          done();
+        });
+      });
+      it('should return the promise of the _synchronize call', function (done) {
+        this.item.saveLocal({}).then((returnValue) => {
+          expect(returnValue).toBe('_synchronize');
+          done();
+        });
+      });
+      it('should keep the current autoSave value true', function (done) {
+        this.item.autoSave = true;
+        this.item.saveLocal({}).then(() => {
+          expect(this.item.autoSave).toBe(true);
+          done();
+        });
+      });
+      it('should keep the current autoSave value false', function (done) {
+        this.item.autoSave = false;
+        this.item.saveLocal({}).then(() => {
+          expect(this.item.autoSave).toBe(false);
+          done();
+        });
+      });
+    });
+
+    describe('remove', function () {
+      beforeEach(function () {
+        spyOn(this.item, '_onDeleteTrigger');
+      });
+      it('should return the promise of the _synchronize call', function (done) {
+        this.item.remove().then((returnValue) => {
+          expect(returnValue).toBe('_synchronize');
+          done();
+        });
+      });
+      it('should keep the current autoSave value true', function (done) {
+        this.item.autoSave = true;
+        this.item.remove().then(() => {
+          expect(this.item.autoSave).toBe(true);
+          done();
+        });
+      });
+      it('should keep the current autoSave value false', function (done) {
+        this.item.autoSave = false;
+        this.item.remove().then(() => {
+          expect(this.item.autoSave).toBe(false);
+          done();
+        });
+      });
+      // it('should call _onDeleteTrigger', function (done) {
+      //   this.item.remove().them(() => {
+      //     expect(this.item._onDeleteTrigger).toHaveBeenCalledTimes(1);
+      //     done();
+      //   });
+      // });
+      // it('should call _synchronize with the parameter (2,3)', function (done) {
+      //   this.item.remove().them(() => {
+      //     expect(this.item._synchronize).toHaveBeenCalledWith(2, 3);
+      //     done();
+      //   });
+      // });
+    });
+
+    describe('fetch', function () {
+      beforeEach(function () {
+        spyOn(this.item, 'fromTransporter');
+        spyOn(this.item._store.transporter, 'fetch').and.returnValue(new Promise((resolve) => resolve({
+          content: 'my new content',
+          title: 'my new title',
+        })));
+      });
+      it('should return the promise of the _synchronize call', function (done) {
+        this.item.fetch().then((returnValue) => {
+          expect(returnValue).toBe('_synchronize');
+          done();
+        });
+      });
+      it('should keep the current autoSave value true', function (done) {
+        this.item.autoSave = true;
+        this.item.fetch().then(() => {
+          expect(this.item.autoSave).toBe(true);
+          done();
+        });
+      });
+      it('should keep the current autoSave value false', function (done) {
+        this.item.autoSave = false;
+        this.item.fetch().then(() => {
+          expect(this.item.autoSave).toBe(false);
+          done();
+        });
+      });
+      it('should call fetch method to store', function (done) {
+        this.item.fetch().then(() => {
+          expect(this.item._store.transporter.fetch).toHaveBeenCalledWith(this.item.toTransporter);
+          done();
+        });
+      });
+      it('should call fromTransporter with the fetchedData as parameter', function (done) {
+        this.item.fetch().then(() => {
+          expect(this.item.fromTransporter).toHaveBeenCalledWith({
+            content: 'my new content',
+            title: 'my new title',
+          });
+          done();
+        });
+      });
+      it('should call _synchronize with the parameter (2,0)', function (done) {
+        this.item.fetch().them(() => {
+          expect(this.item._synchronize).toHaveBeenCalledWith(2, 0);
+          done();
+        });
+      });
     });
 
     describe('set', function () {
       it('should not sync if autoSave is false', function (done) {
         this.item.autoSave = false;
-        this.item.set({ content: 'new content', title: 'my title' })
-        .then(() => {
+        this.item.set({
+          content: 'new content',
+          title: 'my title',
+        }).then(() => {
           expect(this.item._stateHandler).toHaveBeenCalledTimes(3);
           expect(this.item._synchronize).not.toHaveBeenCalled();
           done();
@@ -195,8 +326,10 @@ describe('Item', function () {
       });
       it('should sync if autoSave is true', function (done) {
         this.item.autoSave = true;
-        this.item.set({ content: 'new content', title: 'my title' })
-        .then(() => {
+        this.item.set({
+          content: 'new content',
+          title: 'my title',
+        }).then(() => {
           expect(this.item._stateHandler).toHaveBeenCalledTimes(3);
           expect(this.item._synchronize).toHaveBeenCalledTimes(1);
           done();
@@ -204,8 +337,11 @@ describe('Item', function () {
       });
       it('should store all given values in keys before synchronizing', function (done) {
         this.item.autoSave = true;
-        this.item.set({ content: 'new content', title: 'my title', anything: 'else' })
-        .then(() => {
+        this.item.set({
+          content: 'new content',
+          title: 'my title',
+          anything: 'else',
+        }).then(() => {
           expect(this.item.content).toBe('new content');
           expect(this.item.title).toBe('my title');
           expect(this.item.anything).toBe(undefined);

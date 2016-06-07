@@ -8,6 +8,7 @@ export default class Item {
 
   constructor(store, values = {}, relations) {
     // TODO store relations
+    this._onDeleteTrigger;
     this._store = store;
     this._storeState = 0;
     this._setStoreState(values._id === undefined ? 1 : 0);
@@ -66,10 +67,40 @@ export default class Item {
     return this._synchronize(2, 2);
   }
 
+  fetch() {
+    this._store.transporter.fetch(this.toTransporter)
+    .then((fetchedData) => {
+      const autoSave = this.autoSave;
+      this.autoSave = false;
+      this.fromTransporter(fetchedData);
+      console.log('asdf');
+      const promise = this._synchronize(2, 0);
+      this.autoSave = autoSave;
+      return promise;
+    });
+  }
+
+  remove() {
+    const autoSave = this.autoSave;
+    this.autoSave = false;
+    this._onDeleteTrigger();
+    const promise = this._synchronize(2, 3);
+    this.autoSave = autoSave;
+    return promise;
+  }
+
   save(values) {
     const autoSave = this.autoSave;
     this.autoSave = true;
     const promise = this.set(values);
+    this.autoSave = autoSave;
+    return promise;
+  }
+
+  saveLocal(values) {
+    const autoSave = this.autoSave;
+    const promise = this.set(values)
+      .then(() => this._synchronize(2, 0));
     this.autoSave = autoSave;
     return promise;
   }
@@ -89,8 +120,18 @@ export default class Item {
   // PRIVATE METHODS //
   // ///////////////////
 
+  _onDeleteTrigger() {}
+
   // TODO fromRawItem
+  fromRawItem(item) {
+    const rawItem = item;
+    return rawItem;
+  }
   // TODO fromTransporter
+  fromTransporter(item) {
+    const transporterItem = item;
+    return transporterItem;
+  }
   // TODO fromLocalStorage
 
   _localStorageCreate() {
