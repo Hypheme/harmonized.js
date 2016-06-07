@@ -305,7 +305,7 @@ describe('Item', function () {
         });
       });
       it('should call _synchronize with the parameter (2,0)', function (done) {
-        this.item.fetch().them(() => {
+        this.item.fetch().then(() => {
           expect(this.item._synchronize).toHaveBeenCalledWith(2, 0);
           done();
         });

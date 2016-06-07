@@ -68,16 +68,15 @@ export default class Item {
   }
 
   fetch() {
-    this._store.transporter.fetch(this.toTransporter)
-    .then((fetchedData) => {
-      const autoSave = this.autoSave;
-      this.autoSave = false;
-      this.fromTransporter(fetchedData);
-      console.log('asdf');
-      const promise = this._synchronize(2, 0);
-      this.autoSave = autoSave;
-      return promise;
-    });
+    return this._store.transporter.fetch(this.toTransporter)
+      .then((fetchedData) => {
+        const autoSave = this.autoSave;
+        this.autoSave = false;
+        this.fromTransporter(fetchedData);
+        const promise = this._synchronize(2, 0);
+        this.autoSave = autoSave;
+        return promise;
+      });
   }
 
   remove() {
