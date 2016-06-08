@@ -130,7 +130,30 @@ export default class Item {
     }
     return Promise.all(promises).then(() => result);
   }
-  toRawItem() {}
+
+  toRawItem(ignoreRelations = false) {
+    const result = {};
+    if (!ignoreRelations) {
+      result.id = this.id;
+    }
+    const promises = [];
+    for (let i = 0, len = this._keys.length; i < len; i++) {
+      const actKey = this._keys[i];
+      if (typeof actKey === 'string') {
+        result[actKey] = this[actKey];
+      } else {
+        if (!ignoreRelations && this[actKey.key]) {
+          const relationItem = this[actKey.key];
+          promises.push(relationItem.toRawItem(ignoreRelations)
+            .then(rawRelation => {
+              result[actKey.key] = rawRelation;
+            }));
+        }
+      }
+    }
+    return Promise.all(promises).then(() => result);
+  }
+
   toTransporter() {
     const result = {
       id: this.id,

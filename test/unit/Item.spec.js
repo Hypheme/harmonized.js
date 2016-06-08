@@ -264,10 +264,11 @@ describe('Item', function () {
     describe('fetch', function () {
       beforeEach(function () {
         spyOn(this.item, 'fromTransporter');
-        spyOn(this.item._store.transporter, 'fetch').and.returnValue(new Promise((resolve) => resolve({
-          content: 'my new content',
-          title: 'my new title',
-        })));
+        spyOn(this.item._store.transporter, 'fetch')
+          .and.returnValue(new Promise((resolve) => resolve({
+            content: 'my new content',
+            title: 'my new title',
+          })));
       });
       it('should return the promise of the _synchronize call', function (done) {
         this.item.fetch().then((returnValue) => {
@@ -403,11 +404,36 @@ describe('Item', function () {
       });
 
       describe('toRawItem', function () {
-      // TODO toRawItem
+        it('should get id, stored, synced and all entries of keys stored in _keys',
+          function (done) {
+            this.item.toRawItem().then(result => {
+              expect(result).toEqual({
+                id: 'serverId',
+                content: 'my content',
+                title: 'a title',
+                author: {
+                  id: 'authorId',
+                },
+                anotherAuthor: {
+                  id: 'anotherAuthorId',
+                },
+              });
+              done();
+            });
+          });
+        it('should get only direct data', function (done) {
+          this.item.toRawItem(true).then(result => {
+            expect(result).toEqual({
+              content: 'my content',
+              title: 'a title',
+            });
+            done();
+          });
+        });
       });
 
       describe('toTransporter', function () {
-        it('should get id and all keys stored in _keys', function (done) {
+        it('should get id and all entries of keys stored in _keys', function (done) {
           this.item.toTransporter().then(result => {
             expect(result).toEqual({
               content: 'my content',
@@ -468,22 +494,23 @@ describe('Item', function () {
       });
 
       describe('toLocalStorage', function () {
-        it('should get id, _id, _syncState and all keys stored in _keys', function (done) {
-          this.item.toLocalStorage().then(result => {
-            expect(result).toEqual({
-              content: 'my content',
-              title: 'a title',
-              id: 'serverId',
-              _id: 'localId',
-              _syncState: 0,
-              authorId: 'authorId',
-              _authorId: '_authorId',
-              anotherAuthorId: 'anotherAuthorId',
-              _anotherAuthorId: '_anotherAuthorId',
-            });
-            done();
-          });
-        });
+        it('should get id, _id, _syncState and all entries of keys stored in _keys',
+         function (done) {
+           this.item.toLocalStorage().then(result => {
+             expect(result).toEqual({
+               content: 'my content',
+               title: 'a title',
+               id: 'serverId',
+               _id: 'localId',
+               _syncState: 0,
+               authorId: 'authorId',
+               _authorId: '_authorId',
+               anotherAuthorId: 'anotherAuthorId',
+               _anotherAuthorId: '_anotherAuthorId',
+             });
+             done();
+           });
+         });
         it('should wait for all relations to be stored before resolving', function (done) {
           this.author.stored = false;
           this.anotherAuthor.stored = false;
