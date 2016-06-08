@@ -3,13 +3,12 @@ import uuid from 'uuid-v4';
 
 export default class Item {
   autoSave = true;
-  synced;
-  stored;
+  @observable synced;
+  @observable stored;
 
-  constructor(store, values = {}, relations) {
-    // TODO store relations
-    this._onDeleteTrigger;
+  constructor(store, values = {}) {
     this._store = store;
+    this._autocompleteKeys();
     this._storeState = 0;
     this._setStoreState(values._id === undefined ? 1 : 0);
     values._syncState = values._syncState === undefined ? 1 : values._syncState;
@@ -18,8 +17,9 @@ export default class Item {
     }
     this._syncState = 0;
     this._setSyncState(values._syncState);
-    // TODO change this to this.fromLocalStorage
-    this._set(values, [...this.rawItemKeys, 'id', '_id']);
+    // TODO change this to this.fromLocalStorage (if _id set)
+    // else this.fromTransporter()
+    this._set(values, [...this.keys, 'id', '_id']);
     let call = 0;
     this.dispose = autorun(() => this._stateHandler(call++));
   }
@@ -37,30 +37,13 @@ export default class Item {
    *
    * @return {array} item keys
    */
-  get rawItemKeys() {
-    throw new Error('ITEM_IMPLEMENTATION_ERROR: get rawItemKeys is not implemented');
+  get keys() {
+    throw new Error('ITEM_IMPLEMENTATION_ERROR: get keys is not implemented');
   }
 
   // //////////////////
   // PUBLIC METHODS //
   // //////////////////
-
-  @computed get rawItem() {
-    // TODO add relations if key is relation find relationId
-    const result = {};
-    for (let i = 0; i < this.rawItemKeys.length; i++) {
-      result[this.rawItemKeys[i]] = this[this.rawItemKeys[i]];
-    }
-    return result;
-  }
-
-  @computed get toLocalStorage() {
-    return { ...this.toTransporter, _id: this._id, _syncState: this._syncState };
-  }
-
-  @computed get toTransporter() {
-    return { ...this.rawItem, id: this.id };
-  }
 
   enableAutoSaveAndSave() {
     this.autoSave = true;
@@ -107,7 +90,7 @@ export default class Item {
   set(values) {
     const autoSave = this.autoSave;
     this.autoSave = false;
-    this._set(values, this.rawItemKeys);
+    this._set(values, this.keys);
     this.autoSave = autoSave;
     if (this.autoSave) {
       return this._synchronize(2, 2);
@@ -115,9 +98,60 @@ export default class Item {
     return new Promise((resolve) => resolve());
   }
 
+  toLocalStorage() {}
+  toRawItem() {}
+  toTransporter() {
+    const result = {
+      id: this.id,
+    };
+    const promises = [];
+    for (let i = 0, len = this._keys.length; i < len; i++) {
+      const actKey = this._keys[i];
+      if (typeof actKey === 'string') {
+        result[actKey] = this[actKey];
+      } else {
+        if (this[actKey.key] && this[actKey.key].id === undefined) {
+          promises.push(new Promise((resolve) => {
+            let calls = 0;
+            const relationItem = this[actKey.key];
+            const dispose = autorun(() => {
+              if (relationItem.synced) {
+                if (calls) {
+                  dispose();
+                  result[actKey.transporterKey] = relationItem.id;
+                  resolve();
+                }
+              }
+              calls++;
+            });
+          }));
+        } else {
+          result[actKey.transporterKey] = this[actKey.key] && this[actKey.key].id;
+        }
+      }
+    }
+    return Promise.all(promises).then(() => result);
+  }
+
   // ///////////////////
   // PRIVATE METHODS //
   // ///////////////////
+
+  _autocompleteKeys() {
+    const keys = this.keys;
+    const result = [];
+    for (let i = 0, len = keys.length; i < len; i++) {
+      const actKey = keys[i];
+      if (typeof actKey === 'object') {
+        actKey.key = actKey.key || actKey.store;
+        actKey.transporterKey = actKey.transporterKey || `${actKey.key}Id`;
+        actKey.localStorageKey = `_${actKey.transporterKey}`;
+        // TODO add onDelete/onChange methods
+      }
+      result.push(actKey);
+    }
+    this._keys = result;
+  }
 
   _onDeleteTrigger() {}
 

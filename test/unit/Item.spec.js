@@ -11,7 +11,7 @@ describe('Item', function () {
 
     beforeEach(function () {
       TestItem = class SomeItem extends Item {
-        get rawItemKeys() {
+        get keys() {
           return ['content'];
         }
       };
@@ -23,7 +23,7 @@ describe('Item', function () {
       expect(testItem._store).toBe('myStore');
     });
 
-    it('should store the given values if they are in rawItemKeys', function () {
+    it('should store the given values if they are in keys', function () {
       const testItem = new TestItem('myStore', { content: 'my content', to: 'much' });
       expect(testItem.content).toBe('my content');
       expect(testItem.to).toBe(undefined);
@@ -69,7 +69,7 @@ describe('Item', function () {
       class TestItem extends Item {
         @observable content;
         @observable title;
-        get rawItemKeys() {
+        get keys() {
           return ['content', 'title'];
         }
         _stateHandler() {
@@ -350,35 +350,128 @@ describe('Item', function () {
       });
     });
 
-    describe('rawItem', function () {
-      it('should get all content of rawItemKeys', function () {
-        expect(this.item.rawItem).toEqual({
+    describe('to***', function () {
+      beforeEach(function () {
+        class TestItem extends Item {
+          @observable content;
+          @observable title;
+          get keys() {
+            return ['content', 'title'];
+          }
+          _stateHandler() {
+            return {
+              title: this.title,
+              content: this.content,
+            };
+          }
+        }
+        class Author extends Item {
+
+          get keys() {
+            return [];
+          }
+          _stateHandler() {
+          }
+        }
+        spyOn(TestItem.prototype, '_stateHandler').and.callThrough();
+        spyOn(TestItem.prototype, '_synchronize')
+          .and.returnValue(new Promise((resolve) => {
+            resolve('_synchronize');
+          }));
+        this.store = new Store({ Item: TestItem, Transporter, LocalStorage });
+        this.item = new TestItem(this.store, {
           content: 'my content',
           title: 'a title',
-        });
-      });
-    });
-
-    describe('toTransporter', function () {
-      it('should call rawItem', function () {
-        expect(this.item.toTransporter).toEqual({
-          id: 'serverId',
-          content: 'my content',
-          title: 'a title',
-        });
-      });
-    });
-
-    describe('toLocalStorage', function () {
-      it('should call rawItem and add id, _id, _syncState', function () {
-        expect(this.item.toLocalStorage).toEqual({
-          id: 'serverId',
           _id: 'localId',
-          _syncState: 0,
-          content: 'my content',
-          title: 'a title',
+          id: 'serverId',
+          _syncState: 0 });
+        this.author = new Author(this.store, {
+          _id: '_authorId',
+          id: 'authorId',
+          _syncState: 0 });
+        this.anotherAuthor = new Author(this.store, {
+          _id: '_anotherAuthorId',
+          id: 'anotherAuthorId',
+          _syncState: 0 });
+        this.item.author = this.author;
+        this.item.anotherAuthor = this.anotherAuthor;
+        this.item._keys = ['content', 'title',
+          { key: 'author', store: 'authors',
+            transporterKey: 'authorId', localStorageKey: '_authorId' },
+          { key: 'anotherAuthor', store: 'authors',
+            transporterKey: 'anotherAuthorId', localStorageKey: '_anotherAuthorId' }];
+      });
+
+      describe('toRawItem', function () {
+      // TODO toRawItem
+      });
+
+      describe('toTransporter', function () {
+
+        it('should get id and all keys stored in _keys', function (done) {
+          this.item.toTransporter().then(result => {
+            expect(result).toEqual({
+              content: 'my content',
+              title: 'a title',
+              id: 'serverId',
+              authorId: 'authorId',
+              anotherAuthorId: 'anotherAuthorId',
+            });
+            done();
+          });
         });
-      }); });
+        it('should wait for all relations to be synced before resolving', function (done) {
+          this.author.synced = false;
+          this.anotherAuthor.synced = false;
+          this.author.id = undefined;
+          this.anotherAuthor.id = undefined;
+
+          this.item.toTransporter().then(result => {
+            expect(result).toEqual({
+              content: 'my content',
+              title: 'a title',
+              id: 'serverId',
+              authorId: 'authorId',
+              anotherAuthorId: 'anotherAuthorId',
+            });
+            done();
+          });
+          setTimeout(() => {
+            this.author.id = 'authorId';
+            this.author.synced = true;
+            setTimeout(() => {
+              this.anotherAuthor.id = 'anotherAuthorId';
+              this.anotherAuthor.synced = true;
+            }, 1);
+          }, 1);
+        });
+        it('should cleanup all relation handlers', function (done) {
+          this.author.id = undefined;
+          this.author.synced = false;
+          this.item.toTransporter().then(result => {
+            expect(result).toEqual({
+              content: 'my content',
+              title: 'a title',
+              id: 'serverId',
+              authorId: 'authorId',
+              anotherAuthorId: 'anotherAuthorId',
+            });
+            done();
+          });
+          setTimeout(() => {
+            this.author.id = 'authorId';
+            this.author.synced = true;
+            this.author.synced = false;
+            this.author.synced = true;
+            this.author.synced = false;
+          }, 1);
+        });
+      });
+
+      describe('toLocalStorage', function () {
+      // TODO toLocalStorage
+      });
+    });
   });
 
   describe('privates', function () {
@@ -388,7 +481,7 @@ describe('Item', function () {
       class TestItem extends Item {
         @observable content;
         @observable title;
-        get rawItemKeys() {
+        get keys() {
           return ['content', 'title'];
         }
         get rawItem() {
@@ -933,9 +1026,9 @@ describe('Item', function () {
   });
 
   describe('interface methods', function () {
-    it('get rawItemKeys should throw interface error', function () {
-      expect(() => Item.prototype.rawItemKeys)
-        .toThrowError('ITEM_IMPLEMENTATION_ERROR: get rawItemKeys is not implemented');
+    it('get keys should throw interface error', function () {
+      expect(() => Item.prototype.keys)
+        .toThrowError('ITEM_IMPLEMENTATION_ERROR: get keys is not implemented');
     });
   });
 });
