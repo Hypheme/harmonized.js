@@ -407,7 +407,6 @@ describe('Item', function () {
       });
 
       describe('toTransporter', function () {
-
         it('should get id and all keys stored in _keys', function (done) {
           this.item.toTransporter().then(result => {
             expect(result).toEqual({
@@ -469,7 +468,76 @@ describe('Item', function () {
       });
 
       describe('toLocalStorage', function () {
-      // TODO toLocalStorage
+        it('should get id, _id, _syncState and all keys stored in _keys', function (done) {
+          this.item.toLocalStorage().then(result => {
+            expect(result).toEqual({
+              content: 'my content',
+              title: 'a title',
+              id: 'serverId',
+              _id: 'localId',
+              _syncState: 0,
+              authorId: 'authorId',
+              _authorId: '_authorId',
+              anotherAuthorId: 'anotherAuthorId',
+              _anotherAuthorId: '_anotherAuthorId',
+            });
+            done();
+          });
+        });
+        it('should wait for all relations to be stored before resolving', function (done) {
+          this.author.stored = false;
+          this.anotherAuthor.stored = false;
+          this.author._id = undefined;
+          this.anotherAuthor._id = undefined;
+
+          this.item.toLocalStorage().then(result => {
+            expect(result).toEqual({
+              content: 'my content',
+              title: 'a title',
+              id: 'serverId',
+              _id: 'localId',
+              _syncState: 0,
+              authorId: 'authorId',
+              _authorId: '_authorId',
+              anotherAuthorId: 'anotherAuthorId',
+              _anotherAuthorId: '_anotherAuthorId',
+            });
+            done();
+          });
+          setTimeout(() => {
+            this.author._id = '_authorId';
+            this.author.stored = true;
+            setTimeout(() => {
+              this.anotherAuthor._id = '_anotherAuthorId';
+              this.anotherAuthor.stored = true;
+            }, 1);
+          }, 1);
+        });
+        it('should cleanup all relation handlers', function (done) {
+          this.author._id = undefined;
+          this.author.stored = false;
+          this.item.toLocalStorage().then(result => {
+            expect(result).toEqual({
+              content: 'my content',
+              title: 'a title',
+              id: 'serverId',
+              _id: 'localId',
+              _syncState: 0,
+              authorId: 'authorId',
+              _authorId: '_authorId',
+              anotherAuthorId: 'anotherAuthorId',
+              _anotherAuthorId: '_anotherAuthorId',
+            });
+            done();
+          });
+          setTimeout(() => {
+            this.author._id = '_authorId';
+            this.author.stored = true;
+            this.author.stored = false;
+            this.author.stored = true;
+            this.author.stored = false;
+          }, 1);
+        });
       });
     });
   });

@@ -98,7 +98,38 @@ export default class Item {
     return new Promise((resolve) => resolve());
   }
 
-  toLocalStorage() {}
+  toLocalStorage() {
+    const result = {
+      id: this.id,
+      _id: this._id,
+      _syncState: this._syncState,
+    };
+    const promises = [];
+    for (let i = 0, len = this._keys.length; i < len; i++) {
+      const actKey = this._keys[i];
+      if (typeof actKey === 'string') {
+        result[actKey] = this[actKey];
+      } else {
+        if (this[actKey.key] && this[actKey.key]._id === undefined) {
+          promises.push(new Promise((resolve) => {
+            const relationItem = this[actKey.key];
+            const dispose = autorun(() => {
+              if (relationItem.stored) {
+                dispose();
+                result[actKey.transporterKey] = relationItem.id;
+                result[actKey.localStorageKey] = relationItem._id;
+                resolve();
+              }
+            });
+          }));
+        } else {
+          result[actKey.transporterKey] = this[actKey.key] && this[actKey.key].id;
+          result[actKey.localStorageKey] = this[actKey.key] && this[actKey.key]._id;
+        }
+      }
+    }
+    return Promise.all(promises).then(() => result);
+  }
   toRawItem() {}
   toTransporter() {
     const result = {
@@ -112,17 +143,13 @@ export default class Item {
       } else {
         if (this[actKey.key] && this[actKey.key].id === undefined) {
           promises.push(new Promise((resolve) => {
-            let calls = 0;
             const relationItem = this[actKey.key];
             const dispose = autorun(() => {
               if (relationItem.synced) {
-                if (calls) {
-                  dispose();
-                  result[actKey.transporterKey] = relationItem.id;
-                  resolve();
-                }
+                dispose();
+                result[actKey.transporterKey] = relationItem.id;
+                resolve();
               }
-              calls++;
             });
           }));
         } else {
