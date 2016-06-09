@@ -5,6 +5,8 @@ export default class Item {
   autoSave = true;
   @observable synced;
   @observable stored;
+  @observable id;
+  @observable _id;
 
   constructor(store, values = {}) {
     this._store = store;
@@ -17,9 +19,13 @@ export default class Item {
     }
     this._syncState = 0;
     this._setSyncState(values._syncState);
-    // TODO change this to this.fromLocalStorage (if _id set)
-    // else this.fromTransporter()
-    this._set(values, [...this.keys, 'id', '_id']);
+    if (values._id) {
+      this.fromLocalStorage(values);
+    } else if (values.id) {
+      this.fromTransporter(values);
+    } else {
+      this.fromRawItem(values, false);
+    }
     let call = 0;
     this.dispose = autorun(() => this._stateHandler(call++));
   }
@@ -223,6 +229,10 @@ export default class Item {
     return transporterItem;
   }
   // TODO fromLocalStorage
+  fromLocalStorage(values) {
+    this.id = values.id;
+    this._id = values._id;
+  }
 
   _localStorageCreate() {
     return this._transaction(() =>
@@ -308,7 +318,7 @@ export default class Item {
     } else if (this.autoSave) {
       this._synchronize(2, 2);
     }
-    return this.rawItem; // we need this for mobx, and we return it because
+    return this.toRawItem(true); // we need this for mobx, and we return it because
     // there is nothing else to do with the data
   }
 
@@ -390,6 +400,18 @@ export default class Item {
       .then(() => this._localStorageSave());
   }
 
-  _waitFor() {}
+  _waitFor(key) {
+    if (this[key] === undefined) {
+      return new Promise(resolve => {
+        const dispose = autorun(() => {
+          if (this[key] !== undefined) {
+            dispose();
+            resolve();
+          }
+        });
+      });
+    }
+    return Promise.resolve();
+  }
 
 }

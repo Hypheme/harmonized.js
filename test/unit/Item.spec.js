@@ -1257,6 +1257,50 @@ describe('Item', function () {
           });
       });
     });
+
+    fdescribe('_waitFor', function () {
+      it('should resolve instant if key is set', function (done) {
+        this.item.id = 'something';
+        this.item._waitFor('id').then(done);
+      });
+      it('should resolve once key changes', function (done) {
+        this.item.id = undefined;
+        let triggered = false;
+        this.item._waitFor('id')
+          .then(() => {
+            if (triggered) {
+              done();
+            } else {
+              done(new Error('not triggered yet'));
+            }
+          });
+        setTimeout(() => {
+          triggered = true;
+          this.item.id = 'someId';
+        }, 1);
+      });
+      it('should dispose the autorunner after key is set', function (done) {
+        this.item.id = undefined;
+        this.item._waitFor('id')
+          .then(done);
+        this.item.id = 'someId';
+        this.item.id = 'someOtherId';
+        this.item.id = 'someId';
+        this.item.id = 'someOtherId';
+      });
+      it('should work with id', function (done) {
+        this.item.id = undefined;
+        this.item._waitFor('id')
+          .then(done);
+        this.item.id = 'someId';
+      });
+      it('should work with _id', function (done) {
+        this.item._id = undefined;
+        this.item._waitFor('_id')
+          .then(done);
+        this.item._id = 'someId';
+      });
+    });
   });
 
   describe('interface methods', function () {
