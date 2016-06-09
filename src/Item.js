@@ -244,7 +244,13 @@ export default class Item {
       });
   }
 
-  _localStorageDelete() {}
+  _localStorageDelete() {
+    return this._transaction(() => Promise.resolve())
+      .catch(() => undefined) // we ignore thransaction, we just need to make a new one
+      .then(() => this._waitFor('_id')
+      .then(() => this._store.localStorage.delete({ _id: this._id }))
+      .then(() => this._setStoreState(-1)));
+  }
 
   _localStorageRemove() {
     return this._transaction(() =>

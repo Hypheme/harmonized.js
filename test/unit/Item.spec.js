@@ -754,6 +754,50 @@ describe('Item', function () {
           });
         });
       });
+      describe('_localStorageDelete', function () {
+        beforeEach(function () {
+          this.item._storeState = 3;
+          spyOn(this.store.localStorage, 'delete')
+            .and.returnValue(Promise.resolve());
+          spyOn(this.item, '_waitFor')
+            .and.callFake(() => {
+              expect(this.store.localStorage.delete.calls.count()).toBe(0);
+              return Promise.resolve();
+            });
+        });
+        it('should make a new _transaction', function (done) {
+          this.item._localStorageDelete().then(() => {
+            expect(this.item._transaction).toHaveBeenCalledTimes(1);
+            done();
+          });
+        });
+        it('should resolve even if the transaction fails', function (done) {
+          this.item._localStorageDelete().then(() => {
+            expect(this.item._transaction).toHaveBeenCalledTimes(1);
+            done();
+          });
+          this.item._transactionId = 'newer transaction';
+        });
+        it('should set _storeState to -1 after deleting', function (done) {
+          this.store.localStorage.delete.and.callFake(() => {
+            expect(this.item._storeState).not.toBe(-1);
+          });
+          this.item._localStorageDelete().then(() => {
+            expect(this.item._storeState).toBe(-1);
+            done();
+          });
+        });
+        it('should delete item in localStorage', function (done) {
+          this.item._localStorageDelete().then(() => {
+            expect(this.item._waitFor).toHaveBeenCalledWith('_id');
+            expect(this.store.localStorage.delete).toHaveBeenCalled();
+            expect(this.store.localStorage.delete).toHaveBeenCalledWith({
+              _id: 'localId',
+            });
+            done();
+          });
+        });
+      });
       describe('_transporterCreate', function () {
         beforeEach(function () {
           this.item.id = undefined;
@@ -791,7 +835,6 @@ describe('Item', function () {
         });
         it('should set _syncState to 0 and store it local if transaction passes', function (done) {
           this.item._transporterCreate().then(() => {
-            expect(this.item._waitFor).toHaveBeenCalledWith('id');
             expect(this.item._syncState).toBe(0);
             expect(this.item._localStorageSave).toHaveBeenCalled();
             done();
