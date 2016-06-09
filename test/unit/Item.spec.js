@@ -609,7 +609,9 @@ describe('Item', function () {
           this.item._id = undefined;
           this.item._storeState = 1;
           spyOn(this.store.localStorage, 'create')
-          .and.returnValue(new Promise(resolve => resolve({ _id: 'localId' })));
+            .and.returnValue(Promise.resolve({ _id: 'localId' }));
+          spyOn(this.item, 'toLocalStorage')
+            .and.returnValue(Promise.resolve({ some: 'data' }));
         });
         it('should wrap async task in _transaction', function (done) {
           this.item._localStorageCreate().then(() => {
@@ -627,11 +629,7 @@ describe('Item', function () {
           this.item._localStorageCreate().then(() => {
             expect(this.store.localStorage.create).toHaveBeenCalled();
             expect(this.store.localStorage.create).toHaveBeenCalledWith({
-              content: 'my content',
-              title: 'a title',
-              _id: undefined,
-              id: 'serverId',
-              _syncState: 1,
+              some: 'data',
             });
             done();
           });
@@ -642,6 +640,27 @@ describe('Item', function () {
             done();
           });
         });
+        it('should resolve even after failed transaction', function (done) {
+          this.item._localStorageCreate().then(() => {
+            // it still failed, so we dont reset the store state
+            expect(this.item._storeState).toBe(1);
+            // as this should be part of the transaction, it must still have happenend
+            expect(this.item._id).toBe('localId');
+            done();
+          });
+          this.item._transactionId = 'another transaction';
+        });
+        it('should still reject on localStorage error', function (done) {
+          this.store.localStorage.create
+            .and.returnValue(Promise.reject(new Error('local storage error')));
+          this.item._localStorageCreate().catch((err) => {
+            // it still failed, so we dont reset the store state
+            expect(err).toEqual(new Error('local storage error'));
+            // as this should be part of the transaction, it must still have happenend
+            expect(this.item._id).toBe(undefined);
+            done();
+          });
+        });
       });
 
       describe('_localStorageSave', function () {
@@ -649,7 +668,9 @@ describe('Item', function () {
           this.item._id = 'localId';
           this.item._storeState = 2;
           spyOn(this.store.localStorage, 'save')
-          .and.returnValue(new Promise(resolve => resolve()));
+            .and.returnValue(Promise.resolve());
+          spyOn(this.item, 'toLocalStorage')
+            .and.returnValue(Promise.resolve({ some: 'data' }));
         });
         it('should wrap async task in _transaction', function (done) {
           this.item._localStorageSave().then(() => {
@@ -667,11 +688,7 @@ describe('Item', function () {
           this.item._localStorageSave().then(() => {
             expect(this.store.localStorage.save).toHaveBeenCalled();
             expect(this.store.localStorage.save).toHaveBeenCalledWith({
-              content: 'my content',
-              title: 'a title',
-              _id: 'localId',
-              id: 'serverId',
-              _syncState: 1,
+              some: 'data',
             });
             done();
           });
@@ -682,9 +699,13 @@ describe('Item', function () {
           this.item.id = undefined;
           this.item._syncState = 1;
           spyOn(this.store.transporter, 'create')
-            .and.returnValue(new Promise(resolve => resolve({ id: 'serverId' })));
+            .and.returnValue(Promise.resolve({ id: 'serverId' }));
           spyOn(this.store.localStorage, 'save')
-              .and.returnValue(new Promise(resolve => resolve()));
+            .and.returnValue(Promise.resolve());
+          spyOn(this.item, 'toLocalStorage')
+            .and.returnValue(Promise.resolve({ some: 'data' }));
+          spyOn(this.item, 'toTransporter')
+            .and.returnValue(Promise.resolve({ some: 'data' }));
         });
         it('should wrap async tasks in _transaction', function (done) {
           this.item._transporterCreate().then(() => {
@@ -736,9 +757,9 @@ describe('Item', function () {
           spyOn(this.store, 'remove');
           spyOn(this.store, 'delete');
           spyOn(this.store.transporter, 'delete')
-            .and.returnValue(new Promise(resolve => resolve({ id: 'serverId' })));
+            .and.returnValue(Promise.resolve({ id: 'serverId' }));
           spyOn(this.store.localStorage, 'delete')
-            .and.returnValue(new Promise(resolve => resolve()));
+            .and.returnValue(Promise.resolve());
         });
         it('should wrap async tasks in _transaction', function (done) {
           this.item._transporterDelete().then(() => {
@@ -793,9 +814,9 @@ describe('Item', function () {
           this.item.id = 'serverId';
           this.item._syncState = 2;
           spyOn(this.store.transporter, 'save')
-            .and.returnValue(new Promise(resolve => resolve({ id: 'serverId' })));
+            .and.returnValue(Promise.resolve({ id: 'serverId' }));
           spyOn(this.store.localStorage, 'save')
-            .and.returnValue(new Promise(resolve => resolve()));
+            .and.returnValue(Promise.resolve());
         });
         it('should wrap async tasks in _transaction', function (done) {
           this.item._transporterSave().then(() => {
@@ -972,9 +993,9 @@ describe('Item', function () {
     describe('_synchronize', function () {
       beforeEach(function () {
         spyOn(this.item, '_synchronizeLocalStorage')
-          .and.returnValue(new Promise(resolve => resolve()));
+          .and.returnValue(Promise.resolve());
         spyOn(this.item, '_synchronizeTransporter')
-          .and.returnValue(new Promise(resolve => resolve()));
+          .and.returnValue(Promise.resolve());
       });
       it('should set states to given ones', function (done) {
         this.item._synchronize(1, 2).then(() => {
@@ -1003,9 +1024,9 @@ describe('Item', function () {
     describe('_synchronizeLocalStorage', function () {
       beforeEach(function () {
         spyOn(this.item, '_localStorageCreate')
-          .and.returnValue(new Promise(resolve => resolve()));
+          .and.returnValue(Promise.resolve());
         spyOn(this.item, '_localStorageSave')
-          .and.returnValue(new Promise(resolve => resolve()));
+          .and.returnValue(Promise.resolve());
       });
       it('should call _localStorageCreate if storestatus is 1', function (done) {
         this.item._storeState = 1;
@@ -1035,11 +1056,11 @@ describe('Item', function () {
     describe('_synchronizeTransporter', function () {
       beforeEach(function () {
         spyOn(this.item, '_transporterCreate')
-          .and.returnValue(new Promise(resolve => resolve()));
+          .and.returnValue(Promise.resolve());
         spyOn(this.item, '_transporterSave')
-          .and.returnValue(new Promise(resolve => resolve()));
+          .and.returnValue(Promise.resolve());
         spyOn(this.item, '_transporterDelete')
-          .and.returnValue(new Promise(resolve => resolve()));
+          .and.returnValue(Promise.resolve());
       });
       it('should call _transporterCreate if syncstatus is 1', function (done) {
         this.item._syncState = 1;

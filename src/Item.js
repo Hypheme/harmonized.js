@@ -116,8 +116,6 @@ export default class Item {
             const dispose = autorun(() => {
               if (relationItem.stored) {
                 dispose();
-                result[actKey.transporterKey] = relationItem.id;
-                result[actKey.localStorageKey] = relationItem._id;
                 resolve();
               }
             });
@@ -128,7 +126,13 @@ export default class Item {
         }
       }
     }
-    return Promise.all(promises).then(() => result);
+    if (promises.length !== 0) {
+      // we call recursive on pupose if anything async happens. This way we make sure,
+      // the final result contains the actual content and not the content it had on the
+      // first run(before the async part)
+      return Promise.all(promises).then(() => this.toLocalStorage());
+    }
+    return new Promise(resolve => resolve(result));
   }
 
   toRawItem(ignoreRelations = false) {
@@ -170,7 +174,6 @@ export default class Item {
             const dispose = autorun(() => {
               if (relationItem.synced) {
                 dispose();
-                result[actKey.transporterKey] = relationItem.id;
                 resolve();
               }
             });
@@ -180,7 +183,11 @@ export default class Item {
         }
       }
     }
-    return Promise.all(promises).then(() => result);
+    if (promises.length !== 0) {
+      // same reason as in toLocalStorage
+      return Promise.all(promises).then(() => this.toTransporter());
+    }
+    return new Promise(resolve => resolve(result));
   }
 
   // ///////////////////
@@ -218,18 +225,26 @@ export default class Item {
   // TODO fromLocalStorage
 
   _localStorageCreate() {
-    return this._transaction(() => this._store.localStorage.create(this.toLocalStorage))
+    return this._transaction(() => this.toLocalStorage()
+      .then(content => this._store.localStorage.create(content))
       .then(({ _id }) => {
         this._id = _id;
+      })).then(() => {
         this._setStoreState(0);
+      }).catch(err => {
+        // we fullfil even if there is a later transaction because we always want
+        // an item to be created (otherwise it couldn't be manipulated)
+        if (err && err.message === 'unmatched transactionId') {
+          return;
+        }
+        throw err;
       });
   }
 
   _localStorageSave() {
-    return this._transaction(() => this._store.localStorage.save(this.toLocalStorage))
-      .then(() => {
-        this._setStoreState(0);
-      });
+    return this._transaction(() => this.toLocalStorage()
+      .then(content => this._store.localStorage.save(content)))
+      .then(() => this._setStoreState(0));
   }
 
   _set(values = {}, keys) {
