@@ -665,12 +665,16 @@ describe('Item', function () {
 
       describe('_localStorageSave', function () {
         beforeEach(function () {
-          this.item._id = 'localId';
           this.item._storeState = 2;
           spyOn(this.store.localStorage, 'save')
             .and.returnValue(Promise.resolve());
           spyOn(this.item, 'toLocalStorage')
             .and.returnValue(Promise.resolve({ some: 'data' }));
+          spyOn(this.item, '_waitFor')
+            .and.callFake(() => {
+              expect(this.item.toLocalStorage.calls.count()).toBe(0);
+              return Promise.resolve();
+            });
         });
         it('should wrap async task in _transaction', function (done) {
           this.item._localStorageSave().then(() => {
@@ -678,9 +682,10 @@ describe('Item', function () {
             done();
           });
         });
-        it('should set _storeState to 0 after creation', function (done) {
+        it('should wait for item to be created in storage before saving it again', function (done) {
           this.item._localStorageSave().then(() => {
-            expect(this.item._storeState).toBe(0);
+            expect(this.item._waitFor).toHaveBeenCalled();
+            expect(this.item._waitFor).toHaveBeenCalledWith('_id');
             done();
           });
         });
@@ -690,6 +695,69 @@ describe('Item', function () {
             expect(this.store.localStorage.save).toHaveBeenCalledWith({
               some: 'data',
             });
+            done();
+          });
+        });
+        it('should set _storeState to 0 after saving', function (done) {
+          this.item._localStorageSave().then(() => {
+            expect(this.item._storeState).toBe(0);
+            done();
+          });
+        });
+        it('should not set _storeState to 0 if transaction fails', function (done) {
+          this.item._localStorageSave().catch(() => {
+            expect(this.item._storeState).toBe(2);
+            done();
+          });
+          this.item._transactionId = 'another transaction';
+        });
+      });
+      describe('_localStorageRemove', function () {
+        beforeEach(function () {
+          this.item._id = 'localId';
+          this.item._storeState = 3;
+          spyOn(this.store, 'remove');
+          spyOn(this.store.localStorage, 'remove')
+            .and.returnValue(Promise.resolve());
+          spyOn(this.item, '_waitFor')
+            .and.callFake(() => {
+              expect(this.store.localStorage.remove.calls.count()).toBe(0);
+              return Promise.resolve();
+            });
+        });
+        it('should remove the item from the store in the sync part', function (done) {
+          this.item._localStorageRemove().then(() => {
+            done();
+          });
+          expect(this.store.remove).toHaveBeenCalled();
+          expect(this.store.remove).toHaveBeenCalledWith(this.item);
+        });
+        it('should wrap async task in _transaction', function (done) {
+          this.item._localStorageRemove().then(() => {
+            expect(this.item._transaction).toHaveBeenCalled();
+            done();
+          });
+        });
+        it('should wait for item to be created in storage before deleting it again',
+        function (done) {
+          this.item._localStorageRemove().then(() => {
+            expect(this.item._waitFor).toHaveBeenCalled();
+            expect(this.item._waitFor).toHaveBeenCalledWith('_id');
+            done();
+          });
+        });
+        it('should remove item in localStorage', function (done) {
+          this.item._localStorageRemove().then(() => {
+            expect(this.store.localStorage.remove).toHaveBeenCalled();
+            expect(this.store.localStorage.remove).toHaveBeenCalledWith({
+              _id: 'localId',
+            });
+            done();
+          });
+        });
+        it('should keep _storeState after removing', function (done) {
+          this.item._localStorageRemove().then(() => {
+            expect(this.item._storeState).toBe(3);
             done();
           });
         });

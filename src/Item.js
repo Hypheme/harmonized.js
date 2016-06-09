@@ -225,13 +225,16 @@ export default class Item {
   // TODO fromLocalStorage
 
   _localStorageCreate() {
-    return this._transaction(() => this.toLocalStorage()
-      .then(content => this._store.localStorage.create(content))
-      .then(({ _id }) => {
-        this._id = _id;
-      })).then(() => {
+    return this._transaction(() =>
+      this.toLocalStorage()
+        .then(content => this._store.localStorage.create(content))
+        .then(({ _id }) => {
+          this._id = _id;
+        }))
+      .then(() => {
         this._setStoreState(0);
-      }).catch(err => {
+      })
+      .catch(err => {
         // we fullfil even if there is a later transaction because we always want
         // an item to be created (otherwise it couldn't be manipulated)
         if (err && err.message === 'unmatched transactionId') {
@@ -241,9 +244,18 @@ export default class Item {
       });
   }
 
+  _localStorageRemove() {
+    this._store.remove(this);
+    return this._transaction(() =>
+      this._waitFor('_id').then(() =>
+      this._store.localStorage.remove({ _id: this._id })));
+  }
+
   _localStorageSave() {
-    return this._transaction(() => this.toLocalStorage()
-      .then(content => this._store.localStorage.save(content)))
+    return this._transaction(() =>
+      this._waitFor('_id')
+        .then(() => this.toLocalStorage())
+        .then(content => this._store.localStorage.save(content)))
       .then(() => this._setStoreState(0));
   }
 
@@ -359,5 +371,7 @@ export default class Item {
         return this._transaction(() => this._store.localStorage.save(this.toLocalStorage));
       });
   }
+
+  _waitFor() {}
 
 }
