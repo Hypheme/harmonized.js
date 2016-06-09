@@ -324,8 +324,7 @@ export default class Item {
     switch (this._storeState) {
       case 1: return this._localStorageCreate();
       case 2: return this._localStorageSave();
-      // TODO delete     this._store.remove(this);
-
+      case 3: return this._localStorageRemove();
       default:
         return new Promise(resolve => resolve());
     }

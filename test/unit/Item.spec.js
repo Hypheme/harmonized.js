@@ -1125,12 +1125,18 @@ describe('Item', function () {
           .and.returnValue(Promise.resolve());
         spyOn(this.item, '_localStorageSave')
           .and.returnValue(Promise.resolve());
+        spyOn(this.item, '_localStorageDelete')
+          .and.returnValue(Promise.resolve());
+        spyOn(this.item, '_localStorageRemove')
+          .and.returnValue(Promise.resolve());
       });
       it('should call _localStorageCreate if storestatus is 1', function (done) {
         this.item._storeState = 1;
         this.item._synchronizeLocalStorage().then(() => {
           expect(this.item._localStorageCreate).toHaveBeenCalled();
           expect(this.item._localStorageSave).not.toHaveBeenCalled();
+          expect(this.item._localStorageRemove).not.toHaveBeenCalled();
+          expect(this.item._localStorageDelete).not.toHaveBeenCalled();
           done();
         });
       });
@@ -1139,6 +1145,18 @@ describe('Item', function () {
         this.item._synchronizeLocalStorage().then(() => {
           expect(this.item._localStorageCreate).not.toHaveBeenCalled();
           expect(this.item._localStorageSave).toHaveBeenCalled();
+          expect(this.item._localStorageRemove).not.toHaveBeenCalled();
+          expect(this.item._localStorageDelete).not.toHaveBeenCalled();
+          done();
+        });
+      });
+      it('should call _localStorageRemove if storestatus is 3', function (done) {
+        this.item._storeState = 3;
+        this.item._synchronizeLocalStorage().then(() => {
+          expect(this.item._localStorageCreate).not.toHaveBeenCalled();
+          expect(this.item._localStorageSave).not.toHaveBeenCalled();
+          expect(this.item._localStorageRemove).toHaveBeenCalled();
+          expect(this.item._localStorageDelete).not.toHaveBeenCalled();
           done();
         });
       });
@@ -1147,6 +1165,8 @@ describe('Item', function () {
         this.item._synchronizeLocalStorage().then(() => {
           expect(this.item._localStorageCreate).not.toHaveBeenCalled();
           expect(this.item._localStorageSave).not.toHaveBeenCalled();
+          expect(this.item._localStorageRemove).not.toHaveBeenCalled();
+          expect(this.item._localStorageDelete).not.toHaveBeenCalled();
           done();
         });
       });
