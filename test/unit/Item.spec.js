@@ -716,7 +716,6 @@ describe('Item', function () {
         beforeEach(function () {
           this.item._id = 'localId';
           this.item._storeState = 3;
-          spyOn(this.store, 'remove');
           spyOn(this.store.localStorage, 'remove')
             .and.returnValue(Promise.resolve());
           spyOn(this.item, '_waitFor')
@@ -724,13 +723,6 @@ describe('Item', function () {
               expect(this.store.localStorage.remove.calls.count()).toBe(0);
               return Promise.resolve();
             });
-        });
-        it('should remove the item from the store in the sync part', function (done) {
-          this.item._localStorageRemove().then(() => {
-            done();
-          });
-          expect(this.store.remove).toHaveBeenCalled();
-          expect(this.store.remove).toHaveBeenCalledWith(this.item);
         });
         it('should wrap async task in _transaction', function (done) {
           this.item._localStorageRemove().then(() => {
@@ -768,86 +760,93 @@ describe('Item', function () {
           this.item._syncState = 1;
           spyOn(this.store.transporter, 'create')
             .and.returnValue(Promise.resolve({ id: 'serverId' }));
-          spyOn(this.store.localStorage, 'save')
+          spyOn(this.item, '_localStorageSave')
             .and.returnValue(Promise.resolve());
-          spyOn(this.item, 'toLocalStorage')
-            .and.returnValue(Promise.resolve({ some: 'data' }));
           spyOn(this.item, 'toTransporter')
             .and.returnValue(Promise.resolve({ some: 'data' }));
         });
         it('should wrap async tasks in _transaction', function (done) {
           this.item._transporterCreate().then(() => {
-            expect(this.item._transaction).toHaveBeenCalledTimes(2);
+            expect(this.item._transaction).toHaveBeenCalledTimes(1);
             done();
           });
         });
-        it('should set _syncState to 0 after creation', function (done) {
-          this.item._transporterCreate().then(() => {
-            expect(this.item._syncState).toBe(0);
-            done();
-          });
-        });
-        it('should save serverId in item', function (done) {
+        it('should create item and save serverId in item', function (done) {
           this.item._transporterCreate().then(() => {
             expect(this.item.id).toBe('serverId');
-            done();
-          });
-        });
-        it('should create item in transporter', function (done) {
-          this.item._transporterCreate().then(() => {
             expect(this.store.transporter.create).toHaveBeenCalled();
-            expect(this.store.transporter.create).toHaveBeenCalledWith({
-              content: 'my content',
-              title: 'a title',
-              id: undefined,
-            });
+            expect(this.store.transporter.create).toHaveBeenCalledWith({ some: 'data' });
             done();
           });
         });
-        it('should save the new item content in localStorage', function (done) {
+        it('should create item and save serverId in item even if transaction fails',
+        function (done) {
           this.item._transporterCreate().then(() => {
-            expect(this.store.localStorage.save).toHaveBeenCalled();
-            expect(this.store.localStorage.save).toHaveBeenCalledWith({
-              content: 'my content',
-              title: 'a title',
-              _id: 'localId',
-              id: 'serverId',
-              _syncState: 0,
-            });
+            expect(this.item.id).toBe('serverId');
+            expect(this.store.transporter.create).toHaveBeenCalled();
+            expect(this.store.transporter.create).toHaveBeenCalledWith({ some: 'data' });
             done();
           });
+          this.item._transactionId = 'newer transaction';
+        });
+        it('should set _syncState to 0 and store it local if transaction passes', function (done) {
+          this.item._transporterCreate().then(() => {
+            expect(this.item._waitFor).toHaveBeenCalledWith('id');
+            expect(this.item._syncState).toBe(0);
+            expect(this.item._localStorageSave).toHaveBeenCalled();
+            done();
+          });
+        });
+        it('should not set _syncState to 0 if transaction fails', function (done) {
+          this.item._transporterCreate().then(() => {
+            expect(this.item._syncState).toBe(1);
+            expect(this.item._localStorageSave).not.toHaveBeenCalled();
+            done();
+          });
+          this.item._transactionId = 'newer transaction';
         });
       });
       describe('_transporterDelete', function () {
         beforeEach(function () {
           this.item.id = 'serverId';
           this.item._syncState = 3;
-          spyOn(this.store, 'remove');
-          spyOn(this.store, 'delete');
           spyOn(this.store.transporter, 'delete')
-            .and.returnValue(Promise.resolve({ id: 'serverId' }));
-          spyOn(this.store.localStorage, 'delete')
             .and.returnValue(Promise.resolve());
+          spyOn(this.item, '_localStorageDelete')
+            .and.returnValue(Promise.resolve());
+          spyOn(this.item, '_waitFor')
+            .and.callFake(() => {
+              expect(this.store.transporter.delete.calls.count()).toBe(0);
+              return Promise.resolve();
+            });
         });
-        it('should wrap async tasks in _transaction', function (done) {
+        it('should make a new _transaction', function (done) {
           this.item._transporterDelete().then(() => {
-            expect(this.item._transaction).toHaveBeenCalledTimes(2);
+            expect(this.item._transaction).toHaveBeenCalledTimes(1);
             done();
           });
         });
-        it('should set _syncState and _storeState to -1 after deleting', function (done) {
+        it('should resolve even if the transaction fails', function (done) {
           this.item._transporterDelete().then(() => {
-            expect(this.item._syncState).toBe(-1);
+            expect(this.item._transaction).toHaveBeenCalledTimes(1);
+            done();
+          });
+          this.item._transactionId = 'newer transaction';
+        });
+        it('should set _syncState to -1 after deleting', function (done) {
+          this.store.transporter.delete.and.callFake(() => {
+            expect(this.item._syncState).not.toBe(-1);
+          });
+          this.item._transporterDelete().then(() => {
             expect(this.item._syncState).toBe(-1);
             done();
           });
         });
         it('should delete item in transporter', function (done) {
           this.item._transporterDelete().then(() => {
+            expect(this.item._waitFor).toHaveBeenCalledWith('id');
             expect(this.store.transporter.delete).toHaveBeenCalled();
             expect(this.store.transporter.delete).toHaveBeenCalledWith({
-              content: 'my content',
-              title: 'a title',
               id: 'serverId',
             });
             done();
@@ -855,72 +854,60 @@ describe('Item', function () {
         });
         it('should delete the item in localStorage', function (done) {
           this.item._transporterDelete().then(() => {
-            expect(this.store.localStorage.delete).toHaveBeenCalled();
-            expect(this.store.localStorage.delete).toHaveBeenCalledWith({
-              content: 'my content',
-              title: 'a title',
-              _id: 'localId',
-              id: 'serverId',
-              _syncState: -1,
-            });
-            done();
-          });
-        });
-        it('should remove item from store in sync part', function () {
-          this.item._transporterDelete();
-          expect(this.store.remove).toHaveBeenCalledWith(this.item);
-        });
-        it('should delete item from store after async part', function (done) {
-          this.item._transporterDelete().then(() => {
-            expect(this.store.delete).toHaveBeenCalledWith(this.item);
+            expect(this.item._localStorageDelete).toHaveBeenCalled();
             done();
           });
         });
       });
       describe('_transporterSave', function () {
         beforeEach(function () {
-          this.item.id = 'serverId';
           this.item._syncState = 2;
+          spyOn(this.item, 'toTransporter')
+            .and.returnValue(Promise.resolve({ some: 'data' }));
           spyOn(this.store.transporter, 'save')
-            .and.returnValue(Promise.resolve({ id: 'serverId' }));
-          spyOn(this.store.localStorage, 'save')
             .and.returnValue(Promise.resolve());
+          spyOn(this.item, '_localStorageSave')
+            .and.returnValue(Promise.resolve());
+          spyOn(this.item, '_waitFor')
+            .and.callFake(() => {
+              expect(this.item.toTransporter.calls.count()).toBe(0);
+              return Promise.resolve();
+            });
         });
         it('should wrap async tasks in _transaction', function (done) {
           this.item._transporterSave().then(() => {
-            expect(this.item._transaction).toHaveBeenCalledTimes(2);
+            expect(this.item._transaction).toHaveBeenCalledTimes(1);
             done();
           });
         });
-        it('should set _syncState to 0 after saving', function (done) {
+        it('should set _syncState to 0 and store locally after saving', function (done) {
           this.item._transporterSave().then(() => {
             expect(this.item._syncState).toBe(0);
+            expect(this.item._localStorageSave).toHaveBeenCalled();
             done();
           });
+        });
+        it('should not set _syncState and store locally if transaction fails', function (done) {
+          this.item._transporterSave().catch(() => {
+            expect(this.item._syncState).toBe(2);
+            expect(this.item._localStorageSave).not.toHaveBeenCalled();
+            done();
+          });
+          this.item._transactionId = 'newer transaction';
         });
         it('should save item in transporter', function (done) {
           this.item._transporterSave().then(() => {
             expect(this.store.transporter.save).toHaveBeenCalled();
-            expect(this.store.transporter.save).toHaveBeenCalledWith({
-              content: 'my content',
-              title: 'a title',
-              id: 'serverId',
-            });
+            expect(this.store.transporter.save).toHaveBeenCalledWith({ some: 'data' });
             done();
           });
         });
-        it('should save the new item content in localStorage', function (done) {
-          this.item._transporterSave().then(() => {
-            expect(this.store.localStorage.save).toHaveBeenCalled();
-            expect(this.store.localStorage.save).toHaveBeenCalledWith({
-              content: 'my content',
-              title: 'a title',
-              _id: 'localId',
-              id: 'serverId',
-              _syncState: 0,
-            });
+        it('should save item in transporter even if transaction fails', function (done) {
+          this.item._transporterSave().catch(() => {
+            expect(this.store.transporter.save).toHaveBeenCalled();
             done();
           });
+          this.item._transactionId = 'newer transaction';
         });
       });
     });

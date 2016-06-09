@@ -244,8 +244,9 @@ export default class Item {
       });
   }
 
+  _localStorageDelete() {}
+
   _localStorageRemove() {
-    this._store.remove(this);
     return this._transaction(() =>
       this._waitFor('_id').then(() =>
       this._store.localStorage.remove({ _id: this._id })));
@@ -317,6 +318,8 @@ export default class Item {
     switch (this._storeState) {
       case 1: return this._localStorageCreate();
       case 2: return this._localStorageSave();
+      // TODO delete     this._store.remove(this);
+
       default:
         return new Promise(resolve => resolve());
     }
@@ -344,32 +347,42 @@ export default class Item {
   }
 
   _transporterCreate() {
-    return this._transaction(() => this._store.transporter.create(this.toTransporter))
-      .then(({ id }) => {
-        this.id = id;
+    return this._transaction(() =>
+      this.toTransporter()
+        .then(content => this._store.transporter.create(content))
+        .then(({ id }) => {
+          this.id = id;
+        }))
+      .then(() => {
         this._setSyncState(0);
-        return this._transaction(() => this._store.localStorage.save(this.toLocalStorage));
+        return this._localStorageSave();
+      })
+      .catch(err => {
+        // we fullfil even if there is a later transaction because we always want
+        // an item to be created (otherwise it couldn't be manipulated)
+        if (err && err.message === 'unmatched transactionId') {
+          return;
+        }
+        throw err;
       });
   }
 
   _transporterDelete() {
-    this._store.remove(this);
-    return this._transaction(() => this._store.transporter.delete(this.toTransporter))
-      .then(() => {
-        this._setSyncState(-1);
-        return this._transaction(() => this._store.localStorage.delete(this.toLocalStorage));
-      }).then(() => {
-        this._setStoreState(-1);
-        this._store.delete(this);
-      });
+    return this._transaction(() => Promise.resolve())
+      .catch(() => undefined) // we ignore thransaction, we just need to make a new one
+      .then(() => this._waitFor('id')
+      .then(() => this._store.transporter.delete({ id: this.id }))
+      .then(() => this._setSyncState(-1)))
+      .then(() => this._localStorageDelete());
   }
 
   _transporterSave() {
-    return this._transaction(() => this._store.transporter.save(this.toTransporter))
-      .then(() => {
-        this._setSyncState(0);
-        return this._transaction(() => this._store.localStorage.save(this.toLocalStorage));
-      });
+    return this._transaction(() =>
+      this._waitFor('id')
+        .then(() => this.toTransporter())
+        .then(content => this._store.transporter.save(content)))
+      .then(() => this._setSyncState(0))
+      .then(() => this._localStorageSave());
   }
 
   _waitFor() {}
