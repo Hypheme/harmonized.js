@@ -220,13 +220,10 @@ export default class Item {
 
   // TODO fromRawItem
   fromRawItem(item) {
-    const rawItem = item;
-    return rawItem;
   }
   // TODO fromTransporter
   fromTransporter(item) {
-    const transporterItem = item;
-    return transporterItem;
+    this.id = item.id;
   }
   // TODO fromLocalStorage
   fromLocalStorage(values) {
@@ -274,15 +271,6 @@ export default class Item {
         .then(() => this.toLocalStorage())
         .then(content => this._store.localStorage.save(content)))
       .then(() => this._setStoreState(0));
-  }
-
-  _set(values = {}, keys) {
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i];
-      if (values[key] !== undefined) {
-        this[key] = values[key];
-      }
-    }
   }
 
   _setStoreState(state) {

@@ -365,6 +365,13 @@ describe('Item', function () {
               content: this.content,
             };
           }
+          fromLocalStorage(values) {
+            this.content = values.content;
+            this.title = values.title;
+            this._id = values._id;
+            this.id = values.id;
+            this._syncState = values._syncState;
+          }
         }
         class Author extends Item {
 
@@ -1258,7 +1265,7 @@ describe('Item', function () {
       });
     });
 
-    fdescribe('_waitFor', function () {
+    describe('_waitFor', function () {
       it('should resolve instant if key is set', function (done) {
         this.item.id = 'something';
         this.item._waitFor('id').then(done);
