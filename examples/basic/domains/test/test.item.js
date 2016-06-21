@@ -2,8 +2,21 @@ import { Item } from './harmonized';
 
 export default class TestItem extends Item {
 
-  static rawItemKeys = ['title', 'data'];
-  get rawItemKeys() {
+  static keys = ['title', 'data'];
+  get keys() {
     return TestItem.rawItemKeys;
   }
+  primary = 'id'; // default
 }
+
+
+const keys = ['title',
+  { key: 'contact', store: 'contacts', relationKey: 'contactId', storeKey: 'id' },
+  { key: 'information', store: 'information', relationKey: 'informationId', storeKey: 'informationId' },
+];
+
+const primary = ['contact', 'information'];
+
+
+
+console.log(keys, primary);

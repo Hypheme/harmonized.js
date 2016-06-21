@@ -51,6 +51,8 @@ export default class Item {
   // PUBLIC METHODS //
   // //////////////////
 
+  getLocalKey() {}
+
   enableAutoSaveAndSave() {
     this.autoSave = true;
     return this._synchronize(2, 2);
@@ -231,9 +233,7 @@ export default class Item {
     return this._transaction(() =>
       this.toLocalStorage()
         .then(content => this._store.localStorage.create(content))
-        .then(response => {
-          this._setPrimaryKey(response);
-        }))
+        .then(response => this._setPrimaryKey(response)))
       .then(() => {
         this._setStoreState(0);
       })
@@ -249,21 +249,20 @@ export default class Item {
 
   _localStorageDelete() {
     return this._transaction(() => Promise.resolve())
-      .catch(() => undefined) // we ignore thransaction, we just need to make a new one
-      .then(() => this._waitFor('_id'))
-      .then(() => this._store.localStorage.delete({ _id: this._id }))
-      .then(() => this._setStoreState(-1)); // TODO move this to _localStorageRemove
+      .then(() => this.getLocalKey())
+      .then(key => this._store.localStorage.delete(key))
+      .then(() => this._setStoreState(-1));
   }
 
   _localStorageRemove() {
-    return this._transaction(() =>
-      this._waitFor('_id').then(() =>
-      this._store.localStorage.remove({ _id: this._id })));
+    return this._transaction(() => this.getLocalKey()
+      .then(key => this._store.localStorage.remove(key))
+      .then(() => this._setStoreState(-1)));
   }
 
   _localStorageSave() {
     return this._transaction(() =>
-      this._waitFor('_id')
+      this.getLocalKey()
         .then(() => this.toLocalStorage())
         .then(content => this._store.localStorage.save(content)))
       .then(() => this._setStoreState(0));
