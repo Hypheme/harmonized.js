@@ -10,7 +10,6 @@ export default class Item {
 
   constructor(store, values = {}) {
     this._store = store;
-    this._autocompleteKeys();
     this._storeState = 0;
     this._setStoreState(values._id === undefined ? 1 : 0);
     values._syncState = values._syncState === undefined ? 1 : values._syncState;
@@ -114,8 +113,8 @@ export default class Item {
       _syncState: this._syncState,
     };
     const promises = [];
-    for (let i = 0, len = this._keys.length; i < len; i++) {
-      const actKey = this._keys[i];
+    for (let i = 0, len = this.keys.length; i < len; i++) {
+      const actKey = this.keys[i];
       if (typeof actKey === 'string') {
         result[actKey] = this[actKey];
       } else if (this[actKey.key] && this[actKey.key]._id === undefined) {
@@ -148,8 +147,8 @@ export default class Item {
       result.id = this.id;
     }
     const promises = [];
-    for (let i = 0, len = this._keys.length; i < len; i++) {
-      const actKey = this._keys[i];
+    for (let i = 0, len = this.keys.length; i < len; i++) {
+      const actKey = this.keys[i];
       if (typeof actKey === 'string') {
         result[actKey] = this[actKey];
       } else {
@@ -170,8 +169,8 @@ export default class Item {
       id: this.id,
     };
     const promises = [];
-    for (let i = 0, len = this._keys.length; i < len; i++) {
-      const actKey = this._keys[i];
+    for (let i = 0, len = this.keys.length; i < len; i++) {
+      const actKey = this.keys[i];
       if (typeof actKey === 'string') {
         result[actKey] = this[actKey];
       } else if (this[actKey.key] && this[actKey.key].id === undefined) {
@@ -199,21 +198,21 @@ export default class Item {
   // PRIVATE METHODS //
   // ///////////////////
 
-  _autocompleteKeys() {
-    const keys = this.keys;
-    const result = [];
-    for (let i = 0, len = keys.length; i < len; i++) {
-      const actKey = keys[i];
-      if (typeof actKey === 'object') {
-        actKey.key = actKey.key || actKey.store;
-        actKey.transporterKey = actKey.transporterKey || `${actKey.key}Id`;
-        actKey.localStorageKey = `_${actKey.transporterKey}`;
-        // TODO add onDelete/onChange methods
-      }
-      result.push(actKey);
-    }
-    this._keys = result;
-  }
+  // _autocompleteKeys() {
+  //   const keys = this.keys;
+  //   const result = [];
+  //   for (let i = 0, len = keys.length; i < len; i++) {
+  //     const actKey = keys[i];
+  //     if (typeof actKey === 'object') {
+  //       actKey.key = actKey.key || actKey.store;
+  //       actKey.transporterKey = actKey.transporterKey || `${actKey.key}Id`;
+  //       actKey.localStorageKey = `_${actKey.transporterKey}`;
+  //       // TODO add onDelete/onChange methods
+  //     }
+  //     result.push(actKey);
+  //   }
+  //   this.keys = result;
+  // }
 
   _onDeleteTrigger() {}
 
@@ -269,7 +268,21 @@ export default class Item {
       .then(() => this._setStoreState(0));
   }
 
-  _setPrimaryKey() {}
+  _setPrimaryKey(givenKeys) {
+    for (let i = 0, len = this.primary.length; i < len; i++) {
+      const primary = this.primary[i];
+      for (let j = 0, lenj = this.keys.length; j < lenj; j++) {
+        const key = this.keys[j];
+        if (primary === key.key) {
+          if (key.store === undefined) {
+            this[key.relationKey] = this[key.relationKey] || givenKeys[key.relationKey];
+            this[key.storeKey] = this[key.storeKey] || givenKeys[key.storeKey];
+          }
+          break;
+        }
+      }
+    }
+  }
 
   _setStoreState(state) {
     if (this._storeState !== -1) {

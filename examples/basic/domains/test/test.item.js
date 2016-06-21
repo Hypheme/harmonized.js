@@ -2,7 +2,7 @@ import { Item } from './harmonized';
 
 export default class TestItem extends Item {
 
-  static keys = ['title', 'data'];
+  static keys = Item.autocompleteKeys(['title', 'data']);
   get keys() {
     return TestItem.rawItemKeys;
   }

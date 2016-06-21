@@ -357,7 +357,10 @@ describe('Item', function () {
           @observable content;
           @observable title;
           get keys() {
-            return ['content', 'title'];
+            return this._keys || ['content', 'title'];
+          }
+          set keys(k) {
+            this._keys = k;
           }
           _stateHandler() {
             return {
@@ -403,7 +406,7 @@ describe('Item', function () {
           _syncState: 0 });
         this.item.author = this.author;
         this.item.anotherAuthor = this.anotherAuthor;
-        this.item._keys = ['content', 'title',
+        this.item.keys = ['content', 'title',
           { key: 'author', store: 'authors',
             transporterKey: 'authorId', localStorageKey: '_authorId' },
           { key: 'anotherAuthor', store: 'authors',
@@ -411,7 +414,7 @@ describe('Item', function () {
       });
 
       describe('toRawItem', function () {
-        it('should get id, stored, synced and all entries of keys stored in _keys',
+        it('should get id, stored, synced and all entries of keys stored in keys',
           function (done) {
             this.item.toRawItem().then(result => {
               expect(result).toEqual({
@@ -440,7 +443,7 @@ describe('Item', function () {
       });
 
       describe('toTransporter', function () {
-        it('should get id and all entries of keys stored in _keys', function (done) {
+        it('should get id and all entries of keys stored in keys', function (done) {
           this.item.toTransporter().then(result => {
             expect(result).toEqual({
               content: 'my content',
@@ -501,7 +504,7 @@ describe('Item', function () {
       });
 
       describe('toLocalStorage', function () {
-        it('should get id, _id, _syncState and all entries of keys stored in _keys',
+        it('should get id, _id, _syncState and all entries of keys stored in keys',
          function (done) {
            this.item.toLocalStorage().then(result => {
              expect(result).toEqual({
@@ -584,7 +587,10 @@ describe('Item', function () {
         @observable content;
         @observable title;
         get keys() {
-          return ['content', 'title'];
+          return this._keys || ['content', 'title'];
+        }
+        set keys(k) {
+          this._keys = k;
         }
         get rawItem() {
           propertySpy('rawItem');
@@ -907,7 +913,7 @@ describe('Item', function () {
           });
         });
       });
-      fdescribe('_transporterSave', function () {
+      describe('_transporterSave', function () {
         beforeEach(function () {
           this.item._syncState = 2;
           spyOn(this.item, 'toTransporter')
@@ -963,6 +969,50 @@ describe('Item', function () {
     });
 
     xdescribe('_set', function () {});
+    fdescribe('_setPrimaryKey', function () {
+      beforeEach(function () {
+        delete this.item.key1;
+        delete this.item._key1;
+        delete this.item.key2;
+        delete this.item._key2;
+        delete this.item.key3;
+        delete this.item._key3;
+        this.item.primary = ['key1', 'key2'];
+        this.item.keys = [
+          { key: 'key1', relationKey: 'key1Id', storeKey: '_key1Id' },
+          { key: 'key2', relationKey: 'key2Id', storeKey: '_key2Id', store: 'key2s' }];
+      });
+      it('should set a local primary key if the key is undefined', function () {
+        this.item._setPrimaryKey({ _key1Id: 'k1' });
+        expect(this.item._key1Id).toBe('k1');
+      });
+      it('should set a transporter primary key if the key is undefined', function () {
+        this.item._setPrimaryKey({ key1Id: 'k1' });
+        expect(this.item.key1Id).toBe('k1');
+      });
+      it('should not set a local primary key if the key is defined', function () {
+        this.item._key1Id = 'old';
+        this.item._setPrimaryKey({ _key1Id: 'k1' });
+        expect(this.item._key1Id).toBe('old');
+      });
+      it('should not set a transporter primary key if the key is defined', function () {
+        this.item.key1Id = 'old';
+        this.item._setPrimaryKey({ key1Id: 'k1' });
+        expect(this.item.key1Id).toBe('old');
+      });
+      it('should not set foreign primary keys', function () {
+        this.item._setPrimaryKey({ key2Id: 'k2' });
+        expect(this.item.key2Id).toBe(undefined);
+        this.item._setPrimaryKey({ _key2Id: 'k2' });
+        expect(this.item._key2Id).toBe(undefined);
+      });
+      it('should not set entries which arent defined in item.primary', function () {
+        this.item._setPrimaryKey({ key3Id: 'k3' });
+        expect(this.item.key3Id).toBe(undefined);
+        this.item._setPrimaryKey({ _key3Id: 'k3' });
+        expect(this.item._key3Id).toBe(undefined);
+      });
+    });
     describe('_setStoreState', function () {
       it('should set store state to given one', function () {
         const givenState = Math.floor((Math.random() * 10)) + 1;
