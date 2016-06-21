@@ -616,9 +616,10 @@ describe('Item', function () {
           this.item._id = undefined;
           this.item._storeState = 1;
           spyOn(this.store.localStorage, 'create')
-            .and.returnValue(Promise.resolve({ _id: 'localId' }));
+            .and.returnValue(Promise.resolve({ localStorage: 'response' }));
           spyOn(this.item, 'toLocalStorage')
             .and.returnValue(Promise.resolve({ some: 'data' }));
+          spyOn(this.item, '_setPrimaryKey');
         });
         it('should wrap async task in _transaction', function (done) {
           this.item._localStorageCreate().then(() => {
@@ -628,7 +629,7 @@ describe('Item', function () {
         });
         it('should save the returned _id in item', function (done) {
           this.item._localStorageCreate().then(() => {
-            expect(this.item._id).toBe('localId');
+            expect(this.item._setPrimaryKey).toHaveBeenCalledWith({ localStorage: 'response' });
             done();
           });
         });
@@ -652,7 +653,7 @@ describe('Item', function () {
             // it still failed, so we dont reset the store state
             expect(this.item._storeState).toBe(1);
             // as this should be part of the transaction, it must still have happenend
-            expect(this.item._id).toBe('localId');
+            expect(this.item._setPrimaryKey).toHaveBeenCalledWith({ localStorage: 'response' });
             done();
           });
           this.item._transactionId = 'another transaction';

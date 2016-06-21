@@ -115,21 +115,19 @@ export default class Item {
       const actKey = this._keys[i];
       if (typeof actKey === 'string') {
         result[actKey] = this[actKey];
+      } else if (this[actKey.key] && this[actKey.key]._id === undefined) {
+        promises.push(new Promise((resolve) => {
+          const relationItem = this[actKey.key];
+          const dispose = autorun(() => {
+            if (relationItem.stored) {
+              dispose();
+              resolve();
+            }
+          });
+        }));
       } else {
-        if (this[actKey.key] && this[actKey.key]._id === undefined) {
-          promises.push(new Promise((resolve) => {
-            const relationItem = this[actKey.key];
-            const dispose = autorun(() => {
-              if (relationItem.stored) {
-                dispose();
-                resolve();
-              }
-            });
-          }));
-        } else {
-          result[actKey.transporterKey] = this[actKey.key] && this[actKey.key].id;
-          result[actKey.localStorageKey] = this[actKey.key] && this[actKey.key]._id;
-        }
+        result[actKey.transporterKey] = this[actKey.key] && this[actKey.key].id;
+        result[actKey.localStorageKey] = this[actKey.key] && this[actKey.key]._id;
       }
     }
     if (promises.length !== 0) {
@@ -173,20 +171,18 @@ export default class Item {
       const actKey = this._keys[i];
       if (typeof actKey === 'string') {
         result[actKey] = this[actKey];
+      } else if (this[actKey.key] && this[actKey.key].id === undefined) {
+        promises.push(new Promise((resolve) => {
+          const relationItem = this[actKey.key];
+          const dispose = autorun(() => {
+            if (relationItem.synced) {
+              dispose();
+              resolve();
+            }
+          });
+        }));
       } else {
-        if (this[actKey.key] && this[actKey.key].id === undefined) {
-          promises.push(new Promise((resolve) => {
-            const relationItem = this[actKey.key];
-            const dispose = autorun(() => {
-              if (relationItem.synced) {
-                dispose();
-                resolve();
-              }
-            });
-          }));
-        } else {
-          result[actKey.transporterKey] = this[actKey.key] && this[actKey.key].id;
-        }
+        result[actKey.transporterKey] = this[actKey.key] && this[actKey.key].id;
       }
     }
     if (promises.length !== 0) {
@@ -235,8 +231,8 @@ export default class Item {
     return this._transaction(() =>
       this.toLocalStorage()
         .then(content => this._store.localStorage.create(content))
-        .then(({ _id }) => {
-          this._id = _id;
+        .then(response => {
+          this._setPrimaryKey(response);
         }))
       .then(() => {
         this._setStoreState(0);
@@ -254,9 +250,9 @@ export default class Item {
   _localStorageDelete() {
     return this._transaction(() => Promise.resolve())
       .catch(() => undefined) // we ignore thransaction, we just need to make a new one
-      .then(() => this._waitFor('_id')
+      .then(() => this._waitFor('_id'))
       .then(() => this._store.localStorage.delete({ _id: this._id }))
-      .then(() => this._setStoreState(-1)));
+      .then(() => this._setStoreState(-1)); // TODO move this to _localStorageRemove
   }
 
   _localStorageRemove() {
@@ -272,6 +268,8 @@ export default class Item {
         .then(content => this._store.localStorage.save(content)))
       .then(() => this._setStoreState(0));
   }
+
+  _setPrimaryKey() {}
 
   _setStoreState(state) {
     if (this._storeState !== -1) {
@@ -373,9 +371,9 @@ export default class Item {
   _transporterDelete() {
     return this._transaction(() => Promise.resolve())
       .catch(() => undefined) // we ignore thransaction, we just need to make a new one
-      .then(() => this._waitFor('id')
+      .then(() => this._waitFor('id'))
       .then(() => this._store.transporter.delete({ id: this.id }))
-      .then(() => this._setSyncState(-1)))
+      .then(() => this._setSyncState(-1))
       .then(() => this._localStorageDelete());
   }
 
