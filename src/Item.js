@@ -52,6 +52,7 @@ export default class Item {
   // //////////////////
 
   getLocalKey() {}
+  getTransporterKey() {}
 
   enableAutoSaveAndSave() {
     this.autoSave = true;
@@ -350,9 +351,7 @@ export default class Item {
     return this._transaction(() =>
       this.toTransporter()
         .then(content => this._store.transporter.create(content))
-        .then(({ id }) => {
-          this.id = id;
-        }))
+        .then(key => this._setPrimaryKey(key)))
       .then(() => {
         this._setSyncState(0);
         return this._localStorageSave();
@@ -369,16 +368,15 @@ export default class Item {
 
   _transporterDelete() {
     return this._transaction(() => Promise.resolve())
-      .catch(() => undefined) // we ignore thransaction, we just need to make a new one
-      .then(() => this._waitFor('id'))
-      .then(() => this._store.transporter.delete({ id: this.id }))
+      .then(() => this.getTransporterKey())
+      .then(key => this._store.transporter.delete(key))
       .then(() => this._setSyncState(-1))
       .then(() => this._localStorageDelete());
   }
 
   _transporterSave() {
     return this._transaction(() =>
-      this._waitFor('id')
+      this.getTransporterKey()
         .then(() => this.toTransporter())
         .then(content => this._store.transporter.save(content)))
       .then(() => this._setSyncState(0))
