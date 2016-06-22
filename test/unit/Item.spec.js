@@ -447,7 +447,7 @@ describe('Item', function () {
         class Author extends Item {
 
           get keys() {
-            return [];
+            return [{ primary: true, _relationKey: '_id', relationKey: 'id' }];
           }
           _stateHandler() {
           }
@@ -488,13 +488,16 @@ describe('Item', function () {
           function (done) {
             this.item.toRawItem().then(result => {
               expect(result).toEqual({
+                _id: 'localId',
                 id: 'serverId',
                 content: 'my content',
                 title: 'a title',
                 author: {
+                  _id: '_authorId',
                   id: 'authorId',
                 },
                 anotherAuthor: {
+                  _id: '_anotherAuthorId',
                   id: 'anotherAuthorId',
                 },
               });
@@ -513,8 +516,6 @@ describe('Item', function () {
       });
 
       describe('toTransporter', function () {
-        beforeEach(function () {
-        });
         it('should get all entries of keys stored in keys',
          function (done) {
            spyOn(this.item.author, 'getTransporterKey')
@@ -560,8 +561,6 @@ describe('Item', function () {
       });
 
       describe('toLocalStorage', function () {
-        beforeEach(function () {
-        });
         it('should get _syncState and all entries of keys stored in keys',
          function (done) {
            spyOn(this.item.author, 'getLocalStorageKey')

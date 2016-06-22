@@ -183,24 +183,24 @@ export default class Item {
 
   toRawItem(ignoreRelations = false) {
     const result = {};
-    if (!ignoreRelations) {
-      result.id = this.id;
-    }
     const promises = [];
-    for (let i = 0, len = this.keys.length; i < len; i++) {
-      const actKey = this.keys[i];
-      if (typeof actKey === 'string') {
-        result[actKey] = this[actKey];
+    this.keys.forEach(key => {
+      if (typeof key === 'string') {
+        result[key] = this[key];
       } else {
-        if (!ignoreRelations && this[actKey.key]) {
-          const relationItem = this[actKey.key];
-          promises.push(relationItem.toRawItem(ignoreRelations)
-            .then(rawRelation => {
-              result[actKey.key] = rawRelation;
-            }));
+        if (!ignoreRelations) {
+          if (key.store !== undefined) {
+            promises.push(this[key.key].toRawItem()
+              .then(item => {
+                result[key.key] = item;
+              }));
+          } else {
+            result[key.relationKey] = this[key.relationKey];
+            result[key._relationKey] = this[key._relationKey];
+          }
         }
       }
-    }
+    });
     return Promise.all(promises).then(() => result);
   }
 
