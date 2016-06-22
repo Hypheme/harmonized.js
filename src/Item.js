@@ -180,20 +180,6 @@ export default class Item {
         return result;
       });
   }
-  _waitForForeignKey(key, getter) {
-    const context = {
-      item: this[key.key],
-      key,
-    };
-    return this[key.key][getter]()
-      .then(() => context);
-  }
-
-  // .then(item => {
-  //   result[key._relationKey] = this[key.key][key._storeKey];
-  //   result[key.relationKey] = this[key.key][key.storeKey];
-  //   return item;
-  // }));
 
   toRawItem(ignoreRelations = false) {
     const result = {};
@@ -219,33 +205,31 @@ export default class Item {
   }
 
   toTransporter() {
-    const result = {
-      id: this.id,
-    };
+    const result = { };
     const promises = [];
-    for (let i = 0, len = this.keys.length; i < len; i++) {
-      const actKey = this.keys[i];
-      if (typeof actKey === 'string') {
-        result[actKey] = this[actKey];
-      } else if (this[actKey.key] && this[actKey.key].id === undefined) {
-        promises.push(new Promise((resolve) => {
-          const relationItem = this[actKey.key];
-          const dispose = autorun(() => {
-            if (relationItem.synced) {
-              dispose();
-              resolve();
-            }
-          });
-        }));
+    this.keys.forEach(key => {
+      if (typeof key === 'string') {
+        result[key] = this[key];
       } else {
-        result[actKey.transporterKey] = this[actKey.key] && this[actKey.key].id;
+        if (key.store !== undefined) {
+          promises.push(this._waitForForeignKey(key, 'getTransporterKey'));
+        } else {
+          result[key.relationKey] = this[key.relationKey];
+        }
       }
-    }
-    if (promises.length !== 0) {
-      // same reason as in toLocalStorage
-      return Promise.all(promises).then(() => this.toTransporter());
-    }
-    return new Promise(resolve => resolve(result));
+    });
+    return Promise.all(promises)
+      .then(contexts => {
+        for (let i = 0, len = contexts.length; i < len; i++) {
+          const item = contexts[i].item;
+          const key = contexts[i].key;
+          if (item !== this[key.key]) { // something has changed in the meantime
+            return this.toTransporter();
+          }
+          result[key.relationKey] = this[key.key][key.storeKey];
+        }
+        return result;
+      });
   }
 
   // ///////////////////
@@ -456,6 +440,15 @@ export default class Item {
       });
     }
     return Promise.resolve();
+  }
+
+  _waitForForeignKey(key, getter) {
+    const context = {
+      item: this[key.key],
+      key,
+    };
+    return this[key.key][getter]()
+      .then(() => context);
   }
 
 }

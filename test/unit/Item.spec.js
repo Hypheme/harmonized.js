@@ -513,69 +513,54 @@ describe('Item', function () {
       });
 
       describe('toTransporter', function () {
-        it('should get id and all entries of keys stored in keys', function (done) {
-          this.item.toTransporter().then(result => {
-            expect(result).toEqual({
-              content: 'my content',
-              title: 'a title',
-              id: 'serverId',
-              authorId: 'authorId',
-              anotherAuthorId: 'anotherAuthorId',
-            });
-            done();
-          });
+        beforeEach(function () {
         });
-        it('should wait for all relations to be synced before resolving', function (done) {
-          this.author.synced = false;
-          this.anotherAuthor.synced = false;
-          this.author.id = undefined;
-          this.anotherAuthor.id = undefined;
-
-          this.item.toTransporter().then(result => {
-            expect(result).toEqual({
-              content: 'my content',
-              title: 'a title',
-              id: 'serverId',
-              authorId: 'authorId',
-              anotherAuthorId: 'anotherAuthorId',
+        it('should get all entries of keys stored in keys',
+         function (done) {
+           spyOn(this.item.author, 'getTransporterKey')
+            .and.returnValue(Promise.resolve());
+           spyOn(this.item.anotherAuthor, 'getTransporterKey')
+            .and.returnValue(Promise.resolve());
+           this.item.toTransporter().then(result => {
+             expect(result).toEqual({
+               content: 'my content',
+               title: 'a title',
+               id: 'serverId',
+               authorId: 'authorId',
+               anotherAuthorId: 'anotherAuthorId',
+             });
+             done();
+           });
+         });
+        it('should call itself again if items change while waiting',
+          function (done) {
+            this.aThirdAuthor = new this.Author(this.store, {
+              id: 'thirdAuthorId',
+              _syncState: 0 });
+            spyOn(this.aThirdAuthor, 'getTransporterKey')
+             .and.returnValue(Promise.resolve());
+            spyOn(this.item.author, 'getTransporterKey')
+             .and.returnValue(Promise.resolve());
+            spyOn(this.item.anotherAuthor, 'getTransporterKey')
+             .and.returnValue(Promise.resolve());
+            this.item.toTransporter().then(result => {
+              expect(result).toEqual({
+                content: 'my content',
+                title: 'a title',
+                id: 'serverId',
+                authorId: 'authorId',
+                anotherAuthorId: 'thirdAuthorId',
+              });
+              expect(this.anotherAuthor.getTransporterKey).toHaveBeenCalled();
+              expect(this.aThirdAuthor.getTransporterKey).toHaveBeenCalled();
+              done();
             });
-            done();
+            this.item.anotherAuthor = this.aThirdAuthor;
           });
-          setTimeout(() => {
-            this.author.id = 'authorId';
-            this.author.synced = true;
-            setTimeout(() => {
-              this.anotherAuthor.id = 'anotherAuthorId';
-              this.anotherAuthor.synced = true;
-            }, 1);
-          }, 1);
-        });
-        it('should cleanup all relation handlers', function (done) {
-          this.author.id = undefined;
-          this.author.synced = false;
-          this.item.toTransporter().then(result => {
-            expect(result).toEqual({
-              content: 'my content',
-              title: 'a title',
-              id: 'serverId',
-              authorId: 'authorId',
-              anotherAuthorId: 'anotherAuthorId',
-            });
-            done();
-          });
-          setTimeout(() => {
-            this.author.id = 'authorId';
-            this.author.synced = true;
-            this.author.synced = false;
-            this.author.synced = true;
-            this.author.synced = false;
-          }, 1);
-        });
       });
 
-      fdescribe('toLocalStorage', function () {
+      describe('toLocalStorage', function () {
         beforeEach(function () {
-          this.author.id = 'authorId';
         });
         it('should get _syncState and all entries of keys stored in keys',
          function (done) {
