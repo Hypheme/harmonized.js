@@ -11,7 +11,7 @@ export default class TestItem extends Item {
 
 
 const keys = ['title',
-  { key: 'contact', store: 'contacts', relationKey: 'contactId', storeKey: 'id' },
+  { key: 'contact', store: 'contacts', relationKey: 'contactId', storeKey: 'id', foreignKey: 'id' },
   { key: 'information', store: 'information', relationKey: 'informationId', storeKey: 'informationId' },
 ];
 

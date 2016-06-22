@@ -5,6 +5,7 @@ export default class Item {
   autoSave = true;
   @observable synced;
   @observable stored;
+  // TODO move this into autocompleteKeys or constuctor
   @observable id;
   @observable _id;
 
@@ -50,8 +51,51 @@ export default class Item {
   // PUBLIC METHODS //
   // //////////////////
 
-  getLocalKey() {}
-  getTransporterKey() {}
+  getLocalStorageKey() {
+    const promises = [];
+    const result = {};
+    for (let i = 0, len = this.keys.length; i < len; i++) {
+      const key = this.keys[i];
+      if (key.primary === true) {
+        if (key.store !== undefined) {
+          promises.push(this[key.key].getLocalStorageKey()
+            .then(returnedKey => {
+              result[key._relationKey] = returnedKey[key._storeKey];
+            }));
+        } else {
+          promises.push(this._waitFor(key._relationKey)
+            .then(() => {
+              result[key._relationKey] = this[key._relationKey];
+            }));
+        }
+      }
+    }
+    return Promise.all(promises)
+      .then(() => result);
+  }
+
+  getTransporterKey() {
+    const promises = [];
+    const result = {};
+    for (let i = 0, len = this.keys.length; i < len; i++) {
+      const key = this.keys[i];
+      if (key.primary === true) {
+        if (key.store !== undefined) {
+          promises.push(this[key.key].getTransporterKey()
+            .then(returnedKey => {
+              result[key.relationKey] = returnedKey[key.storeKey];
+            }));
+        } else {
+          promises.push(this._waitFor(key.relationKey)
+            .then(() => {
+              result[key.relationKey] = this[key.relationKey];
+            }));
+        }
+      }
+    }
+    return Promise.all(promises)
+      .then(() => result);
+  }
 
   enableAutoSaveAndSave() {
     this.autoSave = true;
@@ -249,37 +293,31 @@ export default class Item {
 
   _localStorageDelete() {
     return this._transaction(() => Promise.resolve())
-      .then(() => this.getLocalKey())
+      .then(() => this.getLocalStorageKey())
       .then(key => this._store.localStorage.delete(key))
       .then(() => this._setStoreState(-1));
   }
 
   _localStorageRemove() {
-    return this._transaction(() => this.getLocalKey()
+    return this._transaction(() => this.getLocalStorageKey()
       .then(key => this._store.localStorage.remove(key))
       .then(() => this._setStoreState(-1)));
   }
 
   _localStorageSave() {
     return this._transaction(() =>
-      this.getLocalKey()
+      this.getLocalStorageKey()
         .then(() => this.toLocalStorage())
         .then(content => this._store.localStorage.save(content)))
       .then(() => this._setStoreState(0));
   }
 
   _setPrimaryKey(givenKeys) {
-    for (let i = 0, len = this.primary.length; i < len; i++) {
-      const primary = this.primary[i];
-      for (let j = 0, lenj = this.keys.length; j < lenj; j++) {
-        const key = this.keys[j];
-        if (primary === key.key) {
-          if (key.store === undefined) {
-            this[key.relationKey] = this[key.relationKey] || givenKeys[key.relationKey];
-            this[key.storeKey] = this[key.storeKey] || givenKeys[key.storeKey];
-          }
-          break;
-        }
+    for (let j = 0, lenj = this.keys.length; j < lenj; j++) {
+      const key = this.keys[j];
+      if (key.primary === true && key.store === undefined) {
+        this[key.relationKey] = this[key.relationKey] || givenKeys[key.relationKey];
+        this[key._relationKey] = this[key._relationKey] || givenKeys[key._relationKey];
       }
     }
   }

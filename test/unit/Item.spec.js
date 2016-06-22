@@ -70,12 +70,18 @@ describe('Item', function () {
         @observable content;
         @observable title;
         get keys() {
-          return ['content', 'title'];
+          return this._keys ||
+            [{ key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
+            'content', 'title'];
+        }
+        set keys(k) {
+          this._keys = k;
         }
         _stateHandler() {
           return this.rawItem;
         }
       }
+      this.TestItem = TestItem;
       spyOn(TestItem.prototype, '_stateHandler').and.callThrough();
       spyOn(TestItem.prototype, '_synchronize')
         .and.returnValue(new Promise((resolve) => {
@@ -88,6 +94,68 @@ describe('Item', function () {
         _id: 'localId',
         id: 'serverId',
         _syncState: 0 });
+    });
+
+    describe('getLocalStorageKey', function () {
+      beforeEach(function () {
+        this.item.foreignKey = new this.TestItem({}, {});
+        this.item.keys = ['content',
+        { key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
+        { key: 'foreignKey', primary: true, relationKey: 'foreignKeyId',
+          _relationKey: '_foreignKeyId', storeKey: 'id', _storeKey: '_id', store: 'keys' },
+          { key: 'anotherForeignKey', relationKey: 'anotherForeignKeyId',
+            _relationKey: '_anotherForeignKeyId', storeKey: 'id', _storeKey: '_id', store: 'keys' },
+        ];
+        this.item.foreignKey.keys = [
+          { key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
+        ];
+        spyOn(this.item, '_waitFor').and.returnValue(new Promise(resolve => {
+          this.item._id = 'item id';
+          resolve();
+        }));
+        spyOn(this.item.foreignKey, '_waitFor').and.returnValue(new Promise(resolve => {
+          this.item.foreignKey._id = 'foreign id';
+          resolve();
+        }));
+      });
+      it('should return _keys as soon as all _keys are available', function (done) {
+        this.item.getLocalStorageKey()
+          .then(key => {
+            expect(key).toEqual({ _id: 'item id', _foreignKeyId: 'foreign id' });
+            done();
+          });
+      });
+    });
+
+    fdescribe('getTransporterKey', function () {
+      beforeEach(function () {
+        this.item.foreignKey = new this.TestItem({}, {});
+        this.item.keys = ['content',
+        { key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
+        { key: 'foreignKey', primary: true, relationKey: 'foreignKeyId',
+          _relationKey: '_foreignKeyId', storeKey: 'id', _storeKey: '_id', store: 'keys' },
+          { key: 'anotherForeignKey', relationKey: 'anotherForeignKeyId',
+            _relationKey: '_anotherForeignKeyId', storeKey: 'id', _storeKey: '_id', store: 'keys' },
+        ];
+        this.item.foreignKey.keys = [
+          { key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
+        ];
+        spyOn(this.item, '_waitFor').and.returnValue(new Promise(resolve => {
+          this.item.id = 'item id';
+          resolve();
+        }));
+        spyOn(this.item.foreignKey, '_waitFor').and.returnValue(new Promise(resolve => {
+          this.item.foreignKey.id = 'foreign id';
+          resolve();
+        }));
+      });
+      it('should return keys as soon as all keys are available', function (done) {
+        this.item.getTransporterKey()
+          .then(key => {
+            expect(key).toEqual({ id: 'item id', foreignKeyId: 'foreign id' });
+            done();
+          });
+      });
     });
 
     describe('enableAutoSaveAndSave', function () {
@@ -587,7 +655,9 @@ describe('Item', function () {
         @observable content;
         @observable title;
         get keys() {
-          return this._keys || ['content', 'title'];
+          return this._keys ||
+            [{ key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
+            'content', 'title'];
         }
         set keys(k) {
           this._keys = k;
@@ -684,7 +754,7 @@ describe('Item', function () {
             .and.returnValue(Promise.resolve());
           spyOn(this.item, 'toLocalStorage')
             .and.returnValue(Promise.resolve({ some: 'data' }));
-          spyOn(this.item, 'getLocalKey')
+          spyOn(this.item, 'getLocalStorageKey')
             .and.callFake(() => {
               expect(this.item.toLocalStorage.calls.count()).toBe(0);
               return Promise.resolve();
@@ -698,7 +768,7 @@ describe('Item', function () {
         });
         it('should wait for item keys to be created in storage before saving it', function (done) {
           this.item._localStorageSave().then(() => {
-            expect(this.item.getLocalKey).toHaveBeenCalled();
+            expect(this.item.getLocalStorageKey).toHaveBeenCalled();
             done();
           });
         });
@@ -730,7 +800,7 @@ describe('Item', function () {
           this.item._storeState = 3;
           spyOn(this.store.localStorage, 'remove')
             .and.returnValue(Promise.resolve());
-          spyOn(this.item, 'getLocalKey')
+          spyOn(this.item, 'getLocalStorageKey')
             .and.callFake(() => {
               expect(this.store.localStorage.remove.calls.count()).toBe(0);
               return Promise.resolve('local id');
@@ -745,7 +815,7 @@ describe('Item', function () {
         it('should wait for item to be created in storage before deleting it again',
         function (done) {
           this.item._localStorageRemove().then(() => {
-            expect(this.item.getLocalKey).toHaveBeenCalled();
+            expect(this.item.getLocalStorageKey).toHaveBeenCalled();
             done();
           });
         });
@@ -768,7 +838,7 @@ describe('Item', function () {
           this.item._storeState = 3;
           spyOn(this.store.localStorage, 'delete')
             .and.returnValue(Promise.resolve());
-          spyOn(this.item, 'getLocalKey')
+          spyOn(this.item, 'getLocalStorageKey')
             .and.callFake(() => {
               expect(this.store.localStorage.delete.calls.count()).toBe(0);
               return Promise.resolve('local id');
@@ -799,7 +869,7 @@ describe('Item', function () {
         });
         it('should delete item in localStorage', function (done) {
           this.item._localStorageDelete().then(() => {
-            expect(this.item.getLocalKey).toHaveBeenCalled();
+            expect(this.item.getLocalStorageKey).toHaveBeenCalled();
             expect(this.store.localStorage.delete).toHaveBeenCalled();
             expect(this.store.localStorage.delete).toHaveBeenCalledWith('local id');
             done();
@@ -969,7 +1039,7 @@ describe('Item', function () {
     });
 
     xdescribe('_set', function () {});
-    fdescribe('_setPrimaryKey', function () {
+    describe('_setPrimaryKey', function () {
       beforeEach(function () {
         delete this.item.key1;
         delete this.item._key1;
@@ -977,10 +1047,13 @@ describe('Item', function () {
         delete this.item._key2;
         delete this.item.key3;
         delete this.item._key3;
-        this.item.primary = ['key1', 'key2'];
         this.item.keys = [
-          { key: 'key1', relationKey: 'key1Id', storeKey: '_key1Id' },
-          { key: 'key2', relationKey: 'key2Id', storeKey: '_key2Id', store: 'key2s' }];
+          'someKey',
+          { primary: true, key: 'key1', relationKey: 'key1Id', _relationKey: '_key1Id' },
+          { primary: true, key: 'key2', relationKey: 'key2Id', _relationKey: '_key2Id',
+            storeKey: 'id', store: 'key2s' },
+          { key: 'key3', relationKey: 'key3Id', _relationKey: '_key3Id',
+            storeKey: 'id', store: 'key3s' }];
       });
       it('should set a local primary key if the key is undefined', function () {
         this.item._setPrimaryKey({ _key1Id: 'k1' });
@@ -1006,7 +1079,7 @@ describe('Item', function () {
         this.item._setPrimaryKey({ _key2Id: 'k2' });
         expect(this.item._key2Id).toBe(undefined);
       });
-      it('should not set entries which arent defined in item.primary', function () {
+      it('should not set entries which arent defined as item.primary', function () {
         this.item._setPrimaryKey({ key3Id: 'k3' });
         expect(this.item.key3Id).toBe(undefined);
         this.item._setPrimaryKey({ _key3Id: 'k3' });
