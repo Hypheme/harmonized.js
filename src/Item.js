@@ -152,8 +152,6 @@ export default class Item {
 
   toLocalStorage() {
     const result = {
-      id: this.id,
-      _id: this._id,
       _syncState: this._syncState,
     };
     const promises = [];
@@ -161,29 +159,43 @@ export default class Item {
       const actKey = this.keys[i];
       if (typeof actKey === 'string') {
         result[actKey] = this[actKey];
-      } else if (this[actKey.key] && this[actKey.key]._id === undefined) {
-        promises.push(new Promise((resolve) => {
-          const relationItem = this[actKey.key];
-          const dispose = autorun(() => {
-            if (relationItem.stored) {
-              dispose();
-              resolve();
-            }
-          });
-        }));
       } else {
-        result[actKey.transporterKey] = this[actKey.key] && this[actKey.key].id;
-        result[actKey.localStorageKey] = this[actKey.key] && this[actKey.key]._id;
+        if (actKey.store !== undefined) {
+          promises.push(this._waitForForeignKey(actKey, 'getLocalStorageKey'));
+        } else {
+          result[actKey._relationKey] = this[actKey._relationKey];
+          result[actKey.relationKey] = this[actKey.relationKey];
+        }
       }
     }
-    if (promises.length !== 0) {
-      // we call recursive on pupose if anything async happens. This way we make sure,
-      // the final result contains the actual content and not the content it had on the
-      // first run(before the async part)
-      return Promise.all(promises).then(() => this.toLocalStorage());
-    }
-    return new Promise(resolve => resolve(result));
+    return Promise.all(promises)
+      .then(contexts => {
+        for (let i = 0, len = contexts.length; i < len; i++) {
+          const item = contexts[i].item;
+          const key = contexts[i].key;
+          if (item !== this[key.key]) {
+            return this.toLocalStorage();
+          }
+          result[key._relationKey] = this[key.key][key._storeKey];
+          result[key.relationKey] = this[key.key][key.storeKey];
+        }
+        return result;
+      });
   }
+  _waitForForeignKey(key, getter) {
+    const context = {
+      item: this[key.key],
+      key,
+    };
+    return this[key.key][getter]()
+      .then(() => context);
+  }
+
+  // .then(item => {
+  //   result[key._relationKey] = this[key.key][key._storeKey];
+  //   result[key.relationKey] = this[key.key][key.storeKey];
+  //   return item;
+  // }));
 
   toRawItem(ignoreRelations = false) {
     const result = {};

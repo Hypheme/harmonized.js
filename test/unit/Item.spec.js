@@ -127,7 +127,7 @@ describe('Item', function () {
       });
     });
 
-    fdescribe('getTransporterKey', function () {
+    describe('getTransporterKey', function () {
       beforeEach(function () {
         this.item.foreignKey = new this.TestItem({}, {});
         this.item.keys = ['content',
@@ -452,6 +452,7 @@ describe('Item', function () {
           _stateHandler() {
           }
         }
+        this.Author = Author;
         spyOn(TestItem.prototype, '_stateHandler').and.callThrough();
         spyOn(TestItem.prototype, '_synchronize')
           .and.returnValue(new Promise((resolve) => {
@@ -475,10 +476,11 @@ describe('Item', function () {
         this.item.author = this.author;
         this.item.anotherAuthor = this.anotherAuthor;
         this.item.keys = ['content', 'title',
-          { key: 'author', store: 'authors',
-            transporterKey: 'authorId', localStorageKey: '_authorId' },
-          { key: 'anotherAuthor', store: 'authors',
-            transporterKey: 'anotherAuthorId', localStorageKey: '_anotherAuthorId' }];
+          { primary: true, key: 'id', relationKey: 'id', _relationKey: '_id' },
+          { key: 'author', store: 'authors', storeKey: 'id', _storeKey: '_id',
+            relationKey: 'authorId', _relationKey: '_authorId' },
+          { key: 'anotherAuthor', store: 'authors', storeKey: 'id', _storeKey: '_id',
+            relationKey: 'anotherAuthorId', _relationKey: '_anotherAuthorId' }];
       });
 
       describe('toRawItem', function () {
@@ -571,9 +573,16 @@ describe('Item', function () {
         });
       });
 
-      describe('toLocalStorage', function () {
-        it('should get id, _id, _syncState and all entries of keys stored in keys',
+      fdescribe('toLocalStorage', function () {
+        beforeEach(function () {
+          this.author.id = 'authorId';
+        });
+        it('should get _syncState and all entries of keys stored in keys',
          function (done) {
+           spyOn(this.item.author, 'getLocalStorageKey')
+            .and.returnValue(Promise.resolve());
+           spyOn(this.item.anotherAuthor, 'getLocalStorageKey')
+            .and.returnValue(Promise.resolve());
            this.item.toLocalStorage().then(result => {
              expect(result).toEqual({
                content: 'my content',
@@ -589,60 +598,35 @@ describe('Item', function () {
              done();
            });
          });
-        it('should wait for all relations to be stored before resolving', function (done) {
-          this.author.stored = false;
-          this.anotherAuthor.stored = false;
-          this.author._id = undefined;
-          this.anotherAuthor._id = undefined;
-
-          this.item.toLocalStorage().then(result => {
-            expect(result).toEqual({
-              content: 'my content',
-              title: 'a title',
-              id: 'serverId',
-              _id: 'localId',
-              _syncState: 0,
-              authorId: 'authorId',
-              _authorId: '_authorId',
-              anotherAuthorId: 'anotherAuthorId',
-              _anotherAuthorId: '_anotherAuthorId',
+        it('should call itself again if items change while waiting',
+          function (done) {
+            this.aThirdAuthor = new this.Author(this.store, {
+              _id: '_thirdAuthorId',
+              _syncState: 0 });
+            spyOn(this.aThirdAuthor, 'getLocalStorageKey')
+             .and.returnValue(Promise.resolve());
+            spyOn(this.item.author, 'getLocalStorageKey')
+             .and.returnValue(Promise.resolve());
+            spyOn(this.item.anotherAuthor, 'getLocalStorageKey')
+             .and.returnValue(Promise.resolve());
+            this.item.toLocalStorage().then(result => {
+              expect(result).toEqual({
+                content: 'my content',
+                title: 'a title',
+                id: 'serverId',
+                _id: 'localId',
+                _syncState: 0,
+                authorId: 'authorId',
+                _authorId: '_authorId',
+                anotherAuthorId: undefined,
+                _anotherAuthorId: '_thirdAuthorId',
+              });
+              expect(this.anotherAuthor.getLocalStorageKey).toHaveBeenCalled();
+              expect(this.aThirdAuthor.getLocalStorageKey).toHaveBeenCalled();
+              done();
             });
-            done();
+            this.item.anotherAuthor = this.aThirdAuthor;
           });
-          setTimeout(() => {
-            this.author._id = '_authorId';
-            this.author.stored = true;
-            setTimeout(() => {
-              this.anotherAuthor._id = '_anotherAuthorId';
-              this.anotherAuthor.stored = true;
-            }, 1);
-          }, 1);
-        });
-        it('should cleanup all relation handlers', function (done) {
-          this.author._id = undefined;
-          this.author.stored = false;
-          this.item.toLocalStorage().then(result => {
-            expect(result).toEqual({
-              content: 'my content',
-              title: 'a title',
-              id: 'serverId',
-              _id: 'localId',
-              _syncState: 0,
-              authorId: 'authorId',
-              _authorId: '_authorId',
-              anotherAuthorId: 'anotherAuthorId',
-              _anotherAuthorId: '_anotherAuthorId',
-            });
-            done();
-          });
-          setTimeout(() => {
-            this.author._id = '_authorId';
-            this.author.stored = true;
-            this.author.stored = false;
-            this.author.stored = true;
-            this.author.stored = false;
-          }, 1);
-        });
       });
     });
   });
