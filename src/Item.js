@@ -54,8 +54,7 @@ export default class Item {
   getLocalStorageKey() {
     const promises = [];
     const result = {};
-    for (let i = 0, len = this.keys.length; i < len; i++) {
-      const key = this.keys[i];
+    this.keys.forEach(key => {
       if (key.primary === true) {
         if (key.store !== undefined) {
           promises.push(this[key.key].getLocalStorageKey()
@@ -69,7 +68,7 @@ export default class Item {
             }));
         }
       }
-    }
+    });
     return Promise.all(promises)
       .then(() => result);
   }
@@ -155,25 +154,24 @@ export default class Item {
       _syncState: this._syncState,
     };
     const promises = [];
-    for (let i = 0, len = this.keys.length; i < len; i++) {
-      const actKey = this.keys[i];
-      if (typeof actKey === 'string') {
-        result[actKey] = this[actKey];
+    this.keys.forEach(key => {
+      if (typeof key === 'string') {
+        result[key] = this[key];
       } else {
-        if (actKey.store !== undefined) {
-          promises.push(this._waitForForeignKey(actKey, 'getLocalStorageKey'));
+        if (key.store !== undefined) {
+          promises.push(this._waitForForeignKey(key, 'getLocalStorageKey'));
         } else {
-          result[actKey._relationKey] = this[actKey._relationKey];
-          result[actKey.relationKey] = this[actKey.relationKey];
+          result[key._relationKey] = this[key._relationKey];
+          result[key.relationKey] = this[key.relationKey];
         }
       }
-    }
+    });
     return Promise.all(promises)
       .then(contexts => {
         for (let i = 0, len = contexts.length; i < len; i++) {
           const item = contexts[i].item;
           const key = contexts[i].key;
-          if (item !== this[key.key]) {
+          if (item !== this[key.key]) { // something has changed in the meantime
             return this.toLocalStorage();
           }
           result[key._relationKey] = this[key.key][key._storeKey];

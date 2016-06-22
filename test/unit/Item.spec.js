@@ -111,7 +111,7 @@ describe('Item', function () {
         ];
         spyOn(this.item, '_waitFor').and.returnValue(new Promise(resolve => {
           this.item._id = 'item id';
-          resolve();
+          setTimeout(resolve, 1);
         }));
         spyOn(this.item.foreignKey, '_waitFor').and.returnValue(new Promise(resolve => {
           this.item.foreignKey._id = 'foreign id';
