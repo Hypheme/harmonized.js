@@ -353,6 +353,18 @@ export default class Item {
     // there is nothing else to do with the data
   }
 
+  _stateHandlerTrigger() {
+    this.keys.forEach(key => {
+      let result;
+      if (typeof key === 'string') {
+        result = this[key];
+      } else if (key.store !== undefined) {
+        result = this[key.key];
+      }
+      return result;
+    });
+  }
+
   _synchronize(storeState, syncState) {
     this._setStoreState(storeState);
     this._setSyncState(syncState);

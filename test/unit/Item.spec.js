@@ -484,7 +484,7 @@ describe('Item', function () {
       });
 
       describe('toRawItem', function () {
-        it('should get id, stored, synced and all entries of keys stored in keys',
+        it('should get raw data incl relations',
           function (done) {
             this.item.toRawItem().then(result => {
               expect(result).toEqual({
@@ -638,6 +638,7 @@ describe('Item', function () {
       spyOn(TestItem.prototype, '_setSyncState').and.callThrough();
       spyOn(TestItem.prototype, '_setStoreState').and.callThrough();
       spyOn(TestItem.prototype, '_stateHandler');
+      this.TestItem = TestItem;
       this.store = new Store({ Item: TestItem, Transporter, LocalStorage });
       this.item = new TestItem(this.store, {
         content: 'my content',
@@ -842,6 +843,35 @@ describe('Item', function () {
             expect(this.store.localStorage.delete).toHaveBeenCalledWith('local id');
             done();
           });
+        });
+      });
+      fdescribe('_stateHandlerTrigger', function () {
+
+        it('should call getter for each property that can change', function () {
+          const ends = {
+            id: false,
+            foreign: false,
+            something: false,
+          };
+          class Test extends this.TestItem {
+            keys = [
+              { key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
+              { key: 'foreign', store: 'foreign' },
+              'something'];
+
+            get id() {
+              ends.id = true;
+            }
+            get foreign() {
+              ends.foreign = true;
+            }
+            get something() {
+              ends.something = true;
+            }
+          }
+          const item = new Test({});
+          item._stateHandlerTrigger();
+          expect(ends).toEqual({ id: false, foreign: true, something: true });
         });
       });
       describe('_transporterCreate', function () {
