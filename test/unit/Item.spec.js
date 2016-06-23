@@ -845,7 +845,7 @@ describe('Item', function () {
           });
         });
       });
-      fdescribe('_stateHandlerTrigger', function () {
+      describe('_stateHandlerTrigger', function () {
 
         it('should call getter for each property that can change', function () {
           const ends = {
@@ -1183,25 +1183,23 @@ describe('Item', function () {
         }
       });
     });
-    describe('_stateHandler', function () {
+    fdescribe('_stateHandler', function () {
       beforeEach(function () {
         this.item._stateHandler.and.callThrough();
         spyOn(this.item, '_synchronize');
+        spyOn(this.item, '_stateHandlerTrigger');
       });
       it('should get computed rawItem in synchron part', function () {
         this.item._stateHandler(0);
         this.item._stateHandler(0);
         this.item._stateHandler(1);
         this.item._stateHandler(1);
-        expect(this.propertySpy).toHaveBeenCalledTimes(1);
-        expect(this.propertySpy.calls.mostRecent().args).toEqual(['rawItem']);
+        expect(this.item._stateHandlerTrigger).toHaveBeenCalledTimes(4);
       });
       it('should synchronize(x, y) if its the first call', function () {
-        this.item._storeState = 0;
-        this.item._syncState = 1;
         this.item._stateHandler(0);
         expect(this.item._synchronize).toHaveBeenCalledTimes(1);
-        expect(this.item._synchronize).toHaveBeenCalledWith(0, 1);
+        expect(this.item._synchronize).toHaveBeenCalledWith();
       });
       it('should synchronize(2, 2) if autoSave is on and its not the first call', function () {
         this.item._storeState = 0;

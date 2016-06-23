@@ -345,11 +345,11 @@ export default class Item {
 
   _stateHandler(call) {
     if (call === 0) {
-      this._synchronize(this._storeState, this._syncState);
+      this._synchronize();
     } else if (this.autoSave) {
       this._synchronize(2, 2);
     }
-    return this.toRawItem(true); // we need this for mobx, and we return it because
+    return this._stateHandlerTrigger(); // we need this for mobx, and we return it because
     // there is nothing else to do with the data
   }
 
