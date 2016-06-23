@@ -366,8 +366,12 @@ export default class Item {
   }
 
   _synchronize(storeState, syncState) {
-    this._setStoreState(storeState);
-    this._setSyncState(syncState);
+    if (storeState !== undefined) {
+      this._setStoreState(storeState);
+    }
+    if (syncState !== undefined) {
+      this._setSyncState(syncState);
+    }
     this.lastSynchronize = this._synchronizeLocalStorage()
       .then(() => this._synchronizeTransporter());
     return this.lastSynchronize;

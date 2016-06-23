@@ -1183,7 +1183,7 @@ describe('Item', function () {
         }
       });
     });
-    fdescribe('_stateHandler', function () {
+    describe('_stateHandler', function () {
       beforeEach(function () {
         this.item._stateHandler.and.callThrough();
         spyOn(this.item, '_synchronize');
@@ -1214,17 +1214,33 @@ describe('Item', function () {
         expect(this.item._synchronize).not.toHaveBeenCalled();
       });
     });
-    describe('_synchronize', function () {
+    fdescribe('_synchronize', function () {
       beforeEach(function () {
         spyOn(this.item, '_synchronizeLocalStorage')
           .and.returnValue(Promise.resolve());
         spyOn(this.item, '_synchronizeTransporter')
           .and.returnValue(Promise.resolve());
+        this.item._setStoreState.calls.reset();
+        this.item._setSyncState.calls.reset();
+      });
+      it('should not change store state if it isn\'t given', function (done) {
+        this.item._synchronize(undefined, 2).then(() => {
+          expect(this.item._setStoreState).not.toHaveBeenCalled();
+          expect(this.item._setSyncState).toHaveBeenCalledWith(2);
+          done();
+        });
+      });
+      it('should not change sync state if it isn\'t given', function (done) {
+        this.item._synchronize(1, undefined).then(() => {
+          expect(this.item._setStoreState).toHaveBeenCalledWith(1);
+          expect(this.item._setSyncState).not.toHaveBeenCalled();
+          done();
+        });
       });
       it('should set states to given ones', function (done) {
-        this.item._synchronize(1, 2).then(() => {
-          expect(this.item._setStoreState).toHaveBeenCalledWith(1);
-          expect(this.item._setSyncState).toHaveBeenCalledWith(2);
+        this.item._synchronize(0, 0).then(() => {
+          expect(this.item._setStoreState).toHaveBeenCalledWith(0);
+          expect(this.item._setSyncState).toHaveBeenCalledWith(0);
           done();
         });
       });
