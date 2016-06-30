@@ -113,6 +113,42 @@ export default class Item {
       });
   }
 
+  // TODO fromRawItem
+  fromRawItem(item) {
+  }
+
+  fromTransporter(values) {
+    const autoSave = this.autoSave;
+    const promises = [];
+    this.autoSave = false;
+    this.keys.forEach(key => {
+      if (typeof key === 'string') {
+        this[key] = values[key];
+      } else if (key.store === undefined) {
+        this._setPrimaryKey(values);
+      } else {
+        const resolver = {};
+        resolver[key.storeKey] = values[key.relationKey];
+        promises.push(this._store.stores[key.store].resolveAsync(resolver)
+          .then(item => {
+            const asyncAutoSave = this.autoSave;
+            this.autoSave = false;
+            this[key.key] = item;
+            this.autoSave = asyncAutoSave;
+          }));
+      }
+    });
+    this.autoSave = autoSave;
+    return Promise.all(promises)
+      .then(() => this._synchronize(2, 0));
+  }
+
+  // TODO fromLocalStorage
+  fromLocalStorage(values) {
+    this.id = values.id;
+    this._id = values._id;
+  }
+
   remove() {
     const autoSave = this.autoSave;
     this.autoSave = false;
@@ -253,19 +289,6 @@ export default class Item {
   // }
 
   _onDeleteTrigger() {}
-
-  // TODO fromRawItem
-  fromRawItem(item) {
-  }
-  // TODO fromTransporter
-  fromTransporter(item) {
-    this.id = item.id;
-  }
-  // TODO fromLocalStorage
-  fromLocalStorage(values) {
-    this.id = values.id;
-    this._id = values._id;
-  }
 
   _getValidNewState(current, newState) {
     switch (current) {

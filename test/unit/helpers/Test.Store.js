@@ -1,6 +1,6 @@
 export default class TestStore {
   constructor({ Item, Transporter, LocalStorage }) {
-    this.store = [];
+    this.stores = {};
     this.Item = Item;
     this.localStorage = new LocalStorage(this);
     this.transporter = new Transporter(this);
@@ -8,5 +8,5 @@ export default class TestStore {
 
   delete() {}
   remove() {}
-
+  resolveAsync() {}
 }

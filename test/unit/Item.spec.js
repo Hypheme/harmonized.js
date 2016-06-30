@@ -420,23 +420,25 @@ describe('Item', function () {
       });
     });
 
-    describe('to***', function () {
+    describe('to/from***', function () {
       beforeEach(function () {
         class TestItem extends Item {
           @observable content;
           @observable title;
+          // @observable author;
+          // @observable anotherAuthor;
           get keys() {
             return this._keys || ['content', 'title'];
           }
           set keys(k) {
             this._keys = k;
           }
-          _stateHandler() {
-            return {
-              title: this.title,
-              content: this.content,
-            };
-          }
+          // _stateHandler() {
+          //   return {
+          //     title: this.title,
+          //     content: this.content,
+          //   };
+          // }
           fromLocalStorage(values) {
             this.content = values.content;
             this.title = values.title;
@@ -456,16 +458,16 @@ describe('Item', function () {
         this.Author = Author;
         spyOn(TestItem.prototype, '_stateHandler').and.callThrough();
         spyOn(TestItem.prototype, '_synchronize')
-          .and.returnValue(new Promise((resolve) => {
-            resolve('_synchronize');
-          }));
+          .and.returnValue(Promise.resolve('_synchronize'));
         this.store = new Store({ Item: TestItem, Transporter, LocalStorage });
+        this.store.stores.authors = this.store;
         this.item = new TestItem(this.store, {
           content: 'my content',
           title: 'a title',
           _id: 'localId',
           id: 'serverId',
           _syncState: 0 });
+        this.item._synchronize.calls.reset(); // we reset after constructor
         this.author = new Author(this.store, {
           _id: '_authorId',
           id: 'authorId',
@@ -482,6 +484,87 @@ describe('Item', function () {
             relationKey: 'authorId', _relationKey: '_authorId' },
           { key: 'anotherAuthor', store: 'authors', storeKey: 'id', _storeKey: '_id',
             relationKey: 'anotherAuthorId', _relationKey: '_anotherAuthorId' }];
+      });
+
+      describe('fromRawItem', function () {
+
+      });
+
+      describe('fromLocalStorage', function () {
+
+      });
+
+      describe('fromTransporter', function () {
+        beforeEach(function () {
+          spyOn(this.item, '_setPrimaryKey');
+          spyOn(this.store, 'resolveAsync')
+            .and.returnValues(
+              Promise.resolve(this.author),
+              Promise.resolve(this.anotherAuthor));
+          this.content = {
+            content: 'newer content',
+            title: 'newer title',
+            id: 'invalid id',
+            authorId: 'foreignId',
+            anotherAuthorId: 'anotherForeignId',
+          };
+          delete this.item.author;
+          delete this.item.anotherAuthor;
+        });
+        it('should set simple values to given ones', function (done) {
+          this.item.fromTransporter(this.content)
+            .then(() => {
+              expect(this.item.content).toEqual('newer content');
+              expect(this.item.content).toEqual('newer content');
+              done();
+            });
+        });
+        it('should set primary key', function (done) {
+          this.item.fromTransporter(this.content)
+            .then(() => {
+              expect(this.item._setPrimaryKey).toHaveBeenCalledWith(this.content);
+              done();
+            });
+        });
+        it('should resolve foreign keys and store the recieved item', function (done) {
+          this.item.fromTransporter(this.content)
+            .then(() => {
+              expect(this.store.resolveAsync.calls.argsFor(0)[0]).toEqual({
+                id: 'foreignId',
+              });
+              expect(this.store.resolveAsync.calls.argsFor(1)[0]).toEqual({
+                id: 'anotherForeignId',
+              });
+              done();
+            });
+        });
+        describe('should deactivate autoSave while changing values', function () {
+          it('autosave is true', function (done) {
+            this.item.autoSave = true;
+            this.item.fromTransporter(this.content)
+              .then(() => {
+                expect(this.item.autoSave).toBe(true);
+                expect(this.item._synchronize).toHaveBeenCalledTimes(1);
+                done();
+              });
+          });
+          it('autosave is false', function (done) {
+            this.item.autoSave = false;
+            this.item.fromTransporter(this.content)
+              .then(() => {
+                expect(this.item.autoSave).toBe(false);
+                expect(this.item._synchronize).toHaveBeenCalledTimes(1);
+                done();
+              });
+          });
+        });
+        it('should _synchronize locally after everything is set', function (done) {
+          this.item.fromTransporter(this.content)
+            .then(() => {
+              expect(this.item._synchronize).toHaveBeenCalledWith(2, 0);
+              done();
+            });
+        });
       });
 
       describe('toRawItem', function () {
@@ -1038,8 +1121,6 @@ describe('Item', function () {
 
     describe('_getValidNewState', function () {
       beforeEach(function () {
-
-
         const states = [-2, -1, 0, 1, 2, 3];
         this.test = (current, positives) => {
           states.forEach(state => {
