@@ -3,6 +3,7 @@ import Store from './helpers/Test.Store';
 import Transporter from './helpers/Test.Transporter';
 import LocalStorage from './helpers/Test.LocalStorage';
 
+import * as _ from 'lodash';
 import { observable } from 'mobx';
 
 describe('Item', function () {
@@ -846,7 +847,6 @@ describe('Item', function () {
         });
       });
       describe('_stateHandlerTrigger', function () {
-
         it('should call getter for each property that can change', function () {
           const ends = {
             id: false,
@@ -1036,7 +1036,53 @@ describe('Item', function () {
       });
     });
 
-    xdescribe('_set', function () {});
+    describe('_getValidNewState', function () {
+      beforeEach(function () {
+
+
+        const states = [-2, -1, 0, 1, 2, 3];
+        this.test = (current, positives) => {
+          states.forEach(state => {
+            let expected = _.find(positives, positive => positive === state);
+            if (expected === undefined) {
+              expected = current;
+            }
+            expect(this.item._getValidNewState(current, state)).toEqual(expected);
+          });
+        };
+        this.test3 = () => {
+          states.forEach(state => {
+            let expected = -2;
+            if (state === -1) {
+              expected = -1;
+            }
+            expect(this.item._getValidNewState(3, state)).toEqual(expected);
+          });
+        };
+      });
+      it('should handle -2 state', function () {
+        this.test(-2, [-1]);
+      });
+      it('should handle -1 state', function () {
+        this.test(-1, []);
+      });
+      it('should handle 0 state', function () {
+        this.test(0, [2, 3]);
+      });
+      it('should handle 1 state', function () {
+        this.test(1, [0, 2, 3]);
+      });
+      it('should handle 2 state', function () {
+        this.test(2, [0, 3]);
+      });
+      it('should handle 3 state', function () {
+        this.test3();
+      });
+      it('should handle random state', function () {
+        this.test(100, []);
+      });
+    });
+
     describe('_setPrimaryKey', function () {
       beforeEach(function () {
         delete this.item.key1;
@@ -1085,102 +1131,69 @@ describe('Item', function () {
       });
     });
     describe('_setStoreState', function () {
-      it('should set store state to given one', function () {
-        const givenState = Math.floor((Math.random() * 10)) + 1;
-        this.item._setStoreState(givenState);
-        expect(this.item._storeState).toBe(givenState);
-      });
-      it('should not set store state if act store state is -1', function () {
-        const givenState = Math.floor((Math.random() * 10)) + 1;
-        this.item._storeState = -1;
-        this.item._setStoreState(givenState);
-        expect(this.item._storeState).toBe(-1);
-      });
-      it('should set stored to true if store state is 0', function () {
-        this.item.stored = false;
-        this.item._storeState = 1;
-        this.item._setStoreState(0);
-        expect(this.item.stored).toBe(true);
-      });
-      it('should set stored to false if store state is not 0', function () {
-        this.item.stored = true;
+      it('should get valid new state and store it in _storeState', function () {
+        spyOn(this.item, '_getValidNewState').and.returnValue(2);
         this.item._storeState = 0;
         this.item._setStoreState(1);
-        expect(this.item.stored).toBe(false);
+        expect(this.item._getValidNewState).toHaveBeenCalledWith(0, 1);
+        expect(this.item._storeState).toEqual(2);
+      });
+      it('should set stored to true if state is 0 or -1', function () {
+        spyOn(this.item, '_getValidNewState').and.returnValues(0, -1);
+        function test(item) {
+          item._storeState = 0;
+          item.stored = false;
+          item._setStoreState(1);
+          expect(item.stored).toEqual(true);
+        }
+        test(this.item);
+        test(this.item);
+      });
+      it('should set stored to false if state is 1, 2, 3, -2', function () {
+        spyOn(this.item, '_getValidNewState').and.returnValues(1, 2, 3, -2);
+        function test(item) {
+          item._storeState = 0;
+          item.stored = true;
+          item._setStoreState(1);
+          expect(item.stored).toEqual(false);
+        }
+        test(this.item);
+        test(this.item);
+        test(this.item);
+        test(this.item);
       });
     });
     describe('_setSyncState', function () {
-      it('should set sync status to given status -1, 0, 1, 2, 3', function () {
-        this.item._syncState = 0;
-        this.item._setSyncState(-1);
-        expect(this.item._syncState).toBe(-1);
-        this.item._syncState = 1;
-        this.item._setSyncState(0);
-        expect(this.item._syncState).toBe(0);
+      it('should get valid new state and store it in _syncState', function () {
+        spyOn(this.item, '_getValidNewState').and.returnValue(2);
         this.item._syncState = 0;
         this.item._setSyncState(1);
-        expect(this.item._syncState).toBe(1);
-        this.item._syncState = 0;
-        this.item._setSyncState(2);
-        expect(this.item._syncState).toBe(2);
-        this.item._syncState = 0;
-        this.item._setSyncState(3);
-        expect(this.item._syncState).toBe(3);
+        expect(this.item._getValidNewState).toHaveBeenCalledWith(0, 1);
+        expect(this.item._syncState).toEqual(2);
       });
-      it('should not set sync status with other numbers', function () {
-        this.item._syncState = 0;
-        this.item._setSyncState(-2);
-        expect(this.item._syncState).toBe(0);
-        this.item._syncState = 0;
-        this.item._setSyncState(4);
-        expect(this.item._syncState).toBe(0);
-      });
-      it('should not set sync status if old status is 3, -1 or -2', function () {
-        const initialStates = [3, -1, -2];
-        for (let i = 0; i < initialStates.length; i++) {
-          const initialState = initialStates[i];
-          this.item._syncState = initialState;
-          this.item._setSyncState(0);
-          expect(this.item._syncState).toBe(initialState);
-          this.item._syncState = initialState;
-          this.item._setSyncState(1);
-          expect(this.item._syncState).toBe(initialState);
-          this.item._syncState = initialState;
-          this.item._setSyncState(2);
-          expect(this.item._syncState).toBe(initialState);
+      it('should set synced to true if state is 0 or -1', function () {
+        spyOn(this.item, '_getValidNewState').and.returnValues(0, -1);
+        function test(item) {
+          item._syncState = 0;
+          item.synced = false;
+          item._setSyncState(1);
+          expect(item.synced).toEqual(true);
         }
+        test(this.item);
+        test(this.item);
       });
-      it('should always set sync status to -1 if thats the given one', function () {
-        const initialStates = [-2, -1, 0, 1, 2, 3];
-        for (let i = 0; i < initialStates.length; i++) {
-          const initialState = initialStates[i];
-          this.item._syncState = initialState;
-          this.item._setSyncState(-1);
-          expect(this.item._syncState).toBe(-1);
+      it('should set synced to false if state is 1, 2, 3, -2', function () {
+        spyOn(this.item, '_getValidNewState').and.returnValues(1, 2, 3, -2);
+        function test(item) {
+          item._syncState = 0;
+          item.synced = true;
+          item._setSyncState(1);
+          expect(item.synced).toEqual(false);
         }
-      });
-      it('should set status to -2 if given status and old status both equal 3', function () {
-        this.item._syncState = 3;
-        this.item._setSyncState(3);
-        expect(this.item._syncState).toBe(-2);
-      });
-      it('should set synced to true if updated status is 0', function () {
-        this.item._syncState = 1;
-        this.item.synced = false;
-        this.item._setSyncState(0);
-        expect(this.item.synced).toBe(true);
-      });
-      it('should set synced to false if updated status is not 0', function () {
-        const initialStates = [-2, -1, 1, 2, 3];
-        for (let i = 0; i < initialStates.length; i++) {
-          for (let j = 0; j < initialStates.length; j++) {
-            const initialState = initialStates[i];
-            const setState = initialStates[j];
-            this.item._syncState = initialState;
-            this.item._setSyncState(setState);
-            expect(this.item.synced).toBe(false);
-          }
-        }
+        test(this.item);
+        test(this.item);
+        test(this.item);
+        test(this.item);
       });
     });
     describe('_stateHandler', function () {
@@ -1189,12 +1202,10 @@ describe('Item', function () {
         spyOn(this.item, '_synchronize');
         spyOn(this.item, '_stateHandlerTrigger');
       });
-      it('should get computed rawItem in synchron part', function () {
-        this.item._stateHandler(0);
+      it('should get _stateHandlerTrigger in synchron part', function () {
         this.item._stateHandler(0);
         this.item._stateHandler(1);
-        this.item._stateHandler(1);
-        expect(this.item._stateHandlerTrigger).toHaveBeenCalledTimes(4);
+        expect(this.item._stateHandlerTrigger).toHaveBeenCalledTimes(2);
       });
       it('should synchronize(x, y) if its the first call', function () {
         this.item._stateHandler(0);
@@ -1214,7 +1225,7 @@ describe('Item', function () {
         expect(this.item._synchronize).not.toHaveBeenCalled();
       });
     });
-    fdescribe('_synchronize', function () {
+    describe('_synchronize', function () {
       beforeEach(function () {
         spyOn(this.item, '_synchronizeLocalStorage')
           .and.returnValue(Promise.resolve());

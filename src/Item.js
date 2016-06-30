@@ -267,6 +267,25 @@ export default class Item {
     this._id = values._id;
   }
 
+  _getValidNewState(current, newState) {
+    switch (current) {
+      case -2:
+        return newState === -1 ? -1 : current;
+      case -1:
+        return -1;
+      case 0:
+        return newState === 2 || newState === 3 ? newState : current;
+      case 1:
+        return newState === 0 || newState === 2 || newState === 3 ? newState : current;
+      case 2:
+        return newState === 0 || newState === 3 ? newState : current;
+      case 3:
+        return newState === -1 ? -1 : -2;
+      default:
+        return current;
+    }
+  }
+
   _localStorageCreate() {
     return this._transaction(() =>
       this.toLocalStorage()
@@ -317,30 +336,21 @@ export default class Item {
   }
 
   _setStoreState(state) {
-    if (this._storeState !== -1) {
-      this._storeState = state;
+    this._storeState = this._getValidNewState(this._storeState, state);
+    if (this._storeState === 0 || this._storeState === -1) {
+      this.stored = true;
+    } else {
+      this.stored = false;
     }
-    this.stored = this._storeState === 0;
   }
 
   _setSyncState(state) {
-    switch (state) {
-      case -1:
-        this._syncState = -1;
-        break;
-      case 0:
-      case 1:
-      case 2:
-      case 3:
-        if (this._syncState !== -2 && this._syncState !== -1 && this._syncState !== 3) {
-          this._syncState = state;
-        } else if (this._syncState === 3 && state === 3) {
-          this._syncState = -2;
-        }
-        break;
-      default:
+    this._syncState = this._getValidNewState(this._syncState, state);
+    if (this._syncState === 0 || this._syncState === -1) {
+      this.synced = true;
+    } else {
+      this.synced = false;
     }
-    this.synced = this._syncState === 0;
   }
 
   _stateHandler(call) {
