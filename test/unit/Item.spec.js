@@ -439,13 +439,6 @@ describe('Item', function () {
           //     content: this.content,
           //   };
           // }
-          fromLocalStorage(values) {
-            this.content = values.content;
-            this.title = values.title;
-            this._id = values._id;
-            this.id = values.id;
-            this._syncState = values._syncState;
-          }
         }
         class Author extends Item {
 
@@ -491,10 +484,46 @@ describe('Item', function () {
       });
 
       describe('fromLocalStorage', function () {
-
+        beforeEach(function () {
+          spyOn(this.item, '_fromOutside').and.returnValue(Promise.resolve('_fromOutside'));
+        });
+        it('should call _fromOutside with prefix "_"', function (done) {
+          this.item.fromLocalStorage({ _syncState: 'syncState' })
+            .then(() => {
+              expect(this.item._fromOutside).toHaveBeenCalledWith({ _syncState: 'syncState' }, '_');
+              done();
+            });
+        });
+        it('should call synchronize to push to transporter', function (done) {
+          this.item.fromLocalStorage({ _syncState: 'syncState' })
+            .then(() => {
+              expect(this.item._synchronize).toHaveBeenCalledWith(undefined, 'syncState');
+              done();
+            });
+        });
       });
 
       describe('fromTransporter', function () {
+        beforeEach(function () {
+          spyOn(this.item, '_fromOutside').and.returnValue(Promise.resolve('_fromOutside'));
+        });
+        it('should call _fromOutside with prefix ""', function (done) {
+          this.item.fromTransporter('values')
+            .then(() => {
+              expect(this.item._fromOutside).toHaveBeenCalledWith('values', '');
+              done();
+            });
+        });
+        it('should call synchronize to store locally only', function (done) {
+          this.item.fromTransporter('values')
+            .then(() => {
+              expect(this.item._synchronize).toHaveBeenCalledWith(2);
+              done();
+            });
+        });
+      });
+
+      describe('_fromOutside', function () {
         beforeEach(function () {
           spyOn(this.item, '_setPrimaryKey');
           spyOn(this.store, 'resolveAsync')
@@ -512,7 +541,7 @@ describe('Item', function () {
           delete this.item.anotherAuthor;
         });
         it('should set simple values to given ones', function (done) {
-          this.item.fromTransporter(this.content)
+          this.item._fromOutside(this.content, '')
             .then(() => {
               expect(this.item.content).toEqual('newer content');
               expect(this.item.content).toEqual('newer content');
@@ -520,14 +549,14 @@ describe('Item', function () {
             });
         });
         it('should set primary key', function (done) {
-          this.item.fromTransporter(this.content)
+          this.item._fromOutside(this.content, '')
             .then(() => {
               expect(this.item._setPrimaryKey).toHaveBeenCalledWith(this.content);
               done();
             });
         });
-        it('should resolve foreign keys and store the recieved item', function (done) {
-          this.item.fromTransporter(this.content)
+        it('should resolve foreign transporter keys and store the recieved item', function (done) {
+          this.item._fromOutside(this.content, '')
             .then(() => {
               expect(this.store.resolveAsync.calls.argsFor(0)[0]).toEqual({
                 id: 'foreignId',
@@ -538,32 +567,41 @@ describe('Item', function () {
               done();
             });
         });
+        it('should resolve foreign localStorage keys and store the recieved item', function (done) {
+          this.content._authorId = '_foreignId';
+          this.content._anotherAuthorId = '_anotherForeignId';
+          delete this.content.authorId;
+          delete this.content.anotherAuthorId;
+          this.item._fromOutside(this.content, '_')
+            .then(() => {
+              expect(this.store.resolveAsync.calls.argsFor(0)[0]).toEqual({
+                _id: '_foreignId',
+              });
+              expect(this.store.resolveAsync.calls.argsFor(1)[0]).toEqual({
+                _id: '_anotherForeignId',
+              });
+              done();
+            });
+        });
         describe('should deactivate autoSave while changing values', function () {
           it('autosave is true', function (done) {
             this.item.autoSave = true;
-            this.item.fromTransporter(this.content)
+            this.item._fromOutside(this.content, '')
               .then(() => {
                 expect(this.item.autoSave).toBe(true);
-                expect(this.item._synchronize).toHaveBeenCalledTimes(1);
+                expect(this.item._synchronize).not.toHaveBeenCalled();
                 done();
               });
           });
           it('autosave is false', function (done) {
             this.item.autoSave = false;
-            this.item.fromTransporter(this.content)
+            this.item._fromOutside(this.content, '')
               .then(() => {
                 expect(this.item.autoSave).toBe(false);
-                expect(this.item._synchronize).toHaveBeenCalledTimes(1);
+                expect(this.item._synchronize).not.toHaveBeenCalled();
                 done();
               });
           });
-        });
-        it('should _synchronize locally after everything is set', function (done) {
-          this.item.fromTransporter(this.content)
-            .then(() => {
-              expect(this.item._synchronize).toHaveBeenCalledWith(2, 0);
-              done();
-            });
         });
       });
 
