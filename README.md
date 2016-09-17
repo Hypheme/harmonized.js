@@ -248,3 +248,47 @@ The relations of an item is defined together with the other item properties in t
 ];
 ```
 
+### ClientStorage and Transporter
+
+Client storages and transporters are used to syncronize your items with a local database and remote API. When you use ready made client storages and transporters you don't have to worry about their interface. If you need more functionality in the transporters however, you can extend these (or the base classes) and write your own.
+
+Transporters and ClientStorages need the following interface:
+
+```javascript
+create() {}
+remove() {} // only for ClientStorage
+update() {}
+delete() {}
+fetch() {}
+fetchOne() {}
+initialFetch() {}
+```
+
+#### create()
+
+Creates a new item (e.g. `POST` HTTP request on an API or `INSERT INTO` instruction for SQL).
+
+#### remove()
+
+This is only needed for the client storage. It is there to mark an item as deleted but does not actually delete it until it is successfully deleted in the `Transporter`.
+
+#### update()
+
+Updates an existing item (e.g. `PUT` HTTP request on an API or `UPDATE` instruction for SQL).
+
+#### delete()
+
+Deletes an existing item. In the client storage this is called when the transporter delete transaction was successfull.
+
+#### fetch()
+
+Fetches everything from the transporter or client storage.
+
+#### fetchOne()
+
+Fetches only a specific item.
+
+#### initialFetch()
+
+Is called when the application is started. This can do nothing when your implementation doesn't need/does initial fetching.
+
