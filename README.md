@@ -16,8 +16,6 @@ A store needs three different classes:
 - LocalStorage: harmonized local storage
 - Item: items the store contains
 
-It can be passed optional store instances which can be used in the items for relation.
-
 ```javascript
 import {Store, NoLocalStorage} from 'harmonized';
 import MyTransporter from './MyTransporter';
@@ -28,7 +26,6 @@ const myStore = new Store({
   Transporter: MyTransporter,
   LocalStorage: NoLocalStorage,
   Item: MyItemClass,
-  stores: {myOtherStore},
 });
 export myStore;
 ```
@@ -153,3 +150,101 @@ If your item is out of sync with the transporter you can trigger a fetch again. 
 myItem.fetch(); // gets the item from the transporter, saves it in the item and  
 myItem.title = 'another title'; // will get overwritten by the fetch as soon as it arrives
 ```
+
+### Relations
+
+You can reference items from other stores in your items. You can either use stores that are already existent and just reference items from it or create a new store that only exists for the item it belongs to.
+
+To explain this a little better here are two examples for each of the relation types:
+
+#### Reference items from existing stores:
+
+You have two routes in your backend:
+
+```
+/cars
+/drivers
+```
+
+In an `cars` item you reference drivers that drive the car so you can display them in the `cars` view. When information about the driver updates this driver will also updates in it's reference in the `cars` item.
+
+Your model could look like this:
+
+```javascript
+// Cars Store
+[{
+  id: 1, 
+  brand: 'Volkswagen',
+  driver: {
+    id: 123,
+    name: 'John Doe',
+  },
+}, {
+  id: 2, 
+  brand: 'BMW',
+  driver: null,
+}]
+
+// Drivers Store
+[{
+  id: 123,
+  name: 'John Doe',
+}]
+```
+
+#### Seperate store inside each item
+
+For this you also have two routes on the backend:
+
+```
+/users
+/users/:id/cars
+```
+
+In this example the `/users/:id/cars` show the cars owned by the user. You don't have a single `/cars` route in this example so for this you need a store that just belongs to a single item. Items added to the `cars` store only are added for the specific user.
+
+Your model would look like this:
+
+```javascript
+// users store
+[{
+  id: 123, 
+  name: 'John Doe',
+  // 
+  cars: [
+    {id: 1, brand: 'Volkswagen'}, 
+    {id: 2, brand: 'BMW'},
+  ],
+}, {
+  id: 321, 
+  name: 'Jane Doe',
+  // 
+  cars: [
+    {id: 1, brand: 'Mercedes-Benz'}, 
+    {id: 2, brand: 'Audi'},
+  ],
+}]
+```
+
+#### Define your relations
+
+The relations of an item is defined together with the other item properties in the item's data structure difinition. To make a property a reference to another store, you need to define the name of the store to refer from in the property options. The `storeKey` option then describes the name of the primary key of the referenced store item. The `key` option defines the name of the key in the transporter endpoint (e.g. your API). Both have an equivalent for the client storage (`_key` and `_storeKey`) which are optional (the default value is the transporter version with a prepended `_`).
+
+```javascript
+[
+  'brand',
+  { name: 'id', primary: true, key: 'id', _key: '_id' },
+  
+  // This is the definition for a relation to an existing store
+  { name: 'driver', key: 'driverId', _key: '_driverId', store: 'drivers', storeKey: 'id', _storeKey: '_id' },
+  
+  // This is the definition to a relation to a seperate store inside the item 
+  // (1-1 relation)
+  { name: 'steeringwheel', key: 'steeringwheelId', _key: '_steeringwheelId', store: SteeringWheelStoreClass },
+  
+  // (1-n relation)
+  [{ name: 'wheels', key: 'wheels', _key: 'wheels', store: WheelStoreClass }],
+  
+];
+```
+
