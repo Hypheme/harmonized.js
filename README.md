@@ -8,7 +8,7 @@ state, storage and server manager for react and react-native based on mobx.js
 
 ## store
 
-### creating a new store:
+### creating a new store (DEPRECATED):
 
 A store needs three different classes:
 
@@ -36,33 +36,21 @@ Each Store creates its own transporter and local storage instance. It then fetch
 - transporter.initialFetch(localStorageItems)
 - localStorage.followUpFetch(transporterItems)
 
-### fetch the store
-
-Although the store fetches its content on creation, you may want to fetch its content (or part of it) at some point again. You can do so by calling the fetch method. If you give it an item, only the item will get fetched. Otherwise, the complete store.
-
-The fetch is only transporter related as the local store is always in sync with the state anyway.
-
-The fetch routine returns a promise, but you won't need it very often as the stores state is changed and your views are updated.
+### methods
 
 ```javascript
-myStore.fetch().then(() => {
-  console.log('store is fetched');
-})
-myStore.fetch(item).then(() => {
-  console.log('item is fetched');
-})
+// fetch
+// NOT TO SURE ABOUT THIS YET, some ideas in the comments
+store.fetchOne({ id: 123 }); // if the item doesnt exist in the state it's ignored
+store.fetchOneAndCreate({ id: 123 }); // if the item doesnt exist in the state it's created
+
+// find
+store.find({ name: 'johannes', lastname: 'merz' }); // returns array
+store.findOne({ __id: 'runtimeId' }); // returns first matched element
+
+// manipulate
+store.create(rawItem, { source: 'transporter' }); // returns item
 ```
-
-### item related actions
-
-you can create or remove an item from a store:
-
-```javascript
-const myItem = myStore.create({title: 'some title', data: 'some data'});
-myStore.remove(myItem);
-```
-
-In both cases, the item is updated in the local storage as well as in the transporter.
 
 ## item interface
 
@@ -74,47 +62,33 @@ You don't want to create an item directly. Use store.create(rawItem) instead.
 
 Item manipulation is usually handled by mobx. But there are ways you can influence item behavior:
 
-Per default, autoSave is set to true. This means, as soon as you change the item raw data, the item is updated in the local storage as well as in the transporter. If you want to change multiple item entries at the same time, you can deactivate autoSave, make the change and activate autoSave again or you can leave autoSave set to false and trigger it by yourself.
+Per default, autoUpdate is set to true. This means, as soon as you change the item raw data, the item is updated in the client storage as well as in the transporter. If you want to change multiple item entries at the same time, you can deactivate autoUpdate, make the change and activate autoUpdate again or you can leave autoUpdate set to false and trigger it by yourself.
 
 ```javascript
-// autoSave = true
+myItem.fetch(); // fetches from transporter, returns harmonized promise
+myItem.delete({ source: 'transporter' }); // returns harmonized promise
+myItem.update(rawData, { source: 'transporter', noMerge: true }); // returns harmonized promise
+
+// supported sources are:
+//  - transporter
+//  - clientStorage
+//  - state (default)
+//  - user (same as state)
+
+// autoUpdate = true
 myItem.title = 'new title'; // => gets stored and synced
 
-myItem.autoSave = false;
+myItem.autoUpdate = false;
 myItem.title = 'another title';
 myItem.data = 'moar data';
-myItem.autoSave = true;
+myItem.autoUpdate = true;
 myItem.title = 'new title again'; // => gets stored and synced
 
-myItem.autoSave = false;
+myItem.autoUpdate = false;
 myItem.title = 'another title';
 myItem.data = 'moar data';
-myItem.enableAutoSaveAndSave();  // => gets stored and synced
+myItem.enableAutoUpdateAndUpdate();  // => gets stored and synced
 myItem.title = 'new title again'; // => gets stored and synced
-
-myItem.autoSave = true;
-myItem.set({
-  title: 'another title',
-  data: 'some data',
-}); // just 1 sync, autoSave == true
-
-myItem.autoSave = false;
-myItem.set({
-  title: 'another title',
-  data: 'some data',
-}); // no sync at all, autoSave == false
-myItem.save(); // items get synced
-
-myItem.save({
-  title: 'another title',
-  data: 'some data',
-}); // shortcut for myItem.set({...}).save();
-
-myItem.autoSave = false;
-myItem.title = 'another title';
-myItem.data = 'moar data';
-myItem.save() // => gets stored and synced
-myItem.title = 'new title again'; // autoSave still off
 ```
 
 You can save the items content locally at any point with saveLocal(content = undefined)
@@ -292,3 +266,4 @@ Fetches only a specific item.
 
 Is called when the application is started. This can do nothing when your implementation doesn't need/does initial fetching.
 
+### TODO harmonized promises
