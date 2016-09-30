@@ -1,7 +1,7 @@
-import Item from '../../src/Item';
-import Store from './helpers/Test.Store';
-import Transporter from './helpers/Test.Transporter';
-import LocalStorage from './helpers/Test.LocalStorage';
+import Item from './Item';
+import Store from '../test/unit/helpers/Test.Store';
+import Transporter from '../test/unit/helpers/Test.Transporter';
+import LocalStorage from '../test/unit/helpers/Test.LocalStorage';
 
 import * as _ from 'lodash';
 import { observable } from 'mobx';

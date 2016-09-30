@@ -33,6 +33,7 @@ module.exports = function makeWebpackConfig() {
     test: /\.js$/,
     include: [
       path.resolve(__dirname, '../../src')],
+    exclude: /\.spec\.js/,
     loader: 'isparta-instrumenter',
   });
 
