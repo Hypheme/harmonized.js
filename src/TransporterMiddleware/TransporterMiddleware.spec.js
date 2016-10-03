@@ -13,7 +13,7 @@ class ExtendedTransporterMiddleware extends TransporterMiddleware {
   }
 }
 
-fdescribe('Transporter Middleware', function () {
+describe('Transporter Middleware', function () {
   it('should have static method', function () {
     const expectedMethods = [
       'addItemToQueue',
