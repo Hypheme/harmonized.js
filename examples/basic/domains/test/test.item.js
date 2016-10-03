@@ -18,5 +18,4 @@ const keys = ['title',
 const primary = ['contact', 'information'];
 
 
-
 console.log(keys, primary);
