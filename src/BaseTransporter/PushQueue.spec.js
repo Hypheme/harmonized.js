@@ -5,6 +5,16 @@
 
 import PushQueue from './PushQueue';
 
+function strMapToObj(strMap) {
+  const obj = Object.create(null);
+  for (const [k, v] of strMap) {
+    // We don’t escape the key '__proto__'
+    // which can cause problems on older engines
+    obj[k] = v;
+  }
+  return obj;
+}
+
 describe('PushQueue', function () {
   beforeEach(function () {
     // console.log('wheee', PushQueueRewireApi);
@@ -20,34 +30,27 @@ describe('PushQueue', function () {
 
   it('should get existing queue items for a given runtime ID', function () {
     const expectedQueue = ['some', 'items'];
-    this.queue._queue = {
-      123: expectedQueue,
-    };
+    this.queue._queue.set(123, expectedQueue);
 
     const returnedQueue = this.queue.getQueue(123);
     expect(returnedQueue).toBe(expectedQueue);
   });
 
   it('should get a new queue when requesting a queue that is not there yet', function () {
-    this.queue._queue = {
-      123: ['some', 'other', 'queue'],
-    };
+    this.queue._queue.set(123, ['some', 'other', 'queue']);
 
     const returnedQueue = this.queue.getQueue(124);
     expect(returnedQueue).toEqual([]);
-    expect(returnedQueue).toBe(this.queue._queue[124]);
+    expect(returnedQueue).toBe(this.queue._queue.get(124));
   });
 
   it('should remove queue', function () {
-    this.queue._queue = {
-      122: ['some', 'queue'],
-      123: ['some', 'other', 'queue'],
-    };
+    this.queue._queue.set(122, ['some', 'queue']);
+    this.queue._queue.set(123, ['some', 'other', 'queue']);
 
     this.queue.removeQueue(122);
-    expect(this.queue._queue).toEqual({
-      123: ['some', 'other', 'queue'],
-    });
+    expect(this.queue._queue.size).toBe(1);
+    expect(this.queue._queue.get(123)).toEqual(['some', 'other', 'queue']);
   });
 
   xit('should create a new queue item', function () {
