@@ -8,7 +8,11 @@ export default class PushQueue {
     return new PushQueueItem(action, payload);
   }
 
-  getQueue(runtimeId: string) {
+  getAllQueues(): Map {
+    return this._queue;
+  }
+
+  getQueue(runtimeId: string): PushQueueItem[] {
     const queue = this._queue.get(runtimeId);
     if (queue) {
       return queue;

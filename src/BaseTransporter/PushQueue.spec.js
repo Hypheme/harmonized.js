@@ -28,6 +28,10 @@ describe('PushQueue', function () {
     // PushQueue.__ResetDependency__('PushQueueItem');
   });
 
+  it('should get all queues', function () {
+    expect(this.queue.getAllQueues()).toBe(this.queue._queue);
+  });
+
   it('should get existing queue items for a given runtime ID', function () {
     const expectedQueue = ['some', 'items'];
     this.queue._queue.set(123, expectedQueue);

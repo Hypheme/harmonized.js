@@ -5,10 +5,10 @@ import TransporterMiddleware from '../TransporterMiddleware/TransporterMiddlewar
 
 export default class BaseTransporter {
   static middleware: TransporterMiddleware[] = [];
-  _queue: PushQueue;
+  _queues: PushQueue;
 
   constructor() {
-    this._queue = new PushQueue();
+    this._queues = new PushQueue();
   }
 
   create(item: Object) {
@@ -25,55 +25,53 @@ export default class BaseTransporter {
 
   push() {
     const pushPromises = [];
-    for (const __id: string in this._queue._queue) {
-      if (this._queue._queue.hasOwnProperty(__id)) {
-        pushPromises.push(this.pushOne(__id));
-      }
-    }
-
+    this._queues.getAllQueues().forEach((queue) => pushPromises.push(this._pushOne(queue)));
     return Promise.all(pushPromises);
   }
 
-  _prepareSend(queueItem: PushQueueItem) {
+  _prepareSend(/* queueItem: PushQueueItem */) {
     throw new Error('should be implemented by the transporter');
   }
 
-  _send(data: Object) {
+  _send(/* data: Object */) {
     throw new Error('should be implemented by the transporter');
   }
 
-  _sendCurrentQueueItem(subQueue: PushQueueItem[], promise: Promise,
-    resolve: Function, reject: Function) {
+  _sendCurrentQueueItem(subQueue: PushQueueItem[]) {
     const queueItem = subQueue[0];
     queueItem.inProgress = true;
-    queueItem.promise = promise;
     const preparedSendRequest = this._prepareSend(subQueue[0]);
-    this.constructor.runMiddleware('send', {
+
+    // run send middleware then send and afterwards work off the queue
+    const promise = queueItem.promise = constructor.runMiddleware('send', {
       req: preparedSendRequest,
       item: queueItem,
-    }).then(this._send.bind(this))
-    .then((res) => {
-      subQueue.shift();
-      if (subQueue.length === 0) {
-        resolve(res);
-      } else {
-        this._sendCurrentQueueItem(subQueue, promise, resolve, reject);
-      }
-    });
+    })
+      .then(this._send.bind(this))
+      .then((res) => {
+        subQueue.shift();
+        if (subQueue.length > 0) {
+          return this._sendCurrentQueueItem(subQueue);
+        }
+
+        return res;
+      });
+
+    return promise;
   }
 
-  pushOne(__id: string) {
-    const subQueue = this._queue.getQueue(__id);
-    const queueItem = subQueue[0];
+  _pushOne(queue: PushQueueItem[]) {
+    const queueItem = queue[0];
     if (queueItem.inProgress) {
       return queueItem.promise;
     }
 
-    const promise = new Promise((resolve, reject) => {
-      this._sendCurrentQueueItem(subQueue, promise, resolve, reject);
-    });
+    return this._sendCurrentQueueItem(queue);
+  }
 
-    return promise;
+  pushOne(__id: string) {
+    const queue = this._queues.getQueue(__id);
+    return this._pushOne(queue);
   }
 
   fetch() {
