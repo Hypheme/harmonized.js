@@ -77,7 +77,7 @@ const anItemKeys = [
     name: 'driver',
     key: 'driverId',
     _key: '_driverId',
-    store: myStore,
+    store: myStoreInstance,
     storeKey: 'id',
     _storeKey: '_id',
   },
@@ -168,13 +168,19 @@ item = new AnItem(rawItemData, {
 // ///////////
 
 item.fetch(); // fetches from transporter, returns harmonized promise
-item.delete({
+item.remove({ // same as item.delete
   source: 'transporter',
+  parentOrder: true,
 }); // returns harmonized promise
 item.update(rawData, {
   source: 'transporter',
   noMerge: true, // this means, every key entry will be overwritten even if undefined
 }); // returns harmonized promise
+
+
+item.subscribe(anotherItem, 'key'); // foreign keys subscribe to an item
+item.unsubscribe(anotherItem); // unsubscribe to the item
+anotherItem.subscriptionTrigger('action', 'key', item);
 
 // ////////////////
 // explanations //
