@@ -48,11 +48,11 @@ export default class BaseTransporter {
     this._shouldBeImplemented();
   }
 
-  _sendCurrentQueueItem(subQueue: PushQueueItem[]) {
+  _sendCurrentQueueItem(queue: PushQueueItem[]) {
     const type = 'push';
-    const queueItem = subQueue[0];
+    const queueItem = queue[0];
     queueItem.inProgress = true;
-    const preparedSendRequest = this._prepareSend(subQueue[0]);
+    const preparedSendRequest = this._prepareSend(queue[0]);
 
     // run send middleware then send and afterwards work off the queue
     const promise = queueItem.promise = constructor.runMiddleware('send', {
@@ -62,12 +62,16 @@ export default class BaseTransporter {
     })
       .then(this._send.bind(this))
       // when error run transmissionError middleware
-      .fail(({ res, req }) => constructor.runMiddleware('transmissionError', { type, req, res }))
-      .then(({ res, req }) => constructor.runMiddleware('receive', { type, req, res }))
+      .fail(({ res, req }) => constructor.runMiddleware('transmissionError', {
+        type, req, res, queue,
+      }))
+      .then(({ res, req }) => constructor.runMiddleware('receive', {
+        type, req, res, queue,
+      }))
       .then((res) => {
-        subQueue.shift();
-        if (subQueue.length > 0) {
-          return this._sendCurrentQueueItem(subQueue);
+        queue.shift();
+        if (queue.length > 0) {
+          return this._sendCurrentQueueItem(queue);
         }
 
         return res;
