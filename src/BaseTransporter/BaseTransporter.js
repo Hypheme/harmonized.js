@@ -1,4 +1,5 @@
 // @flow
+import isObject from 'lodash';
 import PushQueue from './PushQueue';
 import PushQueueItem from './PushQueueItem';
 import TransporterMiddleware from '../TransporterMiddleware/TransporterMiddleware';
@@ -13,14 +14,17 @@ export default class BaseTransporter {
 
   create(item: Object) {
     PushQueue.createItem('create', item);
+    this.pushOne(item.__id);
   }
 
   update(item: Object) {
     PushQueue.createItem('update', item);
+    this.pushOne(item.__id);
   }
 
   delete(item: Object) {
     PushQueue.createItem('delete', item);
+    this.pushOne(item.__id);
   }
 
   push() {
@@ -74,15 +78,29 @@ export default class BaseTransporter {
     return this._pushOne(queue);
   }
 
-  fetch() {
+  _fetch() {
+    throw new Error('should be implemented by the transporter');
   }
 
-  fetchOne() {
-    // arg[0] = id|object
+  fetch(...args: any[]) {
+    return this._fetch.apply(this, args);
   }
 
-  initialFetch() {
+  _fetchOne(/* id: number */) {
+    throw new Error('should be implemented by the transporter');
+  }
 
+  fetchOne(...args: any[]) {
+    const arg = args[0];
+    return (isObject(arg)) ? this._fetchOne(arg.id) : this._fetchOne(arg);
+  }
+
+  _initialFetch() {
+    throw new Error('should be implemented by the transporter');
+  }
+
+  initialFetch(...args: any[]) {
+    return this._initialFetch.apply(this, args);
   }
 
   static add(mw) {
