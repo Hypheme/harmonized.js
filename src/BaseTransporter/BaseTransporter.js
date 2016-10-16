@@ -75,7 +75,6 @@ export default class BaseTransporter {
   }
 
   fetch() {
-
   }
 
   fetchOne() {
@@ -100,5 +99,4 @@ export default class BaseTransporter {
 
     return latestPromise;
   }
-
 }
