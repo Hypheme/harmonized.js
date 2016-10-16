@@ -7,16 +7,14 @@ export default class TransporterMiddleware {
   // updateQueueAfterReceive(queueItem, originalItem, queue) {}
   // send(req, item) {}
   // receive(res, req, item) {}
-  // sendError(req, item) {}
-  // receiveError(res, req, item) {}
+  // transmissionError(res?, req, item) {}
 
   static methods = [
     'addItemToQueue',
     'updateQueueAfterReceive',
     'send',
     'receive',
-    'sendError',
-    'receiveError',
+    'transmissionError',
   ];
 
   static build(...args) {

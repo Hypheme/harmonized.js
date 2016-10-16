@@ -34,24 +34,29 @@ export default class BaseTransporter {
   }
 
   _prepareSend(/* queueItem: PushQueueItem */) {
-    throw new Error('should be implemented by the transporter');
+    this._shouldBeImplemented();
   }
 
   _send(/* data: Object */) {
-    throw new Error('should be implemented by the transporter');
+    this._shouldBeImplemented();
   }
 
   _sendCurrentQueueItem(subQueue: PushQueueItem[]) {
+    const type = 'push';
     const queueItem = subQueue[0];
     queueItem.inProgress = true;
     const preparedSendRequest = this._prepareSend(subQueue[0]);
 
     // run send middleware then send and afterwards work off the queue
     const promise = queueItem.promise = constructor.runMiddleware('send', {
+      type,
       req: preparedSendRequest,
       item: queueItem,
     })
       .then(this._send.bind(this))
+      // when error run transmissionError middleware
+      .fail(({ res, req }) => constructor.runMiddleware('transmissionError', { type, req, res }))
+      .then(({ res, req }) => constructor.runMiddleware('receive', { type, req, res }))
       .then((res) => {
         subQueue.shift();
         if (subQueue.length > 0) {
@@ -78,29 +83,64 @@ export default class BaseTransporter {
     return this._pushOne(queue);
   }
 
-  _fetch() {
+  _runFetchWithMiddleware(type: string, prepareMethod: Function,
+    fetchMethod: Function, args: any[]) {
+    const preparedRequest = prepareMethod.apply(this, args);
+
+    // run send middleware
+    return constructor.runMiddleware('send', {
+      type,
+      req: preparedRequest,
+    })
+      .then(fetchMethod.bind(this))
+      // when error run transmissionError middleware
+      .fail(({ res, req }) => constructor.runMiddleware('transmissionError', { type, req, res }))
+      // run receive middleware
+      .then(({ res, req }) => constructor.runMiddleware('receive', { type, req, res }));
+  }
+
+  _shouldBeImplemented() {
     throw new Error('should be implemented by the transporter');
+  }
+
+  _prepareFetch() {
+    this._shouldBeImplemented();
+  }
+
+  _fetch() {
+    this._shouldBeImplemented();
   }
 
   fetch(...args: any[]) {
-    return this._fetch.apply(this, args);
+    return this._runFetchWithMiddleware('fetch', this._prepareFetch,
+      this._fetch, args);
+  }
+
+  _prepareFetchOne() {
+    this._shouldBeImplemented();
   }
 
   _fetchOne(/* id: number */) {
-    throw new Error('should be implemented by the transporter');
+    this._shouldBeImplemented();
   }
 
   fetchOne(...args: any[]) {
-    const arg = args[0];
-    return (isObject(arg)) ? this._fetchOne(arg.id) : this._fetchOne(arg);
+    args[0] = (isObject(args[0])) ? args[0].id : args[0];
+    return this._runFetchWithMiddleware('fetchOne', this._prepareFetchOne,
+      this._fetchOne, args);
+  }
+
+  _prepareInitialFetch() {
+    this._shouldBeImplemented();
   }
 
   _initialFetch() {
-    throw new Error('should be implemented by the transporter');
+    this._shouldBeImplemented();
   }
 
   initialFetch(...args: any[]) {
-    return this._initialFetch.apply(this, args);
+    return this._runFetchWithMiddleware('initialFetch', this._prepareInitialFetch,
+      this._initialFetch, args);
   }
 
   static add(mw) {
