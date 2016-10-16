@@ -12,19 +12,26 @@ export default class BaseTransporter {
     this._queues = new PushQueue();
   }
 
+  _addToQueue(queueItem: PushQueueItem) {
+    const queue = this._queues.getQueue(queueItem.__id);
+    return constructor.runMiddleware('addItemToQueue', {
+      queueItem, queue,
+    }).then(() => this._pushOne(queue));
+  }
+
   create(item: Object) {
     PushQueue.createItem('create', item);
-    this.pushOne(item.__id);
+    return this._addToQueue(item);
   }
 
   update(item: Object) {
     PushQueue.createItem('update', item);
-    this.pushOne(item.__id);
+    return this._addToQueue(item);
   }
 
   delete(item: Object) {
     PushQueue.createItem('delete', item);
-    this.pushOne(item.__id);
+    return this._addToQueue(item);
   }
 
   push() {

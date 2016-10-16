@@ -4,14 +4,12 @@ import _ from 'lodash';
 export default class TransporterMiddleware {
   // init() {}
   // addItemToQueue(queueItem, queue) {}
-  // updateQueueAfterReceive(queueItem, originalItem, queue) {}
   // send(req, item) {}
   // receive(res, req, item) {}
   // transmissionError(res?, req, item) {}
 
   static methods = [
     'addItemToQueue',
-    'updateQueueAfterReceive',
     'send',
     'receive',
     'transmissionError',
