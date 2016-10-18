@@ -20,18 +20,15 @@ export default class BaseTransporter {
   }
 
   create(item: Object) {
-    PushQueue.createItem('create', item);
-    return this._addToQueue(item);
+    return this._addToQueue(PushQueue.createItem('create', item));
   }
 
   update(item: Object) {
-    PushQueue.createItem('update', item);
-    return this._addToQueue(item);
+    return this._addToQueue(PushQueue.createItem('update', item));
   }
 
   delete(item: Object) {
-    PushQueue.createItem('delete', item);
-    return this._addToQueue(item);
+    return this._addToQueue(PushQueue.createItem('delete', item));
   }
 
   push() {
