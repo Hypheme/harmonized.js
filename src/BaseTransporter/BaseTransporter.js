@@ -14,7 +14,7 @@ export default class BaseTransporter {
 
   _addToQueue(queueItem: PushQueueItem) {
     const queue = this._queues.getQueue(queueItem.__id);
-    return constructor.runMiddleware('addItemToQueue', {
+    return this.constructor.runMiddleware('addItemToQueue', {
       queueItem, queue,
     }).then(() => this._pushOne(queue));
   }
@@ -49,23 +49,23 @@ export default class BaseTransporter {
     const type = 'push';
     const queueItem = queue[0];
     queueItem.inProgress = true;
-    const preparedSendRequest = this._prepareSend(queue[0]);
+    const preparedSendRequest = this._prepareSend(queueItem);
 
     // run send middleware then send and afterwards work off the queue
-    const promise = queueItem.promise = constructor.runMiddleware('send', {
+    const promise = queueItem.promise = this.constructor.runMiddleware('send', {
       type,
       req: preparedSendRequest,
       item: queueItem,
     })
       .then(this._send.bind(this))
       // when error run transmissionError middleware
-      .fail(({ res, req }) => constructor.runMiddleware('transmissionError', {
+      .catch(({ res, req }) => this.constructor.runMiddleware('transmissionError', {
         type, req, res, queue,
       }))
-      .then(({ res, req }) => constructor.runMiddleware('receive', {
+      .then(({ res, req }) => this.constructor.runMiddleware('receive', {
         type, req, res, queue,
       }))
-      .then((res) => {
+      .then(({ res }) => {
         queue.shift();
         if (queue.length > 0) {
           return this._sendCurrentQueueItem(queue);
@@ -96,15 +96,15 @@ export default class BaseTransporter {
     const preparedRequest = prepareMethod.apply(this, args);
 
     // run send middleware
-    return constructor.runMiddleware('send', {
+    return this.constructor.runMiddleware('send', {
       type,
       req: preparedRequest,
     })
       .then(fetchMethod.bind(this))
       // when error run transmissionError middleware
-      .fail(({ res, req }) => constructor.runMiddleware('transmissionError', { type, req, res }))
+      .catch(({ res, req }) => this.constructor.runMiddleware('transmissionError', { type, req, res }))
       // run receive middleware
-      .then(({ res, req }) => constructor.runMiddleware('receive', { type, req, res }));
+      .then(({ res, req }) => this.constructor.runMiddleware('receive', { type, req, res }));
   }
 
   _shouldBeImplemented() {
