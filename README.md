@@ -267,3 +267,7 @@ Fetches only a specific item.
 Is called when the application is started. This can do nothing when your implementation doesn't need/does initial fetching.
 
 ### TODO harmonized promises
+
+# Hack Harmonized
+
+When you want to contribute to the harmonized ecosystem by creating own Transporters, ClientStorages or middleware for those, then have a look in our [wiki](wiki)
