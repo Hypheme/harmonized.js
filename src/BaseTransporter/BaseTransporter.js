@@ -1,5 +1,4 @@
 // @flow
-import isObject from 'lodash';
 import PushQueue from './PushQueue';
 import PushQueueItem from './PushQueueItem';
 import TransporterMiddleware from '../TransporterMiddleware/TransporterMiddleware';
@@ -59,9 +58,11 @@ export default class BaseTransporter {
     })
       .then(this._send.bind(this))
       // when error run transmissionError middleware
-      .catch(({ res, req }) => this.constructor.runMiddleware('transmissionError', {
-        type, req, res, queue,
-      }))
+      .catch(({ res, req, error }) => {
+        return this.constructor.runMiddleware('transmissionError', {
+          type, req, res, error, queue,
+        }).then(() => Promise.reject({ res, req, error }));
+      })
       .then(({ res, req }) => this.constructor.runMiddleware('receive', {
         type, req, res, queue,
       }))
@@ -102,7 +103,10 @@ export default class BaseTransporter {
     })
       .then(fetchMethod.bind(this))
       // when error run transmissionError middleware
-      .catch(({ res, req }) => this.constructor.runMiddleware('transmissionError', { type, req, res }))
+      .catch(({ res, req, error }) => {
+        return this.constructor.runMiddleware('transmissionError', { type, req, res, error })
+          .then(() => Promise.reject({ res, req, error }));
+      })
       // run receive middleware
       .then(({ res, req }) => this.constructor.runMiddleware('receive', { type, req, res }));
   }
@@ -133,7 +137,6 @@ export default class BaseTransporter {
   }
 
   fetchOne(...args: any[]) {
-    args[0] = (isObject(args[0])) ? args[0].id : args[0];
     return this._runFetchWithMiddleware('fetchOne', this._prepareFetchOne,
       this._fetchOne, args);
   }

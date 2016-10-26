@@ -46,7 +46,7 @@
     "eslint-plugin-react": "^5.1.1",
     "express": "^4.13.4",
     "flow-bin": "^0.33.0",
-    "isparta-instrumenter-loader": "^1.0.0",
+    "isparta-loader": "^2.0.0",
     "jasmine-core": "^2.4.1",
     "json-loader": "^0.5.4",
     "karma": "^0.13.22",
