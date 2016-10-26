@@ -270,4 +270,4 @@ Is called when the application is started. This can do nothing when your impleme
 
 # Hack Harmonized
 
-When you want to contribute to the harmonized ecosystem by creating own Transporters, ClientStorages or middleware for those, then have a look in our [wiki](wiki)
+When you want to contribute to the harmonized ecosystem by creating own Transporters, ClientStorages or middleware for those, then have a look in our [wiki](https://github.com/Hypheme/harmonized.js/wiki)
