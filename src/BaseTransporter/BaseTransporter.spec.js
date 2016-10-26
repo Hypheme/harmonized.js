@@ -13,7 +13,7 @@ class TestTransporter extends BaseTransporter {
   _initialFetch = jasmine.createSpy('_initialfetch');
 }
 
-describe('BaseTransporter', function () {
+fdescribe('BaseTransporter', function () {
   beforeEach(function () {
     this.testTransporter = new TestTransporter();
     expect(this.testTransporter._queues instanceof PushQueue).toBe(true);
@@ -37,6 +37,78 @@ describe('BaseTransporter', function () {
     expect(TestTransporter.middleware).toEqual([]);
     TestTransporter.add('super awesome middleware');
     expect(TestTransporter.middleware).toEqual(['super awesome middleware']);
+  });
+
+  it('should replace existing middleware', function () {
+    expect(TestTransporter.middleware).toEqual([]);
+    TestTransporter.add({
+      name: 'theOtherMiddleware',
+    });
+    TestTransporter.add({
+      name: 'superAwesomeMiddleware',
+    });
+    TestTransporter.add({
+      name: 'theLastMiddleware',
+    });
+
+    expect(TestTransporter.middleware).toEqual([{
+      name: 'theOtherMiddleware',
+    }, {
+      name: 'superAwesomeMiddleware',
+    }, {
+      name: 'theLastMiddleware',
+    }]);
+
+    TestTransporter.add({
+      name: 'theNewReplacementMiddleware',
+      replaces: 'superAwesomeMiddleware',
+    });
+
+    expect(TestTransporter.middleware).toEqual([{
+      name: 'theOtherMiddleware',
+    }, {
+      name: 'theNewReplacementMiddleware',
+      replaces: 'superAwesomeMiddleware',
+    }, {
+      name: 'theLastMiddleware',
+    }]);
+  });
+
+  it('should fail to replace non existing middleware', function () {
+    expect(TestTransporter.middleware).toEqual([]);
+    TestTransporter.add({
+      name: 'theOtherMiddleware',
+    });
+    TestTransporter.add({
+      name: 'superAwesomeMiddleware',
+    });
+    TestTransporter.add({
+      name: 'theLastMiddleware',
+    });
+
+    expect(TestTransporter.middleware).toEqual([{
+      name: 'theOtherMiddleware',
+    }, {
+      name: 'superAwesomeMiddleware',
+    }, {
+      name: 'theLastMiddleware',
+    }]);
+
+    expect(() => {
+      TestTransporter.add({
+        name: 'theNewReplacementMiddleware',
+        replaces: 'notExistingMiddleware',
+      });
+    }).toThrowError('The middleware "notExistingMiddleware" could not be replaced because it can\'t be found');
+
+
+    expect(TestTransporter.middleware).toEqual([{
+      name: 'theOtherMiddleware',
+    }, {
+      name: 'superAwesomeMiddleware',
+    }, {
+      name: 'theLastMiddleware',
+    }]);
   });
 
   it('should have extended classes with own middleware', function () {
