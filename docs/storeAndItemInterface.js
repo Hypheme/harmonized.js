@@ -84,20 +84,21 @@ const anItemKeys = [
 
     // This is the definition to a relation to a seperate store inside the item
     // (1-1 relation)
-  {
-    name: 'steeringwheel',
-    key: 'steeringwheelId',
-    _key: '_steeringwheelId',
-    store: SteeringWheelStoreClass,
-  },
-
-    // (1-n relation)
-    [{
-      name: 'wheels',
-      key: 'wheels',
-      _key: 'wheels',
-      store: WheelStoreClass,
-    }],
+    // NOT IMPLEMENTED YET
+  // {
+  //   name: 'steeringwheel',
+  //   key: 'steeringwheelId',
+  //   _key: '_steeringwheelId',
+  //   store: SteeringWheelStoreClass,
+  // },
+  //
+  //   // (1-n relation)
+  //   [{
+  //     name: 'wheels',
+  //     key: 'wheels',
+  //     _key: 'wheels',
+  //     store: WheelStoreClass,
+  //   }],
 
 ];
 class AnItem extends Item {
@@ -119,7 +120,7 @@ let rawItemData = {
   },
 };
 let item = new AnItem(rawItemData, {
-  store: store,
+  store,
   source: 'transporter',
 });
 // from client storage
@@ -159,7 +160,7 @@ rawItemData = {
   },
 };
 item = new AnItem(rawItemData, {
-  store: store,
+  store,
   source: 'clientStorage',
 });
 

@@ -1,79 +1,103 @@
+
 import Item from './Item';
 import Store from '../test/unit/helpers/Test.Store';
 import Transporter from '../test/unit/helpers/Test.Transporter';
 import LocalStorage from '../test/unit/helpers/Test.LocalStorage';
 
 import * as _ from 'lodash';
-import { observable } from 'mobx';
+import {
+  observable,
+} from 'mobx';
+
+// COPIED FROM ITEM
+const STATE = {
+  // fixed states
+  LOCKED: -2, // this state is needed to prevent multiple delete actions from happening
+  DELETED: -1, // end of an item lifetime
+  EXISTENT: 0, // the item exists and everything is in sync
+  // actions (result in state changes)
+  BEING_CREATED: 1, // the item is being created -> results in state 0
+  BEING_UPDATED: 2, // the item is being updated -> results in state 0
+  BEING_DELETED: 3, // the item is being deleted -> results in state -1/(-2)
+};
 
 describe('Item', function () {
-  describe('constructor', function () {
-    let TestItem;
+  // Core data. No test should alter this. Use stubs for your test logic
+  class ForeingStore extends Store {}
+  const foreignStore = new ForeingStore();
+  const foreignItem = { foreign: 'item' };
+  const InternalStore = class InternalStore extends Store {};
+  const internalStoreInstance = new InternalStore();
+  const testStore = new(class TestStore extends Store {})();
+  const TestItem = class TestItem extends Item {};
+  TestItem.keys = [
+    'name', {
+      name: 'id',
+      primary: true,
+      key: 'id',
+      _key: '_id',
+    }, {
+      name: 'foreignEntry',
+      key: 'foreignId',
+      _key: '_foreignId',
+      store: foreignStore,
+      storeKey: 'id',
+      _storeKey: '_id',
+    },
+    // TODO
+    // [{
+    //   name: 'internalEntry',
+    //   key: 'internalId',
+    //   _key: '_internalId',
+    //   store: this.InternalStore,
+    // }],
+  ];
 
-    beforeEach(function () {
-      TestItem = class SomeItem extends Item {
-        get keys() {
-          return ['content'];
-        }
-      };
-      spyOn(TestItem.prototype, '_stateHandler');
-    });
-
-    it('should store the given store in _store', function () {
-      const testItem = new TestItem('myStore');
-      expect(testItem._store).toBe('myStore');
-    });
-
-    it('should store the given values if they are in keys', function () {
-      const testItem = new TestItem('myStore', { content: 'my content', to: 'much' });
-      expect(testItem.content).toBe('my content');
-      expect(testItem.to).toBe(undefined);
-    });
-
-    it('should always store _id, id and _syncState', function () {
-      const testItem = new TestItem('myStore', {
-        _id: 'localId',
-        id: 'transporterId',
-        _syncState: 1,
-      });
-      expect(testItem._id).toBe('localId');
-      expect(testItem.id).toBe('transporterId');
-      expect(testItem._syncState).toBe(1);
-    });
-
-    it('should set _storeState to 1 if _id is given', function () {
-      const testItem = new TestItem('myStore', {
-        _id: 'localId',
-      });
-      expect(testItem._storeState).toBe(0);
-    });
-
-    it('should set _storeState to 0 if _id is given', function () {
-      const testItem = new TestItem('myStore');
-      expect(testItem._storeState).toBe(1);
-    });
-
-    it('should create a autorun stateHandler and store it as dispose', function () {
-      const testItem = new TestItem('myStore');
-      expect(typeof testItem.dispose).toBe('function');
-      expect(testItem._stateHandler).toHaveBeenCalledTimes(1);
-    });
-
-    it('should convert _syncState of -2 to 3', function () {
-      const testItem = new TestItem('myStore', { _syncState: -2 });
-      expect(testItem._syncState).toBe(3);
-    });
+  beforeEach(function () {
+    // TODO mock things
   });
 
-  describe('public', function () {
+  describe('constructor', function () {
+    beforeEach(function () {
+      spyOn(TestItem.prototype, '_synchronize')
+        .and.returnValue(Promise.resolve());
+    });
+    it('should create item from state', function () {
+      const myItem = new TestItem({
+        name: 'hans',
+        foreignEntry: foreignItem, // relation by reference
+      }, {
+        source: 'state',
+        autoSave: true,
+        store: testStore,
+      });
+      expect(myItem.__id).toBeDefined();
+      expect(myItem._syncState).toEqual(1);
+      expect(myItem._storeState).toEqual(1);
+      expect(myItem.autoSave).toEqual(true);
+      expect(myItem._store).toEqual(testStore);
+      expect(myItem.name).toEqual('hans');
+      expect(myItem.foreignEntry).toEqual(foreignItem);
+      expect(myItem._synchronize).toHaveBeenCalled();
+    });
+    it('should create item from client storage');
+    it('should create item from transporter');
+  });
+
+  xdescribe('public', function () {
     beforeEach(function () {
       class TestItem extends Item {
         @observable content;
         @observable title;
         get keys() {
-          return this._keys ||
-            [{ key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
-            'content', 'title'];
+          return this._keys || [{
+            key: 'id',
+            primary: true,
+            relationKey: 'id',
+            _relationKey: '_id',
+          },
+            'content', 'title',
+          ];
         }
         set keys(k) {
           this._keys = k;
@@ -88,28 +112,50 @@ describe('Item', function () {
         .and.returnValue(new Promise((resolve) => {
           resolve('_synchronize');
         }));
-      this.store = new Store({ Item: TestItem, Transporter, LocalStorage });
+      this.store = new Store({
+        Item: TestItem,
+        Transporter,
+        LocalStorage,
+      });
       this.item = new TestItem(this.store, {
         content: 'my content',
         title: 'a title',
         _id: 'localId',
         id: 'serverId',
-        _syncState: 0 });
+        _syncState: 0,
+      });
     });
 
     describe('getLocalStorageKey', function () {
       beforeEach(function () {
         this.item.foreignKey = new this.TestItem({}, {});
-        this.item.keys = ['content',
-        { key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
-        { key: 'foreignKey', primary: true, relationKey: 'foreignKeyId',
-          _relationKey: '_foreignKeyId', storeKey: 'id', _storeKey: '_id', store: 'keys' },
-          { key: 'anotherForeignKey', relationKey: 'anotherForeignKeyId',
-            _relationKey: '_anotherForeignKeyId', storeKey: 'id', _storeKey: '_id', store: 'keys' },
-        ];
-        this.item.foreignKey.keys = [
-          { key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
-        ];
+        this.item.keys = ['content', {
+          key: 'id',
+          primary: true,
+          relationKey: 'id',
+          _relationKey: '_id',
+        }, {
+          key: 'foreignKey',
+          primary: true,
+          relationKey: 'foreignKeyId',
+          _relationKey: '_foreignKeyId',
+          storeKey: 'id',
+          _storeKey: '_id',
+          store: 'keys',
+        }, {
+          key: 'anotherForeignKey',
+          relationKey: 'anotherForeignKeyId',
+          _relationKey: '_anotherForeignKeyId',
+          storeKey: 'id',
+          _storeKey: '_id',
+          store: 'keys',
+        }];
+        this.item.foreignKey.keys = [{
+          key: 'id',
+          primary: true,
+          relationKey: 'id',
+          _relationKey: '_id',
+        }];
         spyOn(this.item, '_waitFor').and.returnValue(new Promise(resolve => {
           this.item._id = 'item id';
           setTimeout(resolve, 1);
@@ -122,7 +168,10 @@ describe('Item', function () {
       it('should return _keys as soon as all _keys are available', function (done) {
         this.item.getLocalStorageKey()
           .then(key => {
-            expect(key).toEqual({ _id: 'item id', _foreignKeyId: 'foreign id' });
+            expect(key).toEqual({
+              _id: 'item id',
+              _foreignKeyId: 'foreign id',
+            });
             done();
           });
       });
@@ -131,16 +180,33 @@ describe('Item', function () {
     describe('getTransporterKey', function () {
       beforeEach(function () {
         this.item.foreignKey = new this.TestItem({}, {});
-        this.item.keys = ['content',
-        { key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
-        { key: 'foreignKey', primary: true, relationKey: 'foreignKeyId',
-          _relationKey: '_foreignKeyId', storeKey: 'id', _storeKey: '_id', store: 'keys' },
-          { key: 'anotherForeignKey', relationKey: 'anotherForeignKeyId',
-            _relationKey: '_anotherForeignKeyId', storeKey: 'id', _storeKey: '_id', store: 'keys' },
-        ];
-        this.item.foreignKey.keys = [
-          { key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
-        ];
+        this.item.keys = ['content', {
+          key: 'id',
+          primary: true,
+          relationKey: 'id',
+          _relationKey: '_id',
+        }, {
+          key: 'foreignKey',
+          primary: true,
+          relationKey: 'foreignKeyId',
+          _relationKey: '_foreignKeyId',
+          storeKey: 'id',
+          _storeKey: '_id',
+          store: 'keys',
+        }, {
+          key: 'anotherForeignKey',
+          relationKey: 'anotherForeignKeyId',
+          _relationKey: '_anotherForeignKeyId',
+          storeKey: 'id',
+          _storeKey: '_id',
+          store: 'keys',
+        }, ];
+        this.item.foreignKey.keys = [{
+          key: 'id',
+          primary: true,
+          relationKey: 'id',
+          _relationKey: '_id',
+        }, ];
         spyOn(this.item, '_waitFor').and.returnValue(new Promise(resolve => {
           this.item.id = 'item id';
           resolve();
@@ -153,7 +219,10 @@ describe('Item', function () {
       it('should return keys as soon as all keys are available', function (done) {
         this.item.getTransporterKey()
           .then(key => {
-            expect(key).toEqual({ id: 'item id', foreignKeyId: 'foreign id' });
+            expect(key).toEqual({
+              id: 'item id',
+              foreignKeyId: 'foreign id',
+            });
             done();
           });
       });
@@ -433,50 +502,74 @@ describe('Item', function () {
           set keys(k) {
             this._keys = k;
           }
-          // _stateHandler() {
-          //   return {
-          //     title: this.title,
-          //     content: this.content,
-          //   };
-          // }
+            // _stateHandler() {
+            //   return {
+            //     title: this.title,
+            //     content: this.content,
+            //   };
+            // }
         }
         class Author extends Item {
 
           get keys() {
-            return [{ primary: true, _relationKey: '_id', relationKey: 'id' }];
+            return [{
+              primary: true,
+              _relationKey: '_id',
+              relationKey: 'id',
+            }];
           }
-          _stateHandler() {
-          }
+          _stateHandler() {}
         }
         this.Author = Author;
         spyOn(TestItem.prototype, '_stateHandler').and.callThrough();
         spyOn(TestItem.prototype, '_synchronize')
           .and.returnValue(Promise.resolve('_synchronize'));
-        this.store = new Store({ Item: TestItem, Transporter, LocalStorage });
+        this.store = new Store({
+          Item: TestItem,
+          Transporter,
+          LocalStorage,
+        });
         this.store.stores.authors = this.store;
         this.item = new TestItem(this.store, {
           content: 'my content',
           title: 'a title',
           _id: 'localId',
           id: 'serverId',
-          _syncState: 0 });
+          _syncState: 0,
+        });
         this.item._synchronize.calls.reset(); // we reset after constructor
         this.author = new Author(this.store, {
           _id: '_authorId',
           id: 'authorId',
-          _syncState: 0 });
+          _syncState: 0,
+        });
         this.anotherAuthor = new Author(this.store, {
           _id: '_anotherAuthorId',
           id: 'anotherAuthorId',
-          _syncState: 0 });
+          _syncState: 0,
+        });
         this.item.author = this.author;
         this.item.anotherAuthor = this.anotherAuthor;
-        this.item.keys = ['content', 'title',
-          { primary: true, key: 'id', relationKey: 'id', _relationKey: '_id' },
-          { key: 'author', store: 'authors', storeKey: 'id', _storeKey: '_id',
-            relationKey: 'authorId', _relationKey: '_authorId' },
-          { key: 'anotherAuthor', store: 'authors', storeKey: 'id', _storeKey: '_id',
-            relationKey: 'anotherAuthorId', _relationKey: '_anotherAuthorId' }];
+        this.item.keys = ['content', 'title', {
+          primary: true,
+          key: 'id',
+          relationKey: 'id',
+          _relationKey: '_id',
+        }, {
+          key: 'author',
+          store: 'authors',
+          storeKey: 'id',
+          _storeKey: '_id',
+          relationKey: 'authorId',
+          _relationKey: '_authorId',
+        }, {
+          key: 'anotherAuthor',
+          store: 'authors',
+          storeKey: 'id',
+          _storeKey: '_id',
+          relationKey: 'anotherAuthorId',
+          _relationKey: '_anotherAuthorId',
+        }];
       });
 
       describe('fromRawItem', function () {
@@ -488,14 +581,20 @@ describe('Item', function () {
           spyOn(this.item, '_fromOutside').and.returnValue(Promise.resolve('_fromOutside'));
         });
         it('should call _fromOutside with prefix "_"', function (done) {
-          this.item.fromLocalStorage({ _syncState: 'syncState' })
+          this.item.fromLocalStorage({
+            _syncState: 'syncState',
+          })
             .then(() => {
-              expect(this.item._fromOutside).toHaveBeenCalledWith({ _syncState: 'syncState' }, '_');
+              expect(this.item._fromOutside).toHaveBeenCalledWith({
+                _syncState: 'syncState',
+              }, '_');
               done();
             });
         });
         it('should call synchronize to push to transporter', function (done) {
-          this.item.fromLocalStorage({ _syncState: 'syncState' })
+          this.item.fromLocalStorage({
+            _syncState: 'syncState',
+          })
             .then(() => {
               expect(this.item._synchronize).toHaveBeenCalledWith(undefined, 'syncState');
               done();
@@ -639,33 +738,34 @@ describe('Item', function () {
 
       describe('toTransporter', function () {
         it('should get all entries of keys stored in keys',
-         function (done) {
-           spyOn(this.item.author, 'getTransporterKey')
-            .and.returnValue(Promise.resolve());
-           spyOn(this.item.anotherAuthor, 'getTransporterKey')
-            .and.returnValue(Promise.resolve());
-           this.item.toTransporter().then(result => {
-             expect(result).toEqual({
-               content: 'my content',
-               title: 'a title',
-               id: 'serverId',
-               authorId: 'authorId',
-               anotherAuthorId: 'anotherAuthorId',
-             });
-             done();
-           });
-         });
+          function (done) {
+            spyOn(this.item.author, 'getTransporterKey')
+              .and.returnValue(Promise.resolve());
+            spyOn(this.item.anotherAuthor, 'getTransporterKey')
+              .and.returnValue(Promise.resolve());
+            this.item.toTransporter().then(result => {
+              expect(result).toEqual({
+                content: 'my content',
+                title: 'a title',
+                id: 'serverId',
+                authorId: 'authorId',
+                anotherAuthorId: 'anotherAuthorId',
+              });
+              done();
+            });
+          });
         it('should call itself again if items change while waiting',
           function (done) {
             this.aThirdAuthor = new this.Author(this.store, {
               id: 'thirdAuthorId',
-              _syncState: 0 });
+              _syncState: 0,
+            });
             spyOn(this.aThirdAuthor, 'getTransporterKey')
-             .and.returnValue(Promise.resolve());
+              .and.returnValue(Promise.resolve());
             spyOn(this.item.author, 'getTransporterKey')
-             .and.returnValue(Promise.resolve());
+              .and.returnValue(Promise.resolve());
             spyOn(this.item.anotherAuthor, 'getTransporterKey')
-             .and.returnValue(Promise.resolve());
+              .and.returnValue(Promise.resolve());
             this.item.toTransporter().then(result => {
               expect(result).toEqual({
                 content: 'my content',
@@ -684,37 +784,38 @@ describe('Item', function () {
 
       describe('toLocalStorage', function () {
         it('should get _syncState and all entries of keys stored in keys',
-         function (done) {
-           spyOn(this.item.author, 'getLocalStorageKey')
-            .and.returnValue(Promise.resolve());
-           spyOn(this.item.anotherAuthor, 'getLocalStorageKey')
-            .and.returnValue(Promise.resolve());
-           this.item.toLocalStorage().then(result => {
-             expect(result).toEqual({
-               content: 'my content',
-               title: 'a title',
-               id: 'serverId',
-               _id: 'localId',
-               _syncState: 0,
-               authorId: 'authorId',
-               _authorId: '_authorId',
-               anotherAuthorId: 'anotherAuthorId',
-               _anotherAuthorId: '_anotherAuthorId',
-             });
-             done();
-           });
-         });
+          function (done) {
+            spyOn(this.item.author, 'getLocalStorageKey')
+              .and.returnValue(Promise.resolve());
+            spyOn(this.item.anotherAuthor, 'getLocalStorageKey')
+              .and.returnValue(Promise.resolve());
+            this.item.toLocalStorage().then(result => {
+              expect(result).toEqual({
+                content: 'my content',
+                title: 'a title',
+                id: 'serverId',
+                _id: 'localId',
+                _syncState: 0,
+                authorId: 'authorId',
+                _authorId: '_authorId',
+                anotherAuthorId: 'anotherAuthorId',
+                _anotherAuthorId: '_anotherAuthorId',
+              });
+              done();
+            });
+          });
         it('should call itself again if items change while waiting',
           function (done) {
             this.aThirdAuthor = new this.Author(this.store, {
               _id: '_thirdAuthorId',
-              _syncState: 0 });
+              _syncState: 0,
+            });
             spyOn(this.aThirdAuthor, 'getLocalStorageKey')
-             .and.returnValue(Promise.resolve());
+              .and.returnValue(Promise.resolve());
             spyOn(this.item.author, 'getLocalStorageKey')
-             .and.returnValue(Promise.resolve());
+              .and.returnValue(Promise.resolve());
             spyOn(this.item.anotherAuthor, 'getLocalStorageKey')
-             .and.returnValue(Promise.resolve());
+              .and.returnValue(Promise.resolve());
             this.item.toLocalStorage().then(result => {
               expect(result).toEqual({
                 content: 'my content',
@@ -737,7 +838,7 @@ describe('Item', function () {
     });
   });
 
-  describe('privates', function () {
+  xdescribe('privates', function () {
     beforeEach(function () {
       const propertySpy = jasmine.createSpy('propertySpy');
       this.propertySpy = propertySpy;
@@ -745,9 +846,14 @@ describe('Item', function () {
         @observable content;
         @observable title;
         get keys() {
-          return this._keys ||
-            [{ key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
-            'content', 'title'];
+          return this._keys || [{
+            key: 'id',
+            primary: true,
+            relationKey: 'id',
+            _relationKey: '_id',
+          },
+            'content', 'title',
+          ];
         }
         set keys(k) {
           this._keys = k;
@@ -761,13 +867,18 @@ describe('Item', function () {
       spyOn(TestItem.prototype, '_setStoreState').and.callThrough();
       spyOn(TestItem.prototype, '_stateHandler');
       this.TestItem = TestItem;
-      this.store = new Store({ Item: TestItem, Transporter, LocalStorage });
+      this.store = new Store({
+        Item: TestItem,
+        Transporter,
+        LocalStorage,
+      });
       this.item = new TestItem(this.store, {
         content: 'my content',
         title: 'a title',
         _id: 'localId',
         id: 'serverId',
-        _syncState: 1 });
+        _syncState: 1,
+      });
       // we dont want constructor related getters/setters to interfere
       propertySpy.calls.reset();
     });
@@ -783,9 +894,13 @@ describe('Item', function () {
           this.item._id = undefined;
           this.item._storeState = 1;
           spyOn(this.store.localStorage, 'create')
-            .and.returnValue(Promise.resolve({ localStorage: 'response' }));
+            .and.returnValue(Promise.resolve({
+              localStorage: 'response',
+            }));
           spyOn(this.item, 'toLocalStorage')
-            .and.returnValue(Promise.resolve({ some: 'data' }));
+            .and.returnValue(Promise.resolve({
+              some: 'data',
+            }));
           spyOn(this.item, '_setPrimaryKey');
         });
         it('should wrap async task in _transaction', function (done) {
@@ -796,7 +911,9 @@ describe('Item', function () {
         });
         it('should save the returned _id in item', function (done) {
           this.item._localStorageCreate().then(() => {
-            expect(this.item._setPrimaryKey).toHaveBeenCalledWith({ localStorage: 'response' });
+            expect(this.item._setPrimaryKey).toHaveBeenCalledWith({
+              localStorage: 'response',
+            });
             done();
           });
         });
@@ -820,7 +937,9 @@ describe('Item', function () {
             // it still failed, so we dont reset the store state
             expect(this.item._storeState).toBe(1);
             // as this should be part of the transaction, it must still have happenend
-            expect(this.item._setPrimaryKey).toHaveBeenCalledWith({ localStorage: 'response' });
+            expect(this.item._setPrimaryKey).toHaveBeenCalledWith({
+              localStorage: 'response',
+            });
             done();
           });
           this.item._transactionId = 'another transaction';
@@ -844,7 +963,9 @@ describe('Item', function () {
           spyOn(this.store.localStorage, 'save')
             .and.returnValue(Promise.resolve());
           spyOn(this.item, 'toLocalStorage')
-            .and.returnValue(Promise.resolve({ some: 'data' }));
+            .and.returnValue(Promise.resolve({
+              some: 'data',
+            }));
           spyOn(this.item, 'getLocalStorageKey')
             .and.callFake(() => {
               expect(this.item.toLocalStorage.calls.count()).toBe(0);
@@ -904,12 +1025,12 @@ describe('Item', function () {
           });
         });
         it('should wait for item to be created in storage before deleting it again',
-        function (done) {
-          this.item._localStorageRemove().then(() => {
-            expect(this.item.getLocalStorageKey).toHaveBeenCalled();
-            done();
+          function (done) {
+            this.item._localStorageRemove().then(() => {
+              expect(this.item.getLocalStorageKey).toHaveBeenCalled();
+              done();
+            });
           });
-        });
         it('should remove item in localStorage', function (done) {
           this.item._localStorageRemove().then(() => {
             expect(this.store.localStorage.remove).toHaveBeenCalled();
@@ -975,10 +1096,17 @@ describe('Item', function () {
             something: false,
           };
           class Test extends this.TestItem {
-            keys = [
-              { key: 'id', primary: true, relationKey: 'id', _relationKey: '_id' },
-              { key: 'foreign', store: 'foreign' },
-              'something'];
+            keys = [{
+              key: 'id',
+              primary: true,
+              relationKey: 'id',
+              _relationKey: '_id',
+            }, {
+              key: 'foreign',
+              store: 'foreign',
+            },
+              'something',
+            ];
 
             get id() {
               ends.id = true;
@@ -992,7 +1120,11 @@ describe('Item', function () {
           }
           const item = new Test({});
           item._stateHandlerTrigger();
-          expect(ends).toEqual({ id: false, foreign: true, something: true });
+          expect(ends).toEqual({
+            id: false,
+            foreign: true,
+            something: true,
+          });
         });
       });
       describe('_transporterCreate', function () {
@@ -1000,12 +1132,16 @@ describe('Item', function () {
           this.item.id = undefined;
           this.item._syncState = 1;
           spyOn(this.store.transporter, 'create')
-            .and.returnValue(Promise.resolve({ id: 'serverId' }));
+            .and.returnValue(Promise.resolve({
+              id: 'serverId',
+            }));
           spyOn(this.item, '_localStorageSave')
             .and.returnValue(Promise.resolve());
           spyOn(this.item, '_setPrimaryKey');
           spyOn(this.item, 'toTransporter')
-            .and.returnValue(Promise.resolve({ some: 'data' }));
+            .and.returnValue(Promise.resolve({
+              some: 'data',
+            }));
         });
         it('should wrap async tasks in _transaction', function (done) {
           this.item._transporterCreate().then(() => {
@@ -1015,22 +1151,30 @@ describe('Item', function () {
         });
         it('should create item and save serverId in item', function (done) {
           this.item._transporterCreate().then(() => {
-            expect(this.item._setPrimaryKey).toHaveBeenCalledWith({ id: 'serverId' });
+            expect(this.item._setPrimaryKey).toHaveBeenCalledWith({
+              id: 'serverId',
+            });
             expect(this.store.transporter.create).toHaveBeenCalled();
-            expect(this.store.transporter.create).toHaveBeenCalledWith({ some: 'data' });
+            expect(this.store.transporter.create).toHaveBeenCalledWith({
+              some: 'data',
+            });
             done();
           });
         });
         it('should create item and save serverId in item even if transaction fails',
-        function (done) {
-          this.item._transporterCreate().then(() => {
-            expect(this.item._setPrimaryKey).toHaveBeenCalledWith({ id: 'serverId' });
-            expect(this.store.transporter.create).toHaveBeenCalled();
-            expect(this.store.transporter.create).toHaveBeenCalledWith({ some: 'data' });
-            done();
+          function (done) {
+            this.item._transporterCreate().then(() => {
+              expect(this.item._setPrimaryKey).toHaveBeenCalledWith({
+                id: 'serverId',
+              });
+              expect(this.store.transporter.create).toHaveBeenCalled();
+              expect(this.store.transporter.create).toHaveBeenCalledWith({
+                some: 'data',
+              });
+              done();
+            });
+            this.item._transactionId = 'newer transaction';
           });
-          this.item._transactionId = 'newer transaction';
-        });
         it('should set _syncState to 0 and store it local if transaction passes', function (done) {
           this.item._transporterCreate().then(() => {
             expect(this.item._syncState).toBe(0);
@@ -1106,7 +1250,9 @@ describe('Item', function () {
         beforeEach(function () {
           this.item._syncState = 2;
           spyOn(this.item, 'toTransporter')
-            .and.returnValue(Promise.resolve({ some: 'data' }));
+            .and.returnValue(Promise.resolve({
+              some: 'data',
+            }));
           spyOn(this.store.transporter, 'save')
             .and.returnValue(Promise.resolve());
           spyOn(this.item, '_localStorageSave')
@@ -1143,7 +1289,9 @@ describe('Item', function () {
             expect(this.item.getTransporterKey).toHaveBeenCalled();
             expect(this.item.toTransporter).toHaveBeenCalled();
             expect(this.store.transporter.save).toHaveBeenCalled();
-            expect(this.store.transporter.save).toHaveBeenCalledWith({ some: 'data' });
+            expect(this.store.transporter.save).toHaveBeenCalledWith({
+              some: 'data',
+            });
             done();
           });
         });
@@ -1211,41 +1359,71 @@ describe('Item', function () {
         delete this.item.key3;
         delete this.item._key3;
         this.item.keys = [
-          'someKey',
-          { primary: true, key: 'key1', relationKey: 'key1Id', _relationKey: '_key1Id' },
-          { primary: true, key: 'key2', relationKey: 'key2Id', _relationKey: '_key2Id',
-            storeKey: 'id', store: 'key2s' },
-          { key: 'key3', relationKey: 'key3Id', _relationKey: '_key3Id',
-            storeKey: 'id', store: 'key3s' }];
+          'someKey', {
+            primary: true,
+            key: 'key1',
+            relationKey: 'key1Id',
+            _relationKey: '_key1Id',
+          }, {
+            primary: true,
+            key: 'key2',
+            relationKey: 'key2Id',
+            _relationKey: '_key2Id',
+            storeKey: 'id',
+            store: 'key2s',
+          }, {
+            key: 'key3',
+            relationKey: 'key3Id',
+            _relationKey: '_key3Id',
+            storeKey: 'id',
+            store: 'key3s',
+          },
+        ];
       });
       it('should set a local primary key if the key is undefined', function () {
-        this.item._setPrimaryKey({ _key1Id: 'k1' });
+        this.item._setPrimaryKey({
+          _key1Id: 'k1',
+        });
         expect(this.item._key1Id).toBe('k1');
       });
       it('should set a transporter primary key if the key is undefined', function () {
-        this.item._setPrimaryKey({ key1Id: 'k1' });
+        this.item._setPrimaryKey({
+          key1Id: 'k1',
+        });
         expect(this.item.key1Id).toBe('k1');
       });
       it('should not set a local primary key if the key is defined', function () {
         this.item._key1Id = 'old';
-        this.item._setPrimaryKey({ _key1Id: 'k1' });
+        this.item._setPrimaryKey({
+          _key1Id: 'k1',
+        });
         expect(this.item._key1Id).toBe('old');
       });
       it('should not set a transporter primary key if the key is defined', function () {
         this.item.key1Id = 'old';
-        this.item._setPrimaryKey({ key1Id: 'k1' });
+        this.item._setPrimaryKey({
+          key1Id: 'k1',
+        });
         expect(this.item.key1Id).toBe('old');
       });
       it('should not set foreign primary keys', function () {
-        this.item._setPrimaryKey({ key2Id: 'k2' });
+        this.item._setPrimaryKey({
+          key2Id: 'k2',
+        });
         expect(this.item.key2Id).toBe(undefined);
-        this.item._setPrimaryKey({ _key2Id: 'k2' });
+        this.item._setPrimaryKey({
+          _key2Id: 'k2',
+        });
         expect(this.item._key2Id).toBe(undefined);
       });
       it('should not set entries which arent defined as item.primary', function () {
-        this.item._setPrimaryKey({ key3Id: 'k3' });
+        this.item._setPrimaryKey({
+          key3Id: 'k3',
+        });
         expect(this.item.key3Id).toBe(undefined);
-        this.item._setPrimaryKey({ _key3Id: 'k3' });
+        this.item._setPrimaryKey({
+          _key3Id: 'k3',
+        });
         expect(this.item._key3Id).toBe(undefined);
       });
     });
@@ -1259,6 +1437,7 @@ describe('Item', function () {
       });
       it('should set stored to true if state is 0 or -1', function () {
         spyOn(this.item, '_getValidNewState').and.returnValues(0, -1);
+
         function test(item) {
           item._storeState = 0;
           item.stored = false;
@@ -1270,6 +1449,7 @@ describe('Item', function () {
       });
       it('should set stored to false if state is 1, 2, 3, -2', function () {
         spyOn(this.item, '_getValidNewState').and.returnValues(1, 2, 3, -2);
+
         function test(item) {
           item._storeState = 0;
           item.stored = true;
@@ -1292,6 +1472,7 @@ describe('Item', function () {
       });
       it('should set synced to true if state is 0 or -1', function () {
         spyOn(this.item, '_getValidNewState').and.returnValues(0, -1);
+
         function test(item) {
           item._syncState = 0;
           item.synced = false;
@@ -1303,6 +1484,7 @@ describe('Item', function () {
       });
       it('should set synced to false if state is 1, 2, 3, -2', function () {
         spyOn(this.item, '_getValidNewState').and.returnValues(1, 2, 3, -2);
+
         function test(item) {
           item._syncState = 0;
           item.synced = true;
@@ -1379,7 +1561,7 @@ describe('Item', function () {
           expect(this.item._synchronizeLocalStorage)
             .toHaveBeenCalledTimes(1);
           expect(this.item._synchronizeTransporter)
-              .toHaveBeenCalledTimes(1);
+            .toHaveBeenCalledTimes(1);
           done();
         });
       });
@@ -1513,6 +1695,7 @@ describe('Item', function () {
       });
       it('should reject if the current transactionId is not the generated one', function (done) {
         let ends = 0;
+
         function end() {
           if (++ends === 2) {
             done();
@@ -1575,7 +1758,7 @@ describe('Item', function () {
     });
   });
 
-  describe('interface methods', function () {
+  xdescribe('interface methods', function () {
     it('get keys should throw interface error', function () {
       expect(() => Item.prototype.keys)
         .toThrowError('ITEM_IMPLEMENTATION_ERROR: get keys is not implemented');

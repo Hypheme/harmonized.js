@@ -1,56 +1,62 @@
 import { observable, autorun, computed } from 'mobx';
 import uuid from 'uuid-v4';
 
+const STATE = {
+  // fixed states
+  LOCKED: -2, // this state is needed to prevent multiple delete actions from happening
+  DELETED: -1, // end of an item lifetime
+  EXISTENT: 0, // the item exists and everything is in sync
+  // actions (result in state changes)
+  BEING_CREATED: 1, // the item is being created -> results in state 0
+  BEING_UPDATED: 2, // the item is being updated -> results in state 0
+  BEING_DELETED: 3, // the item is being deleted -> results in state -1/(-2)
+};
+
 export default class Item {
-  autoSave = true;
+
+  constructor(values = {}, { store, source, autoSave }) {
+    this.autoSave = !(autoSave === false);
+    this._store = store;
+    let call = 0;
+    this._dispose = autorun(() => this._stateHandler(call++));
+    this._createRunTimeId();
+    switch (source) {
+      case 'transporter':
+        this._createFromTransporter(values);
+        break;
+      case 'clientStorage':
+        this._createFromClientStorage(values);
+        break;
+      default:
+        this._createFromState(values);
+        break;
+    }
+  }
+
+  // ///////////
+  // statics //
+  // ///////////
   @observable synced;
   @observable stored;
-  // TODO move this into autocompleteKeys or constuctor
-  @observable id;
-  @observable _id;
-
-  constructor(store, values = {}) {
-    this._store = store;
-    this._storeState = 0;
-    this._setStoreState(values._id === undefined ? 1 : 0);
-    values._syncState = values._syncState === undefined ? 1 : values._syncState;
-    if (values._syncState === -2) {
-      values._syncState = 3;
-    }
-    this._syncState = 0;
-    this._setSyncState(values._syncState);
-    let call = 0;
-    this.dispose = autorun(() => this._stateHandler(call++));
-  }
 
   // /////////////////////
   // INTERFACE METHODS //
   // /////////////////////
 
-  /**
-   * returns all keys of the raw item data
-   *  excluding id, _id and _synstatus
-   *
-   * example:
-   *  return ['title', 'content', 'relationId'];
-   *
-   * @return {array} item keys
-   */
-  get keys() {
-    throw new Error('ITEM_IMPLEMENTATION_ERROR: get keys is not implemented');
-  }
+  // use this.constructor.keys
+  static keys = undefined;
 
   // //////////////////
   // PUBLIC METHODS //
   // //////////////////
 
-  getLocalStorageKey() {
+  getClientStorageKey() {
     const promises = [];
     const result = {};
-    this.keys.forEach(key => {
+    this.constructor.keys.forEach(key => {
       if (key.primary === true) {
         if (key.store !== undefined) {
-          promises.push(this[key.key].getLocalStorageKey()
+          promises.push(this[key.key].getClientStorageKey()
             .then(returnedKey => {
               result[key._relationKey] = returnedKey[key._storeKey];
             }));
@@ -69,8 +75,8 @@ export default class Item {
   getTransporterKey() {
     const promises = [];
     const result = {};
-    for (let i = 0, len = this.keys.length; i < len; i++) {
-      const key = this.keys[i];
+    for (let i = 0, len = this.constructor.keys.length; i < len; i++) {
+      const key = this.constructor.keys[i];
       if (key.primary === true) {
         if (key.store !== undefined) {
           promises.push(this[key.key].getTransporterKey()
@@ -89,85 +95,17 @@ export default class Item {
       .then(() => result);
   }
 
-  enableAutoSaveAndSave() {
-    this.autoSave = true;
-    return this._synchronize(2, 2);
-  }
-
-  fetch() {
-    return this._store.transporter.fetch(this.toTransporter)
-      .then((fetchedData) => {
-        const autoSave = this.autoSave;
-        this.autoSave = false;
-        this.fromTransporter(fetchedData);
-        const promise = this._synchronize(2, 0);
-        this.autoSave = autoSave;
-        return promise;
-      });
-  }
-
-  // TODO fromRawItem
-  fromRawItem(item) {
-  }
-
-  fromTransporter(values) {
-    return this._fromOutside(values, '')
-      .then(() => this._synchronize(2));
-  }
-
-  // TODO fromLocalStorage
-  fromLocalStorage(values) {
-    return this._fromOutside(values, '_')
-      .then(() => this._synchronize(undefined, values._syncState));
-  }
-
-  remove() {
-    const autoSave = this.autoSave;
-    this.autoSave = false;
-    this._onDeleteTrigger();
-    const promise = this._synchronize(2, 3);
-    this.autoSave = autoSave;
-    return promise;
-  }
-
-  save(values) {
-    const autoSave = this.autoSave;
-    this.autoSave = true;
-    const promise = this.set(values);
-    this.autoSave = autoSave;
-    return promise;
-  }
-
-  saveLocal(values) {
-    const autoSave = this.autoSave;
-    const promise = this.set(values)
-      .then(() => this._synchronize(2, 0));
-    this.autoSave = autoSave;
-    return promise;
-  }
-
-  set(values) {
-    const autoSave = this.autoSave;
-    this.autoSave = false;
-    this._set(values, this.keys);
-    this.autoSave = autoSave;
-    if (this.autoSave) {
-      return this._synchronize(2, 2);
-    }
-    return new Promise((resolve) => resolve());
-  }
-
-  toLocalStorage() {
+  toClientStorage() {
     const result = {
       _syncState: this._syncState,
     };
     const promises = [];
-    this.keys.forEach(key => {
+    this.constructor.keys.forEach(key => {
       if (typeof key === 'string') {
         result[key] = this[key];
       } else {
         if (key.store !== undefined) {
-          promises.push(this._waitForForeignKey(key, 'getLocalStorageKey'));
+          promises.push(this._waitForForeignKey(key, 'getClientStorageKey'));
         } else {
           result[key._relationKey] = this[key._relationKey];
           result[key.relationKey] = this[key.relationKey];
@@ -180,7 +118,7 @@ export default class Item {
           const item = contexts[i].item;
           const key = contexts[i].key;
           if (item !== this[key.key]) { // something has changed in the meantime
-            return this.toLocalStorage();
+            return this.toClientStorage();
           }
           result[key._relationKey] = this[key.key][key._storeKey];
           result[key.relationKey] = this[key.key][key.storeKey];
@@ -192,7 +130,7 @@ export default class Item {
   toRawItem(ignoreRelations = false) {
     const result = {};
     const promises = [];
-    this.keys.forEach(key => {
+    this.constructor.keys.forEach(key => {
       if (typeof key === 'string') {
         result[key] = this[key];
       } else {
@@ -215,7 +153,7 @@ export default class Item {
   toTransporter() {
     const result = { };
     const promises = [];
-    this.keys.forEach(key => {
+    this.constructor.keys.forEach(key => {
       if (typeof key === 'string') {
         result[key] = this[key];
       } else {
@@ -245,28 +183,66 @@ export default class Item {
   // ///////////////////
 
   // _autocompleteKeys() {
-  //   const keys = this.keys;
+  //   const keys = this.constructor.keys;
   //   const result = [];
   //   for (let i = 0, len = keys.length; i < len; i++) {
   //     const actKey = keys[i];
   //     if (typeof actKey === 'object') {
   //       actKey.key = actKey.key || actKey.store;
   //       actKey.transporterKey = actKey.transporterKey || `${actKey.key}Id`;
-  //       actKey.localStorageKey = `_${actKey.transporterKey}`;
+  //       actKey.clientStorageKey = `_${actKey.transporterKey}`;
   //       // TODO add onDelete/onChange methods
   //     }
   //     result.push(actKey);
   //   }
-  //   this.keys = result;
+  //   this.constructor.keys = result;
   // }
 
+  _createRunTimeId() {
+    this.__id = uuid();
+  }
+
+  _createFromState(values) {
+    this._syncState = STATE.BEING_CREATED;
+    this.synced = false;
+    this._storeState = STATE.BEING_CREATED;
+    this.stored = false;
+    return this._fromState(values);
+  }
+
   _onDeleteTrigger() {}
+
+  _fromState(values) {
+    this.constructor.keys.forEach(key => {
+      if (typeof key === 'string') {
+        this[key] = values[key];
+      } else if (key.store === undefined) {
+        this._setPrimaryKey(values);
+        // TODO: internal relations
+      // } else if(typeof key.store === 'function') {
+      //   this[key.name] = new key.store(values[key.name]);
+      } else {
+        this[key.name] = values[key.name];
+      }
+    });
+    return this._synchronize(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
+  }
+
+  _fromTransporter(values) {
+    return this._fromOutside(values, '')
+      .then(() => this._synchronize(STATE.BEING_UPDATED));
+  }
+
+  _fromClientStorage(values) {
+    return this._fromOutside(values, '_')
+      .then(() => this._synchronize(undefined, values._syncState));
+  }
 
   _fromOutside(values, prefix = '') {
     const autoSave = this.autoSave;
     const promises = [];
     this.autoSave = false;
-    this.keys.forEach(key => {
+    this.constructor.keys.forEach(key => {
       if (typeof key === 'string') {
         this[key] = values[key];
       } else if (key.store === undefined) {
@@ -274,7 +250,8 @@ export default class Item {
       } else {
         const resolver = {};
         resolver[key[`${prefix}storeKey`]] = values[key[`${prefix}relationKey`]];
-        promises.push(this._store.stores[key.store].resolveAsync(resolver)
+        // TODO add internal stores to the mix (hurray)
+        promises.push(key.store.find(resolver)
           .then(item => {
             const asyncAutoSave = this.autoSave;
             this.autoSave = false;
@@ -289,30 +266,36 @@ export default class Item {
 
   _getValidNewState(current, newState) {
     switch (current) {
-      case -2:
-        return newState === -1 ? -1 : current;
-      case -1:
-        return -1;
-      case 0:
-        return newState === 2 || newState === 3 ? newState : current;
-      case 1:
-        return newState === 0 || newState === 2 || newState === 3 ? newState : current;
-      case 2:
-        return newState === 0 || newState === 3 ? newState : current;
-      case 3:
-        return newState === -1 ? -1 : -2;
+      case STATE.LOCKED:
+        return newState === STATE.DELETED ? STATE.DELETED : STATE.LOCKED;
+      case STATE.DELETED:
+        return STATE.DELETED;
+      case STATE.EXISTENT:
+        return newState === STATE.BEING_UPDATED || newState === STATE.BEING_DELETED ?
+          newState : current;
+      case STATE.BEING_CREATED:
+        return newState === STATE.EXISTENT ||
+          newState === STATE.BEING_UPDATED ||
+          newState === STATE.BEING_DELETED ?
+          newState : current;
+      case STATE.BEING_UPDATED:
+        return newState === STATE.EXISTENT || newState === STATE.BEING_DELETED ?
+          newState : current;
+      case STATE.BEING_DELETED:
+        return newState === STATE.DELETED ? STATE.DELETED : STATE.LOCKED;
       default:
         return current;
     }
   }
 
-  _localStorageCreate() {
+
+  _clientStorageCreate() {
     return this._transaction(() =>
-      this.toLocalStorage()
-        .then(content => this._store.localStorage.create(content))
+      this.toClientStorage()
+        .then(content => this._store.clientStorage.create(content))
         .then(response => this._setPrimaryKey(response)))
       .then(() => {
-        this._setStoreState(0);
+        this._setStoreState(STATE.EXISTENT);
       })
       .catch(err => {
         // we fullfil even if there is a later transaction because we always want
@@ -324,30 +307,30 @@ export default class Item {
       });
   }
 
-  _localStorageDelete() {
+  _clientStorageDelete() {
     return this._transaction(() => Promise.resolve())
-      .then(() => this.getLocalStorageKey())
-      .then(key => this._store.localStorage.delete(key))
-      .then(() => this._setStoreState(-1));
+      .then(() => this.getClientStorageKey())
+      .then(key => this._store.clientStorage.delete(key))
+      .then(() => this._setStoreState(STATE.DELETED));
   }
 
-  _localStorageRemove() {
-    return this._transaction(() => this.getLocalStorageKey()
-      .then(key => this._store.localStorage.remove(key))
-      .then(() => this._setStoreState(-1)));
+  _clientStorageRemove() {
+    return this._transaction(() => this.getClientStorageKey()
+      .then(key => this._store.clientStorage.remove(key))
+      .then(() => this._setStoreState(STATE.DELETED)));
   }
 
-  _localStorageSave() {
+  _clientStorageSave() {
     return this._transaction(() =>
-      this.getLocalStorageKey()
-        .then(() => this.toLocalStorage())
-        .then(content => this._store.localStorage.save(content)))
-      .then(() => this._setStoreState(0));
+      this.getClientStorageKey()
+        .then(() => this.toClientStorage())
+        .then(content => this._store.clientStorage.save(content)))
+      .then(() => this._setStoreState(STATE.EXISTENT));
   }
 
   _setPrimaryKey(givenKeys) {
-    for (let j = 0, lenj = this.keys.length; j < lenj; j++) {
-      const key = this.keys[j];
+    for (let j = 0, lenj = this.constructor.keys.length; j < lenj; j++) {
+      const key = this.constructor.keys[j];
       if (key.primary === true && key.store === undefined) {
         this[key.relationKey] = this[key.relationKey] || givenKeys[key.relationKey];
         this[key._relationKey] = this[key._relationKey] || givenKeys[key._relationKey];
@@ -357,7 +340,7 @@ export default class Item {
 
   _setStoreState(state) {
     this._storeState = this._getValidNewState(this._storeState, state);
-    if (this._storeState === 0 || this._storeState === -1) {
+    if (this._storeState === STATE.EXISTENT || this._storeState === STATE.DELTED) {
       this.stored = true;
     } else {
       this.stored = false;
@@ -366,7 +349,7 @@ export default class Item {
 
   _setSyncState(state) {
     this._syncState = this._getValidNewState(this._syncState, state);
-    if (this._syncState === 0 || this._syncState === -1) {
+    if (this._syncState === STATE.EXISTENT || this._syncState === STATE.DELETED) {
       this.synced = true;
     } else {
       this.synced = false;
@@ -374,17 +357,15 @@ export default class Item {
   }
 
   _stateHandler(call) {
-    if (call === 0) {
-      this._synchronize();
-    } else if (this.autoSave) {
-      this._synchronize(2, 2);
+    if (this.autoSave && call !== 0) {
+      this._synchronize(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
     }
     return this._stateHandlerTrigger(); // we need this for mobx, and we return it because
     // there is nothing else to do with the data
   }
 
   _stateHandlerTrigger() {
-    this.keys.forEach(key => {
+    this.constructor.keys.forEach(key => {
       let result;
       if (typeof key === 'string') {
         result = this[key];
@@ -402,16 +383,16 @@ export default class Item {
     if (syncState !== undefined) {
       this._setSyncState(syncState);
     }
-    this.lastSynchronize = this._synchronizeLocalStorage()
+    this.lastSynchronize = this._synchronizeClientStorage()
       .then(() => this._synchronizeTransporter());
     return this.lastSynchronize;
   }
 
-  _synchronizeLocalStorage() {
+  _synchronizeClientStorage() {
     switch (this._storeState) {
-      case 1: return this._localStorageCreate();
-      case 2: return this._localStorageSave();
-      case 3: return this._localStorageRemove();
+      case STATE.BEING_CREATED: return this._clientStorageCreate();
+      case STATE.BEING_UPDATED: return this._clientStorageSave();
+      case STATE.BEING_DELETED: return this._clientStorageRemove();
       default:
         return new Promise(resolve => resolve());
     }
@@ -419,9 +400,9 @@ export default class Item {
 
   _synchronizeTransporter() {
     switch (this._syncState) {
-      case 1: return this._transporterCreate();
-      case 2: return this._transporterSave();
-      case 3: return this._transporterDelete();
+      case STATE.BEING_CREATED: return this._transporterCreate();
+      case STATE.BEING_UPDATED: return this._transporterSave();
+      case STATE.BEING_DELETED: return this._transporterDelete();
       default:
         return new Promise(resolve => resolve());
     }
@@ -444,8 +425,8 @@ export default class Item {
         .then(content => this._store.transporter.create(content))
         .then(key => this._setPrimaryKey(key)))
       .then(() => {
-        this._setSyncState(0);
-        return this._localStorageSave();
+        this._setSyncState(STATE.EXISTENT);
+        return this._clientStorageSave();
       })
       .catch(err => {
         // we fullfil even if there is a later transaction because we always want
@@ -461,8 +442,8 @@ export default class Item {
     return this._transaction(() => Promise.resolve())
       .then(() => this.getTransporterKey())
       .then(key => this._store.transporter.delete(key))
-      .then(() => this._setSyncState(-1))
-      .then(() => this._localStorageDelete());
+      .then(() => this._setSyncState(STATE.DELETED))
+      .then(() => this._clientStorageDelete());
   }
 
   _transporterSave() {
@@ -470,8 +451,8 @@ export default class Item {
       this.getTransporterKey()
         .then(() => this.toTransporter())
         .then(content => this._store.transporter.save(content)))
-      .then(() => this._setSyncState(0))
-      .then(() => this._localStorageSave());
+      .then(() => this._setSyncState(STATE.EXISTENT))
+      .then(() => this._clientStorageSave());
   }
 
   _waitFor(key) {
