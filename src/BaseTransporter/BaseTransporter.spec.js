@@ -13,7 +13,7 @@ class TestTransporter extends BaseTransporter {
   _initialFetch = jasmine.createSpy('_initialfetch');
 }
 
-fdescribe('BaseTransporter', function () {
+describe('BaseTransporter', function () {
   beforeEach(function () {
     this.testTransporter = new TestTransporter();
     expect(this.testTransporter._queues instanceof PushQueue).toBe(true);

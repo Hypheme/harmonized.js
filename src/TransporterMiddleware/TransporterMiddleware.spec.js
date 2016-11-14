@@ -5,23 +5,21 @@ class ExtendedTransporterMiddleware extends TransporterMiddleware {
     super();
     this.someProperty = someArgument;
     this.addItemToQueue = 'addItemToQueue';
-    this.updateQueueAfterReceive = 'updateQueueAfterReceive';
     this.send = 'send';
     this.receive = 'receive';
-    this.sendError = 'sendError';
-    this.receiveError = 'receiveError';
+    this.transmissionError = 'transmissionError';
   }
 }
+
+ExtendedTransporterMiddleware.uniqueName = 'SuperCoolName';
 
 describe('Transporter Middleware', function () {
   it('should have static method', function () {
     const expectedMethods = [
       'addItemToQueue',
-      'updateQueueAfterReceive',
       'send',
       'receive',
-      'sendError',
-      'receiveError',
+      'transmissionError',
     ];
 
     expect(TransporterMiddleware.methods).toEqual(expectedMethods);
@@ -32,22 +30,22 @@ describe('Transporter Middleware', function () {
     const extendedTransporterMiddleware = ExtendedTransporterMiddleware.build(['hi']);
     expect(extendedTransporterMiddleware.someProperty).toBe('hi');
     expect(extendedTransporterMiddleware.addItemToQueue).toBe('addItemToQueue');
-    expect(extendedTransporterMiddleware.updateQueueAfterReceive).toBe('updateQueueAfterReceive');
     expect(extendedTransporterMiddleware.send).toBe('send');
     expect(extendedTransporterMiddleware.receive).toBe('receive');
-    expect(extendedTransporterMiddleware.sendError).toBe('sendError');
-    expect(extendedTransporterMiddleware.receiveError).toBe('receiveError');
+    expect(extendedTransporterMiddleware.transmissionError).toBe('transmissionError');
   });
 
   it('should build filtered extended TransporterMiddleware', function () {
     const extendedTransporterMiddleware = ExtendedTransporterMiddleware.build(['hi'],
-      'send', 'sendError');
+      'send', 'transmissionError');
     expect(extendedTransporterMiddleware.someProperty).toBe('hi');
     expect(extendedTransporterMiddleware.addItemToQueue).toBeUndefined();
-    expect(extendedTransporterMiddleware.updateQueueAfterReceive).toBeUndefined();
     expect(extendedTransporterMiddleware.send).toBe('send');
     expect(extendedTransporterMiddleware.receive).toBeUndefined();
-    expect(extendedTransporterMiddleware.sendError).toBe('sendError');
-    expect(extendedTransporterMiddleware.receiveError).toBeUndefined();
+    expect(extendedTransporterMiddleware.transmissionError).toBe('transmissionError');
+  });
+
+  it('should get name', function () {
+    expect(new ExtendedTransporterMiddleware().name).toBe('SuperCoolName');
   });
 });

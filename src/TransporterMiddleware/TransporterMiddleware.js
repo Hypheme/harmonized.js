@@ -8,6 +8,12 @@ export default class TransporterMiddleware {
   // receive(res, req, item) {}
   // transmissionError(res?, req, item) {}
 
+  get name() {
+    return this.constructor.uniqueName;
+  }
+
+  static uniqueName: string;
+
   static methods = [
     'addItemToQueue',
     'send',

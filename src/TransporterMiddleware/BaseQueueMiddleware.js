@@ -12,7 +12,7 @@ export default class BaseQueueMiddleware extends TransporterMiddleware {
     } else if (queue[0].action === 'create' && queueItem.action === 'delete') {
       // item was not created yet and already deleted, delete create statement in queue
       // because nothing has to be send
-      delete queue[0];
+      queue.shift();
     } else if (queueItem.action === 'delete') {
       // item should be updated but newer entry deletes this, replace update with delete
       // queue item because old request is not needed because of delete
@@ -29,4 +29,4 @@ export default class BaseQueueMiddleware extends TransporterMiddleware {
   }
 }
 
-BaseQueueMiddleware.name = 'BaseQueueMiddleware';
+BaseQueueMiddleware.uniqueName = 'BaseQueueMiddleware';
