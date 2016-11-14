@@ -147,14 +147,14 @@ Your model could look like this:
 ```javascript
 // Cars Store
 [{
-  id: 1, 
+  id: 1,
   brand: 'Volkswagen',
   driver: {
     id: 123,
     name: 'John Doe',
   },
 }, {
-  id: 2, 
+  id: 2,
   brand: 'BMW',
   driver: null,
 }]
@@ -182,19 +182,19 @@ Your model would look like this:
 ```javascript
 // users store
 [{
-  id: 123, 
+  id: 123,
   name: 'John Doe',
-  // 
+  //
   cars: [
-    {id: 1, brand: 'Volkswagen'}, 
+    {id: 1, brand: 'Volkswagen'},
     {id: 2, brand: 'BMW'},
   ],
 }, {
-  id: 321, 
+  id: 321,
   name: 'Jane Doe',
-  // 
+  //
   cars: [
-    {id: 1, brand: 'Mercedes-Benz'}, 
+    {id: 1, brand: 'Mercedes-Benz'},
     {id: 2, brand: 'Audi'},
   ],
 }]
@@ -208,23 +208,23 @@ The relations of an item is defined together with the other item properties in t
 [
   'brand',
   { name: 'id', primary: true, key: 'id', _key: '_id' },
-  
+
   // This is the definition for a relation to an existing store
   { name: 'driver', key: 'driverId', _key: '_driverId', store: 'drivers', storeKey: 'id', _storeKey: '_id' },
-  
-  // This is the definition to a relation to a seperate store inside the item 
+
+  // This is the definition to a relation to a seperate store inside the item
   // (1-1 relation)
   { name: 'steeringwheel', key: 'steeringwheelId', _key: '_steeringwheelId', store: SteeringWheelStoreClass },
-  
+
   // (1-n relation)
   [{ name: 'wheels', key: 'wheels', _key: 'wheels', store: WheelStoreClass }],
-  
+
 ];
 ```
 
 ### ClientStorage and Transporter
 
-Client storages and transporters are used to syncronize your items with a local database and remote API. When you use ready made client storages and transporters you don't have to worry about their interface. If you need more functionality in the transporters however, you can extend these (or the base classes) and write your own.
+Client storages and transporters are used to synchronize your items with a local database and remote API. When you use ready made client storages and transporters you don't have to worry about their interface. If you need more functionality in the transporters however, you can extend these (or the base classes) and write your own.
 
 Transporters and ClientStorages need the following interface:
 
@@ -252,7 +252,7 @@ Updates an existing item (e.g. `PUT` HTTP request on an API or `UPDATE` instruct
 
 #### delete()
 
-Deletes an existing item. In the client storage this is called when the transporter delete transaction was successfull.
+Deletes an existing item. In the client storage this is called when the transporter delete transaction was successful.
 
 #### fetch()
 

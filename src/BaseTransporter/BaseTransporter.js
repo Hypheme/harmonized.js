@@ -58,11 +58,10 @@ export default class BaseTransporter {
     })
       .then(this._send.bind(this))
       // when error run transmissionError middleware
-      .catch(({ res, req, error }) => {
-        return this.constructor.runMiddleware('transmissionError', {
-          type, req, res, error, queue,
-        }).then(() => Promise.reject({ res, req, error }));
-      })
+      .catch(({ res, req, error }) => this.constructor
+        .runMiddleware('transmissionError', { type, req, res, error, queue })
+        .then(() => Promise.reject({ res, req, error }))
+      )
       .then(({ res, req }) => this.constructor.runMiddleware('receive', {
         type, req, res, queue,
       }))
@@ -103,10 +102,10 @@ export default class BaseTransporter {
     })
       .then(fetchMethod.bind(this))
       // when error run transmissionError middleware
-      .catch(({ res, req, error }) => {
-        return this.constructor.runMiddleware('transmissionError', { type, req, res, error })
-          .then(() => Promise.reject({ res, req, error }));
-      })
+      .catch(({ res, req, error }) => this.constructor
+        .runMiddleware('transmissionError', { type, req, res, error })
+        .then(() => Promise.reject({ res, req, error }))
+      )
       // run receive middleware
       .then(({ res, req }) => this.constructor.runMiddleware('receive', { type, req, res }));
   }
