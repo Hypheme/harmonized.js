@@ -2,6 +2,7 @@
 import PushQueue from './PushQueue';
 import PushQueueItem from './PushQueueItem';
 import TransporterMiddleware from '../TransporterMiddleware/TransporterMiddleware';
+import BaseQueueMiddleware from '../TransporterMiddleware/BaseQueueMiddleware';
 
 export default class BaseTransporter {
   static middleware: TransporterMiddleware[] = [];
@@ -178,3 +179,6 @@ export default class BaseTransporter {
     return latestPromise;
   }
 }
+
+// TODO: test this with rewire
+BaseTransporter.add(new BaseQueueMiddleware());
