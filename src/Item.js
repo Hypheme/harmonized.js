@@ -3,8 +3,9 @@ import uuid from 'uuid-v4';
 
 const STATE = {
   // fixed states
-  LOCKED: -2, // this state is needed to prevent multiple delete actions from happening
-  DELETED: -1, // end of an item lifetime
+  LOCKED: -3, // this state is needed to prevent multiple delete actions from happening
+  DELETED: -2, // end of an item lifetime
+  REMOVED: -1, // removed locally but not yet deleted
   EXISTENT: 0, // the item exists and everything is in sync
   // actions (result in state changes)
   BEING_CREATED: 1, // the item is being created -> results in state 0
@@ -20,17 +21,25 @@ export default class Item {
     let call = 0;
     this._dispose = autorun(() => this._stateHandler(call++));
     this._createRunTimeId();
+    let p;
     switch (source) {
       case 'transporter':
-        this._createFromTransporter(values);
+        p = this._createFromTransporter(values);
         break;
       case 'clientStorage':
-        this._createFromClientStorage(values);
+        p = this._createFromClientStorage(values);
         break;
       default:
-        this._createFromState(values);
+        p = this._createFromState(values);
         break;
     }
+    p.catch(err => {
+      this._syncState = STATE.LOCKED;
+      this._storeState = STATE.LOCKED;
+      this.errored = 'item could not be created';
+      this.error = err;
+      store.markCorruptItem(this);
+    });
   }
 
   // ///////////
@@ -202,6 +211,14 @@ export default class Item {
     this.__id = uuid();
   }
 
+  _createFromClientStorage(values) {
+    this._syncState = values._syncState;
+    this._storeState = values._storeState; // should only ever be EXISTENT or REMOVED
+    this.stored = true;
+    this.synced = (this._syncState === STATE.EXISTENT);
+    return this._fromClientStorage(values);
+  }
+
   _createFromState(values) {
     this._syncState = STATE.BEING_CREATED;
     this.synced = false;
@@ -209,6 +226,7 @@ export default class Item {
     this.stored = false;
     return this._fromState(values);
   }
+
 
   _onDeleteTrigger() {}
 
@@ -251,11 +269,11 @@ export default class Item {
         const resolver = {};
         resolver[key[`${prefix}storeKey`]] = values[key[`${prefix}relationKey`]];
         // TODO add internal stores to the mix (hurray)
-        promises.push(key.store.find(resolver)
+        promises.push(key.store.findOneAsync(resolver)
           .then(item => {
             const asyncAutoSave = this.autoSave;
             this.autoSave = false;
-            this[key.key] = item;
+            this[key.name] = item;
             this.autoSave = asyncAutoSave;
           }));
       }
@@ -270,6 +288,8 @@ export default class Item {
         return newState === STATE.DELETED ? STATE.DELETED : STATE.LOCKED;
       case STATE.DELETED:
         return STATE.DELETED;
+      case STATE.REMOVED:
+        return newState === STATE.DELETED ? STATE.DELETED : STATE.REMOVED;
       case STATE.EXISTENT:
         return newState === STATE.BEING_UPDATED || newState === STATE.BEING_DELETED ?
           newState : current;
@@ -282,7 +302,14 @@ export default class Item {
         return newState === STATE.EXISTENT || newState === STATE.BEING_DELETED ?
           newState : current;
       case STATE.BEING_DELETED:
-        return newState === STATE.DELETED ? STATE.DELETED : STATE.LOCKED;
+        switch (newState) {
+          case STATE.DELETED:
+            return STATE.DELETED;
+          case STATE.REMOVED:
+            return STATE.REMOVED;
+          default:
+            return STATE.LOCKED;
+        }
       default:
         return current;
     }
@@ -317,7 +344,7 @@ export default class Item {
   _clientStorageRemove() {
     return this._transaction(() => this.getClientStorageKey()
       .then(key => this._store.clientStorage.remove(key))
-      .then(() => this._setStoreState(STATE.DELETED)));
+      .then(() => this._setStoreState(STATE.REMOVED)));
   }
 
   _clientStorageSave() {

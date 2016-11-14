@@ -46,11 +46,15 @@ store.find({
 store.findOne({
   __id: 'runtimeId',
 }); // returns first matched element
-
+store.findAsync({}); // same as find, but returns a promise + waits until the store is in sync
+store.findOneAsync({});
 // manipulate
 store.create(rawItem, {
   source: 'transporter',
 }); // returns item
+
+store.markCorruptItem(item); // removes item from the store (without any api or client storage calls)
+// only if sth goes completly wrong
 
 // ////////
 // Item //

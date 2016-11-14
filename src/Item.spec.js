@@ -7,13 +7,15 @@ import LocalStorage from '../test/unit/helpers/Test.LocalStorage';
 import * as _ from 'lodash';
 import {
   observable,
+  autorun,
 } from 'mobx';
 
 // COPIED FROM ITEM
 const STATE = {
   // fixed states
-  LOCKED: -2, // this state is needed to prevent multiple delete actions from happening
-  DELETED: -1, // end of an item lifetime
+  LOCKED: -3, // this state is needed to prevent multiple delete actions from happening
+  DELETED: -2, // end of an item lifetime
+  REMOVED: -1, // removed locally but not yet deleted
   EXISTENT: 0, // the item exists and everything is in sync
   // actions (result in state changes)
   BEING_CREATED: 1, // the item is being created -> results in state 0
@@ -25,11 +27,14 @@ describe('Item', function () {
   // Core data. No test should alter this. Use stubs for your test logic
   class ForeingStore extends Store {}
   const foreignStore = new ForeingStore();
-  const foreignItem = { foreign: 'item' };
+  const foreignItem = { _id: '123', foreign: 'item' };
   const InternalStore = class InternalStore extends Store {};
   const internalStoreInstance = new InternalStore();
   const testStore = new(class TestStore extends Store {})();
-  const TestItem = class TestItem extends Item {};
+  const TestItem = class TestItem extends Item {
+    @observable name
+    @observable foreignEntry
+  };
   TestItem.keys = [
     'name', {
       name: 'id',
@@ -80,7 +85,39 @@ describe('Item', function () {
       expect(myItem.foreignEntry).toEqual(foreignItem);
       expect(myItem._synchronize).toHaveBeenCalled();
     });
-    it('should create item from client storage');
+    it('should create item from client storage', function (done) {
+      spyOn(foreignStore, 'findOneAsync').and.returnValue(Promise.resolve(foreignItem));
+      const myItem = new TestItem({
+        _syncState: STATE.BEING_DELETED,
+        _storeState: STATE.REMOVED,
+        name: 'hans',
+        _foreignId: foreignItem._id, // relation by client id
+      }, {
+        source: 'clientStorage',
+        autoSave: true,
+        store: testStore,
+      });
+      let call = 0;
+      const dispose = autorun(() => {
+        const fItem = myItem.foreignEntry;
+        if (call++) {
+          try {
+            expect(fItem).toEqual(foreignItem);
+            expect(myItem.__id).toBeDefined();
+            expect(myItem._syncState).toEqual(STATE.BEING_DELETED);
+            expect(myItem._storeState).toEqual(STATE.REMOVED);
+            expect(myItem.autoSave).toEqual(true);
+            expect(myItem._store).toEqual(testStore);
+            expect(myItem.name).toEqual('hans');
+            expect(myItem._synchronize).toHaveBeenCalled();
+            dispose();
+            done();
+          } catch (e) {
+            done(e);
+          }
+        }
+      });
+    });
     it('should create item from transporter');
   });
 

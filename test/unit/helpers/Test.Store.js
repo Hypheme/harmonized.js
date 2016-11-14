@@ -7,5 +7,8 @@ export default class TestStore {
 
   delete() {}
   remove() {}
-  resolveAsync() {}
+  find() {}
+  findOne() {}
+  findAsync() {}
+  findOneAsync() {}
 }
