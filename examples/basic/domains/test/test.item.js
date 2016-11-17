@@ -1,9 +1,13 @@
-import {Item} from './harmonized';
+import { Item } from './harmonized';
 
-export default class TestItem extends Item {
 
-  static rawItemKeys = ['title', 'data'];
-  get rawItemKeys() {
-    return TestItem.rawItemKeys;
-  }
-}
+const keys = ['title',
+  { key: 'contact', store: 'contacts', relationKey: 'contactId', storeKey: 'id', foreignKey: 'id' },
+  { key: 'information', store: 'information', relationKey: 'informationId', storeKey: 'informationId' },
+];
+
+const primary = ['contact', 'information'];
+
+
+
+console.log(keys, primary);

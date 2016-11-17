@@ -9,6 +9,16 @@ module.exports = function makeWebpackConfig() {
    */
   const config = {};
 
+  config.isparta = {
+    embedSource: true,
+    noAutoWrap: true,
+    babel: {
+      plugins: 'rewire',
+    },
+  };
+
+  config.debug = true;
+
   config.devtool = 'inline-source-map';
 
   // Initialize module
@@ -16,7 +26,7 @@ module.exports = function makeWebpackConfig() {
     preLoaders: [],
     loaders: [{
       test: /\.js$/,
-      loaders: ['babel'],
+      loader: 'babel',
       exclude: /node_modules/,
     }, {
       test: /\.json$/,
@@ -33,22 +43,11 @@ module.exports = function makeWebpackConfig() {
     test: /\.js$/,
     include: [
       path.resolve(__dirname, '../../src')],
+    exclude: /\.spec\.js/,
     loader: 'isparta-instrumenter',
   });
 
   config.plugins = [];
-
-  //
-  //
-  // /**
-  //  * Dev server configuration
-  //  * Reference: http://webpack.github.io/docs/configuration.html#devserver
-  //  * Reference: http://webpack.github.io/docs/webpack-dev-server.html
-  //  */
-  // config.devServer = {
-  //   contentBase: './src/public',
-  //   stats: 'minimal',
-  // };
 
   return config;
 }();

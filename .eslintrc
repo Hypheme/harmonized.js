@@ -1,5 +1,5 @@
 {
-  "extends": "airbnb",
+  "extends": ["airbnb", "plugin:jasmine/recommended"],
   "ecmaFeatures": {
     "jsx": true,
     "modules": true
@@ -7,15 +7,22 @@
   "rules": {
     "no-underscore-dangle": 0,
     "no-restricted-syntax": ["error", "WithStatement"],
-    "no-param-reassign": ["error", { "props": false }]
+    "no-param-reassign": ["error", {
+      "props": false
+    }],
+    "func-names": 0,
+    "prefer-arrow-callback": 0,
+    "jasmine/no-spec-dupes": ["warn", "branch"]
   },
   "env": {
     "browser": true,
     "node": true,
-    "es6": true
+    "es6": true,
+    "jasmine": true
   },
   "parser": "babel-eslint",
   "plugins": [
-    "react"
+    "react",
+    "jasmine"
   ]
 }
