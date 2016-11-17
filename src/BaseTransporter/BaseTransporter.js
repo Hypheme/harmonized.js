@@ -1,164 +1,68 @@
 // @flow
-import PushQueue from './PushQueue';
-import PushQueueItem from './PushQueueItem';
+import TransactionItem from './TransactionItem';
 import TransporterMiddleware from '../TransporterMiddleware/TransporterMiddleware';
-import BaseQueueMiddleware from '../TransporterMiddleware/BaseQueueMiddleware';
 
 export default class BaseTransporter {
   static middleware: TransporterMiddleware[] = [];
-  _queues: PushQueue;
-
-  constructor() {
-    this._queues = new PushQueue();
-  }
-
-  _addToQueue(queueItem: PushQueueItem) {
-    const queue = this._queues.getQueue(queueItem.__id);
-    return this.constructor.runMiddleware('addItemToQueue', {
-      queueItem, queue,
-    }).then(() => this._pushOne(queue));
-  }
-
-  create(item: Object) {
-    return this._addToQueue(PushQueue.createItem('create', item));
-  }
-
-  update(item: Object) {
-    return this._addToQueue(PushQueue.createItem('update', item));
-  }
-
-  delete(item: Object) {
-    return this._addToQueue(PushQueue.createItem('delete', item));
-  }
-
-  push() {
-    const pushPromises = [];
-    this._queues.getAllQueues().forEach((queue) => pushPromises.push(this._pushOne(queue)));
-    return Promise.all(pushPromises);
-  }
-
-  _prepareSend(/* queueItem: PushQueueItem */) {
-    this._shouldBeImplemented();
-  }
-
-  _send(/* data: Object */) {
-    this._shouldBeImplemented();
-  }
-
-  _sendCurrentQueueItem(queue: PushQueueItem[]) {
-    const type = 'push';
-    const queueItem = queue[0];
-    queueItem.inProgress = true;
-    const preparedSendRequest = this._prepareSend(queueItem);
-
-    // run send middleware then send and afterwards work off the queue
-    const promise = queueItem.promise = this.constructor.runMiddleware('send', {
-      type,
-      req: preparedSendRequest,
-      item: queueItem,
-    })
-      .then(this._send.bind(this))
-      // when error run transmissionError middleware
-      .catch(({ res, req, error }) => this.constructor
-        .runMiddleware('transmissionError', { type, req, res, error, queue })
-        .then(() => Promise.reject({ res, req, error }))
-      )
-      .then(({ res, req }) => this.constructor.runMiddleware('receive', {
-        type, req, res, queue,
-      }))
-      .then(({ res }) => {
-        queue.shift();
-        if (queue.length > 0) {
-          return this._sendCurrentQueueItem(queue);
-        }
-
-        return res;
-      });
-
-    return promise;
-  }
-
-  _pushOne(queue: PushQueueItem[]) {
-    const queueItem = queue[0];
-    if (queueItem.inProgress) {
-      return queueItem.promise;
-    }
-
-    return this._sendCurrentQueueItem(queue);
-  }
-
-  pushOne(__id: string) {
-    const queue = this._queues.getQueue(__id);
-    return this._pushOne(queue);
-  }
-
-  _runFetchWithMiddleware(type: string, prepareMethod: Function,
-    fetchMethod: Function, args: any[]) {
-    const preparedRequest = prepareMethod.apply(this, args);
-
-    // run send middleware
-    return this.constructor.runMiddleware('send', {
-      type,
-      req: preparedRequest,
-    })
-      .then(fetchMethod.bind(this))
-      // when error run transmissionError middleware
-      .catch(({ res, req, error }) => this.constructor
-        .runMiddleware('transmissionError', { type, req, res, error })
-        .then(() => Promise.reject({ res, req, error }))
-      )
-      // run receive middleware
-      .then(({ res, req }) => this.constructor.runMiddleware('receive', { type, req, res }));
-  }
 
   _shouldBeImplemented() {
     throw new Error('should be implemented by the transporter');
   }
 
-  _prepareFetch() {
+  create(data: Object) {
+    return this._sendRequest(new TransactionItem('create', data));
+  }
+
+  update(data: Object) {
+    return this._sendRequest(new TransactionItem('update', data));
+  }
+
+  delete(data: Object) {
+    return this._sendRequest(new TransactionItem('delete', data));
+  }
+
+  fetch(data: Object) {
+    return this._sendRequest(new TransactionItem('fetch', data));
+  }
+
+  fetchAll(data: Object) {
+    return this._sendRequest(new TransactionItem('fetchAll', data));
+  }
+
+  initialFetch(data: Object) {
+    return this._sendRequest(new TransactionItem('initialFetch', data));
+  }
+
+  _prepareRequest(/* item: TransactionItem */) {
     this._shouldBeImplemented();
   }
 
-  _fetch() {
+  _request(/* data: Object */) {
     this._shouldBeImplemented();
   }
 
-  fetch(...args: any[]) {
-    return this._runFetchWithMiddleware('fetch', this._prepareFetch,
-      this._fetch, args);
-  }
+  _sendRequest(item: TransactionItem) {
+    const preparedReq = this._prepareRequest(item);
+    const action = item.action;
 
-  _prepareFetchOne() {
-    this._shouldBeImplemented();
-  }
-
-  _fetchOne(/* id: number */) {
-    this._shouldBeImplemented();
-  }
-
-  fetchOne(...args: any[]) {
-    return this._runFetchWithMiddleware('fetchOne', this._prepareFetchOne,
-      this._fetchOne, args);
-  }
-
-  _prepareInitialFetch() {
-    this._shouldBeImplemented();
-  }
-
-  _initialFetch() {
-    this._shouldBeImplemented();
-  }
-
-  initialFetch(...args: any[]) {
-    return this._runFetchWithMiddleware('initialFetch', this._prepareInitialFetch,
-      this._initialFetch, args);
+    // run send middleware then send and afterwards work off the queue
+    return this.constructor.runMiddleware('send', { action, req: preparedReq })
+      .then(this._request.bind(this))
+      // when error run transmissionError middleware
+      .catch(({ res, req, error }) => this.constructor
+        .runMiddleware('transmissionError', { action, req, res, error })
+        .then(() => Promise.reject({ res, req, error })))
+      .then(({ res, req }) => this.constructor.runMiddleware('receive', { action, req, res }))
+      .then(({ res }) => res);
   }
 
   static add(mw) {
     if (mw.replaces) {
       const foundId = this.middleware.findIndex((thisMw) => thisMw.name === mw.replaces);
       if (foundId === -1) {
-        throw new Error(`The middleware "${mw.replaces}" could not be replaced because it can\'t be found`);
+        throw new Error(
+          `The middleware "${mw.replaces}" could not be replaced because it can\'t be found`
+        );
       }
 
       this.middleware.splice(foundId, 1, mw);
@@ -168,7 +72,7 @@ export default class BaseTransporter {
     this.middleware.push(mw);
   }
 
-  static runMiddleware(subMiddleware, data) {
+  static runMiddleware(subMiddleware, data): Promise {
     // go through middleware and chain then functions!
     const middleware: Function[] = this.middleware.map((mw: Object) => mw[subMiddleware]);
     let latestPromise = Promise.resolve(data);
@@ -179,6 +83,3 @@ export default class BaseTransporter {
     return latestPromise;
   }
 }
-
-// TODO: test this with rewire
-BaseTransporter.add(new BaseQueueMiddleware());

@@ -1,5 +1,5 @@
 import BaseTransporter from './BaseTransporter';
-import PushQueue from './PushQueue';
+import PushQueue, { __RewireAPI__ } from './PushQueue';
 
 class TestTransporter extends BaseTransporter {
   static middleware = [...BaseTransporter.middleware];
@@ -14,7 +14,11 @@ class TestTransporter extends BaseTransporter {
 }
 
 describe('BaseTransporter', function () {
+
   beforeEach(function () {
+    console.log('rewire');
+    console.log(__RewireAPI__);
+    console.log(PushQueue.__Rewire__);
     this.testTransporter = new TestTransporter();
     expect(this.testTransporter._queues instanceof PushQueue).toBe(true);
     this.testTransporter._queues = jasmine.createSpyObj([

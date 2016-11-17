@@ -1,5 +1,5 @@
 // @flow
-export default class PushQueueItem {
+export default class TransactionItem {
   payload: Object;
   action: string;
 
@@ -14,9 +14,5 @@ export default class PushQueueItem {
 
   get _id() {
     return this.payload._id;
-  }
-
-  get __id() {
-    return this.payload.__id;
   }
 }

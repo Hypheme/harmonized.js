@@ -12,9 +12,9 @@ module.exports = function makeWebpackConfig() {
   config.isparta = {
     embedSource: true,
     noAutoWrap: true,
-    // babel: {
-    //   plugins: 'babel-plugin-rewire',
-    // },
+    babel: {
+      plugins: 'rewire',
+    },
   };
 
   config.debug = true;
@@ -28,9 +28,6 @@ module.exports = function makeWebpackConfig() {
       test: /\.js$/,
       loader: 'babel',
       exclude: /node_modules/,
-      query: {
-        plugins: ['babel-plugin-rewire'],
-      },
     }, {
       test: /\.json$/,
       loader: 'json',
