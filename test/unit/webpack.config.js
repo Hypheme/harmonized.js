@@ -9,6 +9,16 @@ module.exports = function makeWebpackConfig() {
    */
   const config = {};
 
+  config.isparta = {
+    embedSource: true,
+    noAutoWrap: true,
+    babel: {
+      plugins: 'rewire',
+    },
+  };
+
+  config.debug = true;
+
   config.devtool = 'inline-source-map';
 
   // Initialize module
@@ -16,7 +26,7 @@ module.exports = function makeWebpackConfig() {
     preLoaders: [],
     loaders: [{
       test: /\.js$/,
-      loaders: ['babel'],
+      loader: 'babel',
       exclude: /node_modules/,
     }, {
       test: /\.json$/,
