@@ -61,6 +61,7 @@ describe('Item', function () {
       spyOn(TestItem.prototype, '_synchronize')
         .and.returnValue(Promise.resolve('syncResponse'));
     });
+
     it('should create item from state', function (done) {
       const myItem = new TestItem({
         autoSave: true,
@@ -84,11 +85,12 @@ describe('Item', function () {
       expect(myItem._store).toEqual(testStore);
       // test if promise is returned
       construction.then(syncResponse => {
-        expect(myItem._synchronize).toHaveBeenCalled();
+        expect(myItem._synchronize).toHaveBeenCalledWith(STATE.BEING_CREATED, STATE.BEING_CREATED);
         expect(syncResponse).toEqual('syncResponse');
         done();
       });
     });
+
     it('should create item from client storage', function (done) {
       spyOn(foreignStore, 'findOne').and.returnValue(foreignItem);
       spyOn(foreignStore, 'onceLoaded').and.returnValue(Promise.resolve());
@@ -114,12 +116,73 @@ describe('Item', function () {
       expect(myItem._store).toEqual(testStore);
       // test if promise is returned and item is populated with foreign data
       construction.then(syncResponse => {
-        expect(myItem._synchronize).toHaveBeenCalled();
+        expect(myItem._synchronize).toHaveBeenCalledWith(STATE.EXISTENT, STATE.BEING_CREATED);
         expect(myItem.foreignEntry).toEqual(foreignItem);
         expect(syncResponse).toEqual('syncResponse');
         done();
       });
     });
-    it('should create item from transporter');
+    it('should create item from client storage thats marked as removed', function (done) {
+      spyOn(foreignStore, 'findOne').and.returnValue(foreignItem);
+      spyOn(foreignStore, 'onceLoaded').and.returnValue(Promise.resolve());
+      const myItem = new TestItem({
+        autoSave: true,
+        store: testStore,
+      });
+      const construction = myItem.construct({
+        _syncState: STATE.BEING_DELETED,
+        name: 'hans',
+        _foreignId: foreignItem._id, // relation by client storage id
+      }, { source: 'clientStorage' });
+      expect(myItem._syncState).toEqual(STATE.BEING_DELETED);
+      expect(myItem._storeState).toEqual(STATE.REMOVED);
+      expect(myItem.stored).toBe(true);
+      expect(myItem.synced).toBe(false);
+      expect(myItem.removed).toBe(true);
+      expect(myItem.autoSave).toEqual(true);
+
+      expect(myItem.__id).toBeDefined();
+      expect(myItem.name).toEqual('hans');
+
+      expect(myItem._store).toEqual(testStore);
+      // test if promise is returned and item is populated with foreign data
+      construction.then(syncResponse => {
+        expect(myItem._synchronize).toHaveBeenCalledWith(STATE.REMOVED, STATE.BEING_DELETED);
+        expect(myItem.foreignEntry).toEqual(foreignItem);
+        expect(syncResponse).toEqual('syncResponse');
+        done();
+      });
+    });
+
+    it('should create item from transporter', function (done) {
+      spyOn(foreignStore, 'findOne').and.returnValue(foreignItem);
+      spyOn(foreignStore, 'onceLoaded').and.returnValue(Promise.resolve());
+      const myItem = new TestItem({
+        autoSave: true,
+        store: testStore,
+      });
+      const construction = myItem.construct({
+        name: 'hans',
+        foreignId: foreignItem.id, // relation by client storage id
+      }, { source: 'transporter' });
+      expect(myItem._syncState).toEqual(STATE.EXISTENT);
+      expect(myItem._storeState).toEqual(STATE.BEING_CREATED);
+      expect(myItem.stored).toBe(false);
+      expect(myItem.synced).toBe(true);
+      expect(myItem.removed).toBe(false);
+      expect(myItem.autoSave).toEqual(true);
+
+      expect(myItem.__id).toBeDefined();
+      expect(myItem.name).toEqual('hans');
+
+      expect(myItem._store).toEqual(testStore);
+      // test if promise is returned and item is populated with foreign data
+      construction.then(syncResponse => {
+        expect(myItem._synchronize).toHaveBeenCalledWith(STATE.BEING_CREATED, STATE.EXISTENT);
+        expect(myItem.foreignEntry).toEqual(foreignItem);
+        expect(syncResponse).toEqual('syncResponse');
+        done();
+      });
+    });
   });
 });

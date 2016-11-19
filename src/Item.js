@@ -210,22 +210,34 @@ export default class Item {
     this.removed = (this._storeState === STATE.REMOVED);
     this.stored = true;
     this.synced = (this._syncState === STATE.EXISTENT);
-    return this._fromClientStorage(values);
+    return this._setFromClientStorage(values)
+      .then(() => this._synchronize(this._storeState, this._syncState));
   }
 
   _createFromState(values) {
-    this._syncState = STATE.BEING_CREATED;
     this.synced = false;
-    this._storeState = STATE.BEING_CREATED;
     this.stored = false;
     this.removed = false;
-    return this._fromState(values);
+    this._syncState = STATE.BEING_CREATED;
+    this._storeState = STATE.BEING_CREATED;
+    return this._setFromState(values).
+      then(() => this._synchronize(STATE.BEING_CREATED, STATE.BEING_CREATED));
+  }
+
+  _createFromTransporter(values) {
+    this._syncState = STATE.EXISTENT;
+    this._storeState = STATE.BEING_CREATED;
+    this.removed = false;
+    this.stored = false;
+    this.synced = true;
+    return this._setFromTransporter(values)
+      .then(() => this._synchronize(this._storeState, this._syncState));
   }
 
 
   _onDeleteTrigger() {}
 
-  _fromState(values) {
+  _setFromState(values) {
     this.constructor.keys.forEach(key => {
       if (typeof key === 'string') {
         this[key] = values[key];
@@ -238,20 +250,18 @@ export default class Item {
         this[key.name] = values[key.name];
       }
     });
-    return this._synchronize(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
+    return Promise.resolve();
   }
 
-  _fromTransporter(values) {
-    return this._fromOutside(values, '')
-      .then(() => this._synchronize(STATE.BEING_UPDATED));
+  _setFromTransporter(values) {
+    return this._setFromOutside(values, '');
   }
 
-  _fromClientStorage(values) {
-    return this._fromOutside(values, '_')
-      .then(() => this._synchronize(undefined, values._syncState));
+  _setFromClientStorage(values) {
+    return this._setFromOutside(values, '_');
   }
 
-  _fromOutside(values, prefix = '') {
+  _setFromOutside(values, prefix = '') {
     const autoSave = this.autoSave;
     const promises = [];
     this.autoSave = false;
