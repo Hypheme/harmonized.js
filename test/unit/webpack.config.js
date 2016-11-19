@@ -44,7 +44,7 @@ module.exports = function makeWebpackConfig() {
     include: [
       path.resolve(__dirname, '../../src')],
     exclude: /\.spec\.js/,
-    loader: 'isparta-instrumenter',
+    loader: 'isparta',
   });
 
   config.plugins = [];
