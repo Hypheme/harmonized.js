@@ -1,6 +1,6 @@
-import createStore from './harmonized';
-import Item from './test.item';
-import LocalStorage from './test.local-storage';
-import Transporter from './test.transporter';
+import { Store } from './harmonized';
+import Item from './Test.Item';
+import LocalStorage from './Test.LocalStorage';
+import Transporter from './Test.Transporter';
 
-export default createStore({Item, Transporter, LocalStorage});
+export default new Store({ Item, Transporter, LocalStorage });

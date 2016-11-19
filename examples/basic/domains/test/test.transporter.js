@@ -1,4 +1,4 @@
-import {InterfaceTransporter} from './harmonized';
+import { Transporters } from './harmonized';
 
-export default class TestTransporter extends InterfaceTransporter {
+export default class TestTransporter extends Transporters.Interface {
 }
