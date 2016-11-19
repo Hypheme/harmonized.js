@@ -39,13 +39,13 @@ module.exports = function makeWebpackConfig() {
   // Instrument JS files with Isparta for subsequent code coverage reporting
   // Skips node_modules and files that end with .test.js
 
-  // config.module.preLoaders.push({
-  //   test: /\.js$/,
-  //   include: [
-  //     path.resolve(__dirname, '../../src')],
-  //   exclude: /\.spec\.js/,
-  //   loader: 'isparta-instrumenter',
-  // });
+  config.module.preLoaders.push({
+    test: /\.js$/,
+    include: [
+      path.resolve(__dirname, '../../src')],
+    exclude: /\.spec\.js/,
+    loader: 'isparta-instrumenter',
+  });
 
   config.plugins = [];
 
