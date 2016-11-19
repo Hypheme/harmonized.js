@@ -10,19 +10,19 @@ coverage:
   status:
     project:
       default:
-        target: auto
+        target: 90%
         threshold: null
-        branches: null
-
+        branches:
+          - "!feature/*"
     patch:
       default:
-        target: auto
-        branches: null
-
+        target: 90%
+        branches:
+          - "!feature/*"
     changes:
       default:
-        branches: null
-
+        branches:
+          - "!feature/*"
   ignore: null
 
 comment:
