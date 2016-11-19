@@ -1,3 +1,5 @@
-const testsContext = require.context('../../src', false, /\.spec$/);
-console.log('whoop', testsContext);
+(Function.prototype.bind);
+require('babel-polyfill');
+
+const testsContext = require.context('../../src/BaseTransporter', true, /\.spec$/);
 testsContext.keys().forEach(testsContext);

@@ -1,5 +1,7 @@
 // Karma configuration
 // Generated on Fri May 27 2016 18:39:38 GMT+0200 (CEST)
+const webpackConf = require('./test/unit/webpack.config');
+const webpackConfTravis = require('./test/unit/webpack.travis.config');
 
 module.exports = function (config) {
   config.set({
@@ -15,7 +17,8 @@ module.exports = function (config) {
 
     // list of files / patterns to load in the browser
     files: [
-      'src/**/*.spec.js',
+      'node_modules/jasmine-promises/dist/jasmine-promises.js',
+      'test/unit/index.js',
     ],
 
 
@@ -28,17 +31,14 @@ module.exports = function (config) {
     // preprocess matching files before serving them to the browser
     // available preprocessors: https://npmjs.org/browse/keyword/karma-preprocessor
     preprocessors: {
-      '**/*.js': ['sourcemap'],
-      'src/**/*.spec.js': ['webpack'],
-      'test/unit/**/*.js': ['webpack'],
-      // 'src/**/*.js': 'coverage',
+      'test/unit/index.js': ['webpack', 'sourcemap'],
     },
 
 
     // test results reporter to use
     // possible values: 'dots', 'progress'
     // available reporters: https://npmjs.org/browse/keyword/karma-reporter
-    reporters: ['progress', 'coverage'],
+    reporters: ['progress'],
 
 
     // web server port
@@ -59,15 +59,6 @@ module.exports = function (config) {
     // enable / disable watching file and executing tests whenever any file changes
     autoWatch: false,
 
-    customLaunchers: {
-      Chrome_no_sandbox: {
-        base: 'Chrome',
-        flags: ['--no-sandbox'],
-      },
-    },
-
-    browsers: ['Chrome_no_sandbox'],
-
     // Continuous Integration mode
     // if true, Karma captures browsers, runs the tests and exits
     singleRun: true,
@@ -76,22 +67,36 @@ module.exports = function (config) {
     // how many browser should be started simultaneous
     concurrency: Infinity,
 
-    // Configure code coverage reporter
-    coverageReporter: {
-      dir: 'coverage/',
-      reporters: [
-        { type: 'lcovonly', subdir: '.' },
-        { type: 'json', subdir: '.' },
-        { type: 'text-summary' },
-        { type: 'html' },
-      ],
-    },
-
-    webpack: require('./test/unit/webpack.config'),
-
     // Hide webpack build information from output
     webpackMiddleware: {
       noInfo: 'errors-only',
     },
   });
+
+  if (process.env.TRAVIS) {
+    console.log('travis');
+    config.customLaunchers = {
+      Chrome_no_sandbox: {
+        base: 'Chrome',
+        flags: ['--no-sandbox'],
+      },
+    };
+
+    config.browsers = ['Chrome_no_sandbox'];
+
+    config.webpack = webpackConfTravis;
+    config.reporters.push('coverage');
+    // Configure code coverage reporter
+    config.coverageReporter = {
+      dir: 'coverage/',
+      reporters: [
+        { type: 'lcovonly', subdir: '.' },
+        { type: 'json', subdir: '.' },
+      ],
+    };
+  } else {
+    console.log('not travis');
+    config.webpack = webpackConf;
+    config.browsers = ['Chrome'];
+  }
 };
