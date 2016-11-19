@@ -26,15 +26,12 @@ store = new MyStore({
   parentItem: this,
 });
 
+MyStore.onceLoaded().then(() => 'do things');
+MyStore.onceLoaded(() => 'do things via callback');
 // ///////////
 // store methods //
 // ///////////
-// fetch
-// NOT TO SURE ABOUT THIS YET, some ideas in the comments
-store.fetchOne({
-  id: 123,
-}); // if the item doesnt exist in the state it's ignored
-store.fetchOneAndCreate({
+store.fetchAndCreate({
   id: 123,
 }); // if the item doesnt exist in the state it's created
 

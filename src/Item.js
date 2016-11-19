@@ -1,26 +1,17 @@
 import { observable, autorun, computed } from 'mobx';
 import uuid from 'uuid-v4';
-
-const STATE = {
-  // fixed states
-  LOCKED: -3, // this state is needed to prevent multiple delete actions from happening
-  DELETED: -2, // end of an item lifetime
-  REMOVED: -1, // removed locally but not yet deleted
-  EXISTENT: 0, // the item exists and everything is in sync
-  // actions (result in state changes)
-  BEING_CREATED: 1, // the item is being created -> results in state 0
-  BEING_UPDATED: 2, // the item is being updated -> results in state 0
-  BEING_DELETED: 3, // the item is being deleted -> results in state -1/(-2)
-};
+import { ACTION, STATE } from './constants';
 
 export default class Item {
 
-  constructor(values = {}, { store, source, autoSave }) {
+  constructor({ store, autoSave }) {
     this.autoSave = !(autoSave === false);
     this._store = store;
     let call = 0;
     this._dispose = autorun(() => this._stateHandler(call++));
     this._createRunTimeId();
+  }
+  construct(values = {}, { source }) {
     let p;
     switch (source) {
       case 'transporter':
@@ -33,18 +24,18 @@ export default class Item {
         p = this._createFromState(values);
         break;
     }
-    p.catch(err => {
+    return p.catch(err => {
       this._syncState = STATE.LOCKED;
       this._storeState = STATE.LOCKED;
-      this.errored = 'item could not be created';
       this.error = err;
-      store.markCorruptItem(this);
+      throw err;
     });
   }
 
   // ///////////
   // statics //
   // ///////////
+  @observable removed;
   @observable synced;
   @observable stored;
 
@@ -81,6 +72,7 @@ export default class Item {
       .then(() => result);
   }
 
+  // TODO rework. we don't wait for a transporter key to arrive. This is part of the transporter no
   getTransporterKey() {
     const promises = [];
     const result = {};
@@ -213,7 +205,9 @@ export default class Item {
 
   _createFromClientStorage(values) {
     this._syncState = values._syncState;
-    this._storeState = values._storeState; // should only ever be EXISTENT or REMOVED
+    this._storeState = this._syncState === STATE.BEING_DELETED ?
+      STATE.REMOVED : STATE.EXISTENT;
+    this.removed = (this._storeState === STATE.REMOVED);
     this.stored = true;
     this.synced = (this._syncState === STATE.EXISTENT);
     return this._fromClientStorage(values);
@@ -224,6 +218,7 @@ export default class Item {
     this.synced = false;
     this._storeState = STATE.BEING_CREATED;
     this.stored = false;
+    this.removed = false;
     return this._fromState(values);
   }
 
@@ -269,8 +264,9 @@ export default class Item {
         const resolver = {};
         resolver[key[`${prefix}storeKey`]] = values[key[`${prefix}relationKey`]];
         // TODO add internal stores to the mix (hurray)
-        promises.push(key.store.findOneAsync(resolver)
-          .then(item => {
+        promises.push(key.store.onceLoaded()
+          .then(() => {
+            const item = key.store.findOne(resolver);
             const asyncAutoSave = this.autoSave;
             this.autoSave = false;
             this[key.name] = item;
@@ -336,6 +332,7 @@ export default class Item {
 
   _clientStorageDelete() {
     return this._transaction(() => Promise.resolve())
+    // TODO rework, we don't wait for ids anymore. This is job of the clientStorage
       .then(() => this.getClientStorageKey())
       .then(key => this._store.clientStorage.delete(key))
       .then(() => this._setStoreState(STATE.DELETED));
@@ -436,6 +433,7 @@ export default class Item {
   }
 
   _transaction(routine) {
+    // TODO: rework: we don't block unmatched transactions anymore
     this._transactionId = uuid();
     const currentTransaction = this._transactionId;
     return routine().then((response) => {

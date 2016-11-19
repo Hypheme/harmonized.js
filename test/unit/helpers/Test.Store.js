@@ -5,10 +5,9 @@ export default class TestStore {
     // this.transporter = new Transporter(this);
   }
 
+  onceLoaded() {}
   delete() {}
   remove() {}
   find() {}
   findOne() {}
-  findAsync() {}
-  findOneAsync() {}
 }

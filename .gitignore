@@ -2,3 +2,4 @@ coverage
 node_modules
 test.js
 test.spec.js
+Old.Item.spec.js
