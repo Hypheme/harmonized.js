@@ -289,6 +289,7 @@ export default class Item {
   }
 
   _getValidNewState(current, newState) {
+    // TODO add fetch to the list
     switch (current) {
       case STATE.LOCKED:
         return newState === STATE.DELETED ? STATE.DELETED : STATE.LOCKED;

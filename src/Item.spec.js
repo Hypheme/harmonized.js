@@ -62,7 +62,7 @@ describe('Item', function () {
         .and.returnValue(Promise.resolve('syncResponse'));
     });
 
-    it('should create item from state', function (done) {
+    it('should create item from state', function () {
       const myItem = new TestItem({
         autoSave: true,
         store: testStore,
@@ -83,14 +83,13 @@ describe('Item', function () {
       expect(myItem.foreignEntry).toEqual(foreignItem);
 
       expect(myItem._store).toEqual(testStore);
-      construction.then(syncResponse => {
+      return construction.then(syncResponse => {
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.BEING_CREATED, STATE.BEING_CREATED);
         expect(syncResponse).toEqual('syncResponse');
-        done();
       });
     });
 
-    it('should create item from client storage', function (done) {
+    it('should create item from client storage', function () {
       spyOn(foreignStore, 'findOne').and.returnValue(foreignItem);
       spyOn(foreignStore, 'onceLoaded').and.returnValue(Promise.resolve());
       const myItem = new TestItem({
@@ -114,14 +113,14 @@ describe('Item', function () {
 
       expect(myItem._store).toEqual(testStore);
       // test if promise is returned and item is populated with foreign data
-      construction.then(syncResponse => {
+      return construction.then(syncResponse => {
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.EXISTENT, STATE.BEING_CREATED);
         expect(myItem.foreignEntry).toEqual(foreignItem);
         expect(syncResponse).toEqual('syncResponse');
-        done();
       });
     });
-    it('should create item from client storage thats marked as removed', function (done) {
+
+    it('should create item from client storage thats marked as removed', function () {
       spyOn(foreignStore, 'findOne').and.returnValue(foreignItem);
       spyOn(foreignStore, 'onceLoaded').and.returnValue(Promise.resolve());
       const myItem = new TestItem({
@@ -138,13 +137,12 @@ describe('Item', function () {
       expect(myItem.stored).toBe(true);
       expect(myItem.synced).toBe(false);
       expect(myItem.removed).toBe(true);
-      construction.then(() => {
+      return construction.then(() => {
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.REMOVED, STATE.BEING_DELETED);
-        done();
       });
     });
 
-    it('should create item from transporter', function (done) {
+    it('should create item from transporter', function () {
       spyOn(foreignStore, 'findOne').and.returnValue(foreignItem);
       spyOn(foreignStore, 'onceLoaded').and.returnValue(Promise.resolve());
       const myItem = new TestItem({
@@ -167,15 +165,14 @@ describe('Item', function () {
 
       expect(myItem._store).toEqual(testStore);
       // test if promise is returned and item is populated with foreign data
-      construction.then(syncResponse => {
+      return construction.then(syncResponse => {
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.BEING_CREATED, STATE.EXISTENT);
         expect(myItem.foreignEntry).toEqual(foreignItem);
         expect(syncResponse).toEqual('syncResponse');
-        done();
       });
     });
 
-    fit('should error', function (done) {
+    it('should error', function () {
       spyOn(foreignStore, 'onceLoaded').and.returnValue(Promise.reject(new Error('some error')));
       const myItem = new TestItem({
         autoSave: true,
@@ -185,14 +182,50 @@ describe('Item', function () {
         name: 'hans',
         foreignId: foreignItem.id, // relation by transporter id
       }, { source: 'transporter' });
-      construction.catch(err => {
+      return construction.catch(err => {
         expect(myItem._syncState).toEqual(STATE.LOCKED);
         expect(myItem._storeState).toEqual(STATE.LOCKED);
         expect(myItem.removed).toBe(true);
         expect(err).toEqual(new Error('some error'));
         expect(myItem._synchronize).not.toHaveBeenCalled();
-        done();
       });
+    });
+  });
+
+  describe('methods', function () {
+    beforeEach(function () {
+      spyOn(TestItem.prototype, '_synchronize')
+        .and.returnValue(Promise.resolve('syncResponse'));
+      this.item = new TestItem({
+        autoSave: true,
+        store: testStore,
+      });
+      return this.item.construct({
+        name: 'hans',
+        foreignEntry: foreignItem, // relation by reference
+      }, { source: 'state' });
+    });
+
+    describe('_synchronize', function () {
+      beforeEach(function () {
+        this.item._synchronize.andCallThrough();
+      });
+
+      it('should create item in local storage');
+      it('should update an item in local storage');
+      it('should delete an item from local storage');
+      it('should fetch an item from local storage');
+
+      it('should create item in transporter');
+      it('should update an item in transporter');
+      it('should delete an item from transporter');
+      it('should fetch an item from transporter');
+
+      it('should first sync with local storage and then with transporter');
+      it('should merge next actions if something is already in progress');
+      it('should remerge actions and update states if inProgress comes back pending');
+      it('should work the next action if inProgress comes back resolved');
+      it('should update states if inProgress comes back resolved and there is no next');
     });
   });
 });
