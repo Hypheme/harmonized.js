@@ -9,22 +9,22 @@ coverage:
   status:
     project:
       default:
-        target: 90%
-        threshold: null
-        branches:
-          - "!feature/*"
+        target: 96%
+        threshold: 6
+        branches: null
     patch:
       default:
-        target: 90%
-        branches:
-          - "!feature/*"
+        target: 96%
+        threshold: 6
+        branches: null
     changes:
       default:
-        branches:
-          - "!feature/*"
+        target: 90%
+        threshold: 20
+        branches: null
   ignore: null
 
 comment:
-  layout: "header, diff, changes, sunburst, uncovered, tree"
+  layout: "header, diff, changes, sunburst, uncovered"
   branches: null
   behavior: default

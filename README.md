@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Hypheme/harmonized.js.svg?branch=feature%2Fstore_and_item)](https://travis-ci.org/Hypheme/harmonized.js) [![codecov](https://codecov.io/gh/Hypheme/harmonized.js/branch/master/graph/badge.svg)](https://codecov.io/gh/Hypheme/harmonized.js)
+
 # harmonized.js
 
 Coming soon...
