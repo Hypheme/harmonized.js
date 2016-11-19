@@ -74,7 +74,6 @@ module.exports = function (config) {
   });
 
   if (process.env.TRAVIS) {
-    console.log('travis');
     config.customLaunchers = {
       Chrome_no_sandbox: {
         base: 'Chrome',
@@ -95,7 +94,6 @@ module.exports = function (config) {
       ],
     };
   } else {
-    console.log('not travis');
     config.webpack = webpackConf;
     config.browsers = ['Chrome'];
   }
