@@ -83,7 +83,6 @@ describe('Item', function () {
       expect(myItem.foreignEntry).toEqual(foreignItem);
 
       expect(myItem._store).toEqual(testStore);
-      // test if promise is returned
       construction.then(syncResponse => {
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.BEING_CREATED, STATE.BEING_CREATED);
         expect(syncResponse).toEqual('syncResponse');
@@ -132,24 +131,15 @@ describe('Item', function () {
       const construction = myItem.construct({
         _syncState: STATE.BEING_DELETED,
         name: 'hans',
-        _foreignId: foreignItem._id, // relation by client storage id
+        _foreignId: foreignItem._id,
       }, { source: 'clientStorage' });
       expect(myItem._syncState).toEqual(STATE.BEING_DELETED);
       expect(myItem._storeState).toEqual(STATE.REMOVED);
       expect(myItem.stored).toBe(true);
       expect(myItem.synced).toBe(false);
       expect(myItem.removed).toBe(true);
-      expect(myItem.autoSave).toEqual(true);
-
-      expect(myItem.__id).toBeDefined();
-      expect(myItem.name).toEqual('hans');
-
-      expect(myItem._store).toEqual(testStore);
-      // test if promise is returned and item is populated with foreign data
-      construction.then(syncResponse => {
+      construction.then(() => {
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.REMOVED, STATE.BEING_DELETED);
-        expect(myItem.foreignEntry).toEqual(foreignItem);
-        expect(syncResponse).toEqual('syncResponse');
         done();
       });
     });
@@ -163,7 +153,7 @@ describe('Item', function () {
       });
       const construction = myItem.construct({
         name: 'hans',
-        foreignId: foreignItem.id, // relation by client storage id
+        foreignId: foreignItem.id, // relation by transporter id
       }, { source: 'transporter' });
       expect(myItem._syncState).toEqual(STATE.EXISTENT);
       expect(myItem._storeState).toEqual(STATE.BEING_CREATED);
@@ -181,6 +171,26 @@ describe('Item', function () {
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.BEING_CREATED, STATE.EXISTENT);
         expect(myItem.foreignEntry).toEqual(foreignItem);
         expect(syncResponse).toEqual('syncResponse');
+        done();
+      });
+    });
+
+    fit('should error', function (done) {
+      spyOn(foreignStore, 'onceLoaded').and.returnValue(Promise.reject(new Error('some error')));
+      const myItem = new TestItem({
+        autoSave: true,
+        store: testStore,
+      });
+      const construction = myItem.construct({
+        name: 'hans',
+        foreignId: foreignItem.id, // relation by transporter id
+      }, { source: 'transporter' });
+      construction.catch(err => {
+        expect(myItem._syncState).toEqual(STATE.LOCKED);
+        expect(myItem._storeState).toEqual(STATE.LOCKED);
+        expect(myItem.removed).toBe(true);
+        expect(err).toEqual(new Error('some error'));
+        expect(myItem._synchronize).not.toHaveBeenCalled();
         done();
       });
     });

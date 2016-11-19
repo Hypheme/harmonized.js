@@ -27,7 +27,7 @@ export default class Item {
     return p.catch(err => {
       this._syncState = STATE.LOCKED;
       this._storeState = STATE.LOCKED;
-      this.error = err;
+      this.removed = true; // we remove item from store
       throw err;
     });
   }
