@@ -17,16 +17,16 @@ module.exports = function makeWebpackConfig() {
     },
   };
 
-  config.debug = true;
+  config.debug = false;
 
-  config.devtool = 'inline-source-map';
+  config.devtool = 'eval-source-map';
 
   // Initialize module
   config.module = {
     preLoaders: [],
     loaders: [{
       test: /\.js$/,
-      loader: 'babel-loader',
+      loader: 'babel-loader?retainLines=true',
       exclude: /node_modules/,
     }, {
       test: /\.json$/,
