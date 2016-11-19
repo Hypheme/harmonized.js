@@ -25,12 +25,12 @@ export default class BaseTransporter {
     return this._sendRequest(new TransactionItem('fetch', data));
   }
 
-  fetchAll(data: Object) {
-    return this._sendRequest(new TransactionItem('fetchAll', data));
+  fetchAll() {
+    return this._sendRequest(new TransactionItem('fetchAll', {}));
   }
 
-  initialFetch(data: Object) {
-    return this._sendRequest(new TransactionItem('initialFetch', data));
+  initialFetch() {
+    return this._sendRequest(new TransactionItem('initialFetch'));
   }
 
   _prepareRequest(/* item: TransactionItem */) {

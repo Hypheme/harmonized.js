@@ -1,11 +1,9 @@
-// @flow
 import TransporterMiddleware from './TransporterMiddleware';
-import PushQueueItem from '../BaseTransporter/PushQueueItem';
 
 export default class BaseQueueMiddleware extends TransporterMiddleware {
   // init() {}
 
-  addItemToQueue({ queueItem, queue }: { queueItem: PushQueueItem, queue: PushQueueItem[] }) {
+  addItemToQueue({ queueItem, queue }) {
     if (queue.length === 0 || queue[0].inProgress) {
       // queue is empty or a queue item is in progress, enqueue it
       queue.push(queueItem);
