@@ -7,7 +7,7 @@ config.module = {
   preLoaders: [],
   loaders: [{
     test: /\.js$/,
-    loader: 'babel-loader',
+    loader: 'babel-loader?plugins=babel-plugin-rewire',
     exclude: /node_modules/,
   }, {
     test: /\.json$/,
