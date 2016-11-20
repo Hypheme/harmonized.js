@@ -1,4 +1,4 @@
-import { Store } from './';
+// import { Store } from './';
 
 xdescribe('Store', function () {
   describe('constructor', function () {
