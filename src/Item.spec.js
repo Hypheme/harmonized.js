@@ -97,6 +97,7 @@ describe('Item', function () {
         store: testStore,
       });
       const construction = myItem.construct({
+        _id: '999',
         _syncState: STATE.BEING_CREATED,
         name: 'hans',
         _foreignId: foreignItem._id, // relation by client storage id
@@ -109,6 +110,7 @@ describe('Item', function () {
       expect(myItem.autoSave).toEqual(true);
 
       expect(myItem.__id).toBeDefined();
+      expect(myItem._id).toEqual('999');
       expect(myItem.name).toEqual('hans');
 
       expect(myItem._store).toEqual(testStore);
@@ -128,6 +130,7 @@ describe('Item', function () {
         store: testStore,
       });
       const construction = myItem.construct({
+        _id: '999',
         _syncState: STATE.BEING_DELETED,
         name: 'hans',
         _foreignId: foreignItem._id,
@@ -150,6 +153,7 @@ describe('Item', function () {
         store: testStore,
       });
       const construction = myItem.construct({
+        id: '888',
         name: 'hans',
         foreignId: foreignItem.id, // relation by transporter id
       }, { source: 'transporter' });
@@ -161,6 +165,7 @@ describe('Item', function () {
       expect(myItem.autoSave).toEqual(true);
 
       expect(myItem.__id).toBeDefined();
+      expect(myItem.id).toEqual('888');
       expect(myItem.name).toEqual('hans');
 
       expect(myItem._store).toEqual(testStore);
@@ -179,6 +184,7 @@ describe('Item', function () {
         store: testStore,
       });
       const construction = myItem.construct({
+        id: '888',
         name: 'hans',
         foreignId: foreignItem.id, // relation by transporter id
       }, { source: 'transporter' });

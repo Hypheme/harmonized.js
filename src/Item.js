@@ -322,7 +322,6 @@ export default class Item {
     }
   }
 
-
   _clientStorageCreate() {
     return this._transaction(() =>
       this.toClientStorage()
@@ -367,8 +366,8 @@ export default class Item {
     for (let j = 0, lenj = this.constructor.keys.length; j < lenj; j++) {
       const key = this.constructor.keys[j];
       if (key.primary === true && key.store === undefined) {
-        this[key.relationKey] = this[key.relationKey] || givenKeys[key.relationKey];
-        this[key._relationKey] = this[key._relationKey] || givenKeys[key._relationKey];
+        this[key.key] = this[key.key] || givenKeys[key.key];
+        this[key._key] = this[key._key] || givenKeys[key._key];
       }
     }
   }
