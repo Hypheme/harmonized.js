@@ -1,6 +1,6 @@
-import { observable, autorun, computed } from 'mobx';
+import { observable, autorun/* , computed*/ } from 'mobx';
 import uuid from 'uuid-v4';
-import { ACTION, STATE } from './constants';
+import { /* ACTION,*/ STATE } from './constants';
 
 export default class Item {
 
@@ -28,6 +28,7 @@ export default class Item {
       this._syncState = STATE.LOCKED;
       this._storeState = STATE.LOCKED;
       this.removed = true; // we remove item from store
+      this._dispose();
       throw err;
     });
   }
@@ -76,8 +77,7 @@ export default class Item {
   getTransporterKey() {
     const promises = [];
     const result = {};
-    for (let i = 0, len = this.constructor.keys.length; i < len; i++) {
-      const key = this.constructor.keys[i];
+    this.constructor.keys.forEach(key => {
       if (key.primary === true) {
         if (key.store !== undefined) {
           promises.push(this[key.key].getTransporterKey()
@@ -91,7 +91,7 @@ export default class Item {
             }));
         }
       }
-    }
+    });
     return Promise.all(promises)
       .then(() => result);
   }
@@ -115,15 +115,16 @@ export default class Item {
     });
     return Promise.all(promises)
       .then(contexts => {
-        for (let i = 0, len = contexts.length; i < len; i++) {
-          const item = contexts[i].item;
-          const key = contexts[i].key;
+        contexts.forEach(context => {
+          const item = context.item;
+          const key = context.key;
           if (item !== this[key.key]) { // something has changed in the meantime
-            return this.toClientStorage();
+            this.toClientStorage();
+            return;
           }
           result[key._relationKey] = this[key.key][key._storeKey];
           result[key.relationKey] = this[key.key][key.storeKey];
-        }
+        });
         return result;
       });
   }
@@ -167,14 +168,15 @@ export default class Item {
     });
     return Promise.all(promises)
       .then(contexts => {
-        for (let i = 0, len = contexts.length; i < len; i++) {
-          const item = contexts[i].item;
-          const key = contexts[i].key;
+        contexts.forEach(context => {
+          const item = context.item;
+          const key = context.key;
           if (item !== this[key.key]) { // something has changed in the meantime
-            return this.toTransporter();
+            this.toTransporter();
+            return;
           }
           result[key.relationKey] = this[key.key][key.storeKey];
-        }
+        });
         return result;
       });
   }
@@ -276,10 +278,9 @@ export default class Item {
         // TODO add internal stores to the mix (hurray)
         promises.push(key.store.onceLoaded()
           .then(() => {
-            const item = key.store.findOne(resolver);
             const asyncAutoSave = this.autoSave;
             this.autoSave = false;
-            this[key.name] = item;
+            this[key.name] = key.store.findOne(resolver);
             this.autoSave = asyncAutoSave;
           }));
       }
@@ -363,13 +364,12 @@ export default class Item {
   }
 
   _setPrimaryKey(givenKeys) {
-    for (let j = 0, lenj = this.constructor.keys.length; j < lenj; j++) {
-      const key = this.constructor.keys[j];
+    this.constructor.keys.forEach(key => {
       if (key.primary === true && key.store === undefined) {
         this[key.key] = this[key.key] || givenKeys[key.key];
         this[key._key] = this[key._key] || givenKeys[key._key];
       }
-    }
+    });
   }
 
   _setStoreState(state) {
@@ -400,13 +400,10 @@ export default class Item {
 
   _stateHandlerTrigger() {
     this.constructor.keys.forEach(key => {
-      let result;
       if (typeof key === 'string') {
-        result = this[key];
-      } else if (key.store !== undefined) {
-        result = this[key.key];
+        return this[key];
       }
-      return result;
+      return this[key.name];
     });
   }
 

@@ -4,13 +4,13 @@ import Store from '../test/unit/helpers/Test.Store';
 import Transporter from '../test/unit/helpers/Test.Transporter';
 import ClientStorage from '../test/unit/helpers/Test.ClientStorage';
 
-import * as _ from 'lodash';
+// import * as _ from 'lodash';
 import {
   observable,
-  autorun,
+  // autorun,
 } from 'mobx';
 
-import { ACTION, STATE } from './constants';
+import { /* ACTION,*/ STATE } from './constants';
 
 
 describe('Item', function () {
@@ -18,8 +18,8 @@ describe('Item', function () {
   class ForeingStore extends Store {}
   const foreignStore = new ForeingStore();
   const foreignItem = { _id: '123', foreign: 'item' };
-  const InternalStore = class InternalStore extends Store {};
-  const internalStoreInstance = new InternalStore();
+  // const InternalStore = class InternalStore extends Store {};
+  // const internalStoreInstance = new InternalStore();
   const testStore = new(class TestStore extends Store {})();
   testStore.transporter = new Transporter();
   testStore.clientStorage = new ClientStorage();
@@ -60,6 +60,7 @@ describe('Item', function () {
       // it would blow up all other tests if we wouldn't
       spyOn(TestItem.prototype, '_synchronize')
         .and.returnValue(Promise.resolve('syncResponse'));
+      spyOn(TestItem.prototype, '_stateHandlerTrigger').and.callThrough();
     });
 
     it('should create item from state', function () {
@@ -77,6 +78,7 @@ describe('Item', function () {
       expect(myItem.synced).toBe(false);
       expect(myItem.removed).toBe(false);
       expect(myItem.autoSave).toEqual(true);
+      expect(myItem._stateHandlerTrigger).toHaveBeenCalled();
 
       expect(myItem.__id).toBeDefined();
       expect(myItem.name).toEqual('hans');
@@ -108,6 +110,7 @@ describe('Item', function () {
       expect(myItem.synced).toBe(false);
       expect(myItem.removed).toBe(false);
       expect(myItem.autoSave).toEqual(true);
+      expect(myItem._stateHandlerTrigger).toHaveBeenCalled();
 
       expect(myItem.__id).toBeDefined();
       expect(myItem._id).toEqual('999');
@@ -163,6 +166,7 @@ describe('Item', function () {
       expect(myItem.synced).toBe(true);
       expect(myItem.removed).toBe(false);
       expect(myItem.autoSave).toEqual(true);
+      expect(myItem._stateHandlerTrigger).toHaveBeenCalled();
 
       expect(myItem.__id).toBeDefined();
       expect(myItem.id).toEqual('888');
@@ -183,12 +187,14 @@ describe('Item', function () {
         autoSave: true,
         store: testStore,
       });
+      spyOn(myItem, '_dispose').and.callThrough();
       const construction = myItem.construct({
         id: '888',
         name: 'hans',
         foreignId: foreignItem.id, // relation by transporter id
       }, { source: 'transporter' });
       return construction.catch(err => {
+        expect(myItem._dispose).toHaveBeenCalled();
         expect(myItem._syncState).toEqual(STATE.LOCKED);
         expect(myItem._storeState).toEqual(STATE.LOCKED);
         expect(myItem.removed).toBe(true);
@@ -214,7 +220,7 @@ describe('Item', function () {
 
     describe('_synchronize', function () {
       beforeEach(function () {
-        this.item._synchronize.andCallThrough();
+        this.item._synchronize.and.callThrough();
       });
 
       it('should create item in local storage');
