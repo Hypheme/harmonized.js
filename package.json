@@ -7,6 +7,7 @@
     "codecov": "cat coverage/*/lcov.info | codecov",
     "test:travis": "./node_modules/karma/bin/karma start",
     "test": "./node_modules/karma/bin/karma start --auto-watch --no-single-run",
+    "eslint": "./node_modules/.bin/eslint src/**",
     "basic-example": "node examples/example.js basic"
   },
   "repository": {
