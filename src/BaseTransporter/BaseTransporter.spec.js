@@ -1,23 +1,24 @@
 import BaseTransporter from './BaseTransporter';
-import TransactionItem, { __RewireAPI__ as TransactionItemRewire } from './TransactionItem';
-
-class TestTransporter extends BaseTransporter {
-  static middleware = [...BaseTransporter.middleware];
-  _prepareSend = jasmine.createSpy('_prepareSend');
-  _send = jasmine.createSpy('_send');
-  _prepareFetch = jasmine.createSpy('_prepareFetch');
-  _fetch = jasmine.createSpy('_fetch');
-  _prepareSend = jasmine.createSpy(' _prepareSend');
-  _fetchOne = jasmine.createSpy('_fetchOne');
-  _prepareInitialFetch = jasmine.createSpy('_prepareInitialFetch');
-  _initialFetch = jasmine.createSpy('_initialfetch');
-}
 
 describe('BaseTransporter', function () {
+  let TestTransporter;
+
   beforeEach(function () {
-    console.log(TransactionItem.__Rewire__);
-    console.log(TransactionItemRewire);
-    console.log('------');
+    class BfeTestTransporter extends BaseTransporter {
+      static middleware = [...BaseTransporter.middleware];
+      _prepareSend = jasmine.createSpy('_prepareSend');
+      _send = jasmine.createSpy('_send');
+      _prepareFetch = jasmine.createSpy('_prepareFetch');
+      _fetch = jasmine.createSpy('_fetch');
+      _prepareSend = jasmine.createSpy(' _prepareSend');
+      _fetchOne = jasmine.createSpy('_fetchOne');
+      _prepareInitialFetch = jasmine.createSpy('_prepareInitialFetch');
+      _initialFetch = jasmine.createSpy('_initialfetch');
+    }
+
+    TestTransporter = BfeTestTransporter;
+    this.TransactionItemMock = jasmine.createSpy('TransactionItem');
+    BaseTransporter.__Rewire__('TransactionItem', this.TransactionItemMock);
     this.testTransporter = new TestTransporter();
 
     expect(TestTransporter.middleware instanceof Array).toBe(true);
@@ -90,8 +91,8 @@ describe('BaseTransporter', function () {
         name: 'theNewReplacementMiddleware',
         replaces: 'notExistingMiddleware',
       });
-    }).toThrowError('The middleware "notExistingMiddleware" could not be replaced because it can\'t be found');
-
+    }).toThrowError('The middleware "notExistingMiddleware" could not be replaced ' +
+      'because it can\'t be found');
 
     expect(TestTransporter.middleware).toEqual([{
       name: 'theOtherMiddleware',
@@ -197,9 +198,7 @@ describe('BaseTransporter', function () {
       });
 
       setTimeout(() => {
-        // expect(this.testTransporter._prepareRequest).toHaveBeenCalledWith(this.queueCreatedItem);
-
-      // Send middleware run
+        // Send middleware run
         expect(TestTransporter.runMiddleware.calls.count()).toBe(1);
 
         expect(this.testTransporter._request).toHaveBeenCalled();
@@ -213,43 +212,84 @@ describe('BaseTransporter', function () {
     });
 
   it('should update an item and send the request', function () {
+    this.TransactionItemMock.and.callFake((action, data) => {
+      expect(action).toBe('update');
+      expect(data).toEqual({
+        someUpdated: 'item',
+      });
+    });
+
     spyOn(this.testTransporter, '_sendRequest').and.returnValue('return value');
     const updateReturn = this.testTransporter.update({
       someUpdated: 'item',
     });
     expect(updateReturn).toBe('return value');
-    // expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(this.queueCreatedItem);
+    expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(
+      jasmine.any(this.TransactionItemMock));
+    expect(this.testTransporter._sendRequest).toHaveBeenCalledTimes(1);
   });
 
   it('should delete am item and send the request', function () {
+    this.TransactionItemMock.and.callFake((action, data) => {
+      expect(action).toBe('delete');
+      expect(data).toEqual({
+        someDeleted: 'item',
+      });
+    });
+
     spyOn(this.testTransporter, '_sendRequest').and.returnValue('return value');
     const deleteReturn = this.testTransporter.delete({
       someDeleted: 'item',
     });
     expect(deleteReturn).toBe('return value');
-    // expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(this.queueCreatedItem);
+    expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(
+      jasmine.any(this.TransactionItemMock));
+    expect(this.testTransporter._sendRequest).toHaveBeenCalledTimes(1);
   });
 
   it('should fetch one item and send the request', function () {
+    this.TransactionItemMock.and.callFake((action, data) => {
+      expect(action).toBe('fetch');
+      expect(data).toEqual({
+        someItemToBe: 'fetched',
+      });
+    });
+
     spyOn(this.testTransporter, '_sendRequest').and.returnValue('return value');
     const fetchReturn = this.testTransporter.fetch({
       someItemToBe: 'fetched',
     });
     expect(fetchReturn).toBe('return value');
-    // expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(this.queueCreatedItem);
+    expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(
+      jasmine.any(this.TransactionItemMock));
+    expect(this.testTransporter._sendRequest).toHaveBeenCalledTimes(1);
   });
 
   it('should fetch all items and send the request', function () {
+    this.TransactionItemMock.and.callFake((action, data) => {
+      expect(action).toBe('fetchAll');
+      expect(data).toEqual({});
+    });
+
     spyOn(this.testTransporter, '_sendRequest').and.returnValue('return value');
     const fetchAllReturn = this.testTransporter.fetchAll();
     expect(fetchAllReturn).toBe('return value');
-    // expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(this.queueCreatedItem);
+    expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(
+      jasmine.any(this.TransactionItemMock));
+    expect(this.testTransporter._sendRequest).toHaveBeenCalledTimes(1);
   });
 
   it('should do initial fetch all items and send the request', function () {
+    this.TransactionItemMock.and.callFake((action, data) => {
+      expect(action).toBe('initialFetch');
+      expect(data).toEqual({});
+    });
+
     spyOn(this.testTransporter, '_sendRequest').and.returnValue('return value');
     const initialFetchReturn = this.testTransporter.initialFetch();
     expect(initialFetchReturn).toBe('return value');
-    // expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(this.queueCreatedItem);
+    expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(
+      jasmine.any(this.TransactionItemMock));
+    expect(this.testTransporter._sendRequest).toHaveBeenCalledTimes(1);
   });
 });

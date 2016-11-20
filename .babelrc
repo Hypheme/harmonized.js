@@ -5,6 +5,7 @@
     "stage-1"
   ],
   "plugins": [
+    "babel-plugin-rewire",
     "transform-flow-strip-types",
     "es6-promise",
     "transform-decorators-legacy"

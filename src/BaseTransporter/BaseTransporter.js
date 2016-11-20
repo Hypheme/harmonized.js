@@ -30,7 +30,7 @@ export default class BaseTransporter {
   }
 
   initialFetch() {
-    return this._sendRequest(new TransactionItem('initialFetch'));
+    return this._sendRequest(new TransactionItem('initialFetch', {}));
   }
 
   _prepareRequest(/* item: TransactionItem */) {

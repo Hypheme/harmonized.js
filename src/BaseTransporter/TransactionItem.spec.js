@@ -21,3 +21,7 @@ describe('TransactionItem', function () {
     });
   });
 });
+
+export default class TestClass {
+
+}
