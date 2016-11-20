@@ -162,8 +162,68 @@ describe('BaseTransporter', function () {
       });
   });
 
+  it('should succeed to create and send a transmission item',
+    function (done) {
+      this.TransactionItemMock.and.returnValue({
+        action: 'create',
+        payload: {},
+      });
+
+      spyOn(TestTransporter, 'runMiddleware').and.callThrough();
+      let resolve;
+
+      const promise = new Promise((_resolve) => {
+        resolve = _resolve;
+      });
+
+      spyOn(this.testTransporter, '_request').and.returnValue(promise);
+      spyOn(this.testTransporter, '_prepareRequest').and.returnValue({
+        prepared: 'item',
+      });
+
+      this.testTransporter.create({
+        someNew: 'item',
+      }).then((returnedData) => {
+        expect(TestTransporter.runMiddleware).toHaveBeenCalledTimes(2);
+
+        expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('send', {
+          action: 'create',
+          req: {
+            prepared: 'item',
+          },
+        });
+
+        expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('receive', {
+          action: 'create',
+          res: 'res',
+          req: 'req',
+        });
+
+        expect(returnedData).toBe('res');
+
+        done();
+      });
+
+      setTimeout(() => {
+        // Send middleware run
+        expect(TestTransporter.runMiddleware.calls.count()).toBe(1);
+
+        expect(this.testTransporter._request).toHaveBeenCalled();
+        expect(this.testTransporter._request.calls.count()).toBe(1);
+        resolve({
+          res: 'res',
+          req: 'req',
+        });
+      });
+    });
+
   it('should get a transmission error when trying to create and send a transmission item',
     function (done) {
+      this.TransactionItemMock.and.returnValue({
+        action: 'create',
+        payload: {},
+      });
+
       spyOn(TestTransporter, 'runMiddleware').and.callThrough();
       let reject;
 
@@ -179,14 +239,23 @@ describe('BaseTransporter', function () {
       this.testTransporter.create({
         someNew: 'item',
       }).catch((returnedData) => {
+        expect(TestTransporter.runMiddleware).toHaveBeenCalledTimes(2);
+
+        expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('send', {
+          action: 'create',
+          req: {
+            prepared: 'item',
+          },
+        });
+
         expect(TestTransporter.runMiddleware).not.toHaveBeenCalledWith('receive',
           jasmine.any(Object));
-        // expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('transmissionError', {
-        //   type: 'push',
-        //   res: 'res',
-        //   req: 'req',
-        //   error: 'message',
-        // });
+        expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('transmissionError', {
+          action: 'create',
+          res: 'res',
+          req: 'req',
+          error: 'message',
+        });
 
         expect(TestTransporter.runMiddleware.calls.count()).toBe(2);
         expect(returnedData).toEqual({

@@ -5,6 +5,7 @@ import TransporterMiddleware from '../TransporterMiddleware/TransporterMiddlewar
 export default class BaseTransporter {
   static middleware: TransporterMiddleware[] = [];
 
+  // istanbul ignore next
   _shouldBeImplemented() {
     throw new Error('should be implemented by the transporter');
   }
@@ -33,10 +34,12 @@ export default class BaseTransporter {
     return this._sendRequest(new TransactionItem('initialFetch', {}));
   }
 
+  // istanbul ignore next
   _prepareRequest(/* item: TransactionItem */) {
     this._shouldBeImplemented();
   }
 
+  // istanbul ignore next
   _request(/* data: Object */) {
     this._shouldBeImplemented();
   }
