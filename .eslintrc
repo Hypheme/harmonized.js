@@ -11,7 +11,7 @@
       "props": false
     }],
     "func-names": 0,
-    "prefer-arrow-callback": 1,
+    "prefer-arrow-callback": 0,
     "jasmine/no-spec-dupes": ["warn", "branch"]
   },
   "env": {
