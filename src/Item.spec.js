@@ -78,7 +78,6 @@ describe('Item', function () {
       expect(myItem.synced).toBe(false);
       expect(myItem.removed).toBe(false);
       expect(myItem.autoSave).toEqual(true);
-      expect(myItem._stateHandlerTrigger).toHaveBeenCalled();
 
       expect(myItem.__id).toBeDefined();
       expect(myItem.name).toEqual('hans');
@@ -86,6 +85,7 @@ describe('Item', function () {
 
       expect(myItem._store).toEqual(testStore);
       return construction.then(syncResponse => {
+        expect(myItem._stateHandlerTrigger).toHaveBeenCalled();
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.BEING_CREATED, STATE.BEING_CREATED);
         expect(syncResponse).toEqual('syncResponse');
       });
@@ -110,7 +110,6 @@ describe('Item', function () {
       expect(myItem.synced).toBe(false);
       expect(myItem.removed).toBe(false);
       expect(myItem.autoSave).toEqual(true);
-      expect(myItem._stateHandlerTrigger).toHaveBeenCalled();
 
       expect(myItem.__id).toBeDefined();
       expect(myItem._id).toEqual('999');
@@ -119,6 +118,7 @@ describe('Item', function () {
       expect(myItem._store).toEqual(testStore);
       // test if promise is returned and item is populated with foreign data
       return construction.then(syncResponse => {
+        expect(myItem._stateHandlerTrigger).toHaveBeenCalled();
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.EXISTENT, STATE.BEING_CREATED);
         expect(myItem.foreignEntry).toEqual(foreignItem);
         expect(syncResponse).toEqual('syncResponse');
@@ -166,7 +166,6 @@ describe('Item', function () {
       expect(myItem.synced).toBe(true);
       expect(myItem.removed).toBe(false);
       expect(myItem.autoSave).toEqual(true);
-      expect(myItem._stateHandlerTrigger).toHaveBeenCalled();
 
       expect(myItem.__id).toBeDefined();
       expect(myItem.id).toEqual('888');
@@ -175,6 +174,7 @@ describe('Item', function () {
       expect(myItem._store).toEqual(testStore);
       // test if promise is returned and item is populated with foreign data
       return construction.then(syncResponse => {
+        expect(myItem._stateHandlerTrigger).toHaveBeenCalled();
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.BEING_CREATED, STATE.EXISTENT);
         expect(myItem.foreignEntry).toEqual(foreignItem);
         expect(syncResponse).toEqual('syncResponse');
@@ -187,14 +187,12 @@ describe('Item', function () {
         autoSave: true,
         store: testStore,
       });
-      spyOn(myItem, '_dispose').and.callThrough();
       const construction = myItem.construct({
         id: '888',
         name: 'hans',
         foreignId: foreignItem.id, // relation by transporter id
       }, { source: 'transporter' });
       return construction.catch(err => {
-        expect(myItem._dispose).toHaveBeenCalled();
         expect(myItem._syncState).toEqual(STATE.LOCKED);
         expect(myItem._storeState).toEqual(STATE.LOCKED);
         expect(myItem.removed).toBe(true);
