@@ -91,6 +91,40 @@ export default class Item {
     return this._setFromTransporter(values);
   }
 
+  _getValidNewState(current, newState) {
+    // TODO add fetch to the list
+    switch (current) {
+      case STATE.LOCKED:
+        return newState === STATE.DELETED ? STATE.DELETED : STATE.LOCKED;
+      case STATE.DELETED:
+        return STATE.DELETED;
+      case STATE.REMOVED:
+        return newState === STATE.DELETED ? STATE.DELETED : STATE.REMOVED;
+      case STATE.EXISTENT:
+        return newState === STATE.BEING_UPDATED || newState === STATE.BEING_DELETED ?
+          newState : current;
+      case STATE.BEING_CREATED:
+        return newState === STATE.EXISTENT ||
+          newState === STATE.BEING_UPDATED ||
+          newState === STATE.BEING_DELETED ?
+          newState : current;
+      case STATE.BEING_UPDATED:
+        return newState === STATE.EXISTENT || newState === STATE.BEING_DELETED ?
+          newState : current;
+      case STATE.BEING_DELETED:
+        switch (newState) {
+          case STATE.DELETED:
+            return STATE.DELETED;
+          case STATE.REMOVED:
+            return STATE.REMOVED;
+          default:
+            return STATE.LOCKED;
+        }
+      default:
+        return current;
+    }
+  }
+
   _setFromState(values) {
     this.constructor.keys.forEach(key => {
       if (typeof key === 'string') {
@@ -144,13 +178,33 @@ export default class Item {
     });
   }
 
+  _setStoreState(state) {
+    this._storeState = this._getValidNewState(this._storeState, state);
+    if (this._storeState === STATE.EXISTENT || this._storeState === STATE.DELTED) {
+      this.stored = true;
+    } else {
+      this.stored = false;
+    }
+  }
+
+  _setSyncState(state) {
+    this._syncState = this._getValidNewState(this._syncState, state);
+    if (this._syncState === STATE.EXISTENT || this._syncState === STATE.DELETED) {
+      this.synced = true;
+    } else {
+      this.synced = false;
+    }
+  }
+
   _stateHandler(call) {
     this._stateHandlerTrigger(); // we need this for mobx
     if (call === 0) {
       return this._synchronize(this._storeState, this._syncState);
     }
     if (this.autoSave) {
-      return this._synchronize(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
+      this._setStoreState(STATE.BEING_UPDATED);
+      this._setSyncState(STATE.BEING_UPDATED);
+      return this._synchronize(this._storeState, this._syncState);
     }
     return Promise.resolve();
   }
