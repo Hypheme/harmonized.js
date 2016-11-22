@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/Hypheme/harmonized.js.svg?branch=feature%2Fstore_and_item)](https://travis-ci.org/Hypheme/harmonized.js) [![codecov](https://codecov.io/gh/Hypheme/harmonized.js/branch/master/graph/badge.svg)](https://codecov.io/gh/Hypheme/harmonized.js)
+[![Build Status](https://travis-ci.org/Hypheme/harmonized.js.svg?branch=feature%2Fstore_and_item)](https://travis-ci.org/Hypheme/harmonized.js) [![codecov](https://codecov.io/gh/Hypheme/harmonized.js/branch/master/graph/badge.svg)](https://codecov.io/gh/Hypheme/harmonized.js) [![Dependency Status](https://www.versioneye.com/user/projects/58341e7b4ef164003ff45304/badge.svg?style=flat-square)](https://www.versioneye.com/user/projects/58341e7b4ef164003ff45304)
 
 # harmonized.js
 
