@@ -52,9 +52,9 @@ export default class BaseTransporter {
     return this.constructor.runMiddleware('send', { action, req: preparedReq })
       .then(this._request.bind(this))
       // when error run transmissionError middleware
-      .catch(({ res, req, error }) => this.constructor
-        .runMiddleware('transmissionError', { action, req, res, error })
-        .then(() => Promise.reject({ res, req, error })))
+      .catch(({ error, req }) => this.constructor
+        .runMiddleware('transmissionError', { action, req, error })
+        .then(() => Promise.reject({ error, req })))
       .then(({ res, req }) => this.constructor.runMiddleware('receive', { action, req, res }))
       .then(({ res }) => res);
   }

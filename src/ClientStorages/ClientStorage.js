@@ -4,6 +4,6 @@
  */
 import BaseTransporter from '../BaseTransporter/BaseTransporter';
 
-export default class Transporter extends BaseTransporter {
+export default class ClientStorage extends BaseTransporter {
 
 }
