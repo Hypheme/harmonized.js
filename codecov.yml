@@ -9,8 +9,8 @@ coverage:
   status:
     project:
       default:
-        target: 96%
-        threshold: 6
+        target: 90%
+        threshold: 20
         branches: null
     patch:
       default:
@@ -19,8 +19,6 @@ coverage:
         branches: null
     changes:
       default:
-        target: 90%
-        threshold: 20
         branches: null
   ignore: null
 
