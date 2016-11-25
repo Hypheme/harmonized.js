@@ -1,5 +1,5 @@
 {
-  "extends": ["airbnb", "plugin:jasmine/recommended"],
+  "extends": ["airbnb"],
   "ecmaFeatures": {
     "jsx": true,
     "modules": true
@@ -16,8 +16,7 @@
   "env": {
     "browser": true,
     "node": true,
-    "es6": true,
-    "jasmine": true
+    "es6": true
   },
   "parser": "babel-eslint",
   "plugins": [

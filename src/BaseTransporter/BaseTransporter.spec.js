@@ -252,14 +252,12 @@ describe('BaseTransporter', function () {
           jasmine.any(Object));
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('transmissionError', {
           action: 'create',
-          res: 'res',
           req: 'req',
           error: 'message',
         });
 
         expect(TestTransporter.runMiddleware.calls.count()).toBe(2);
         expect(returnedData).toEqual({
-          res: 'res',
           req: 'req',
           error: 'message',
         });
