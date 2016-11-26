@@ -1,16 +1,31 @@
+// @flow
 import Transporter from './Transporter';
 import { TransactionItem } from '../BaseTransporter';
 
 export default class HttpTransporter extends Transporter {
-  _getMethodMap(action) {
+  baseUrl: string;
+  path: string;
+  methodMap: Map;
+  fullPath: string;
+
+  constructor(options: Object) {
+    super();
+    this.baseUrl = options.baseUrl;
+    this.path = options.path;
+    this.methodMap = new Map();
+  }
+
+  _getMethodFromAction(action: string) {
     return this.methodMap.get(action) || HttpTransporter.methodMap.get(action);
   }
 
-  _prepareHttpRequest({ action, payload }) {
+  _prepareHttpRequest({ action, payload }: { action: string, payload: Object }) {
     return {
       action,
+      baseUrl: (this._baseUrl || this.constructor._baseUrl),
+      path: (this.createPath(this.fullPath) || this.createPath()),
       req: {
-        method: this._getMethodMap(action),
+        method: this._getMethodFromAction(action),
         mode: 'cors',
         body: payload,
       },
@@ -26,50 +41,62 @@ export default class HttpTransporter extends Transporter {
       case 'fetchAll':
       case 'initialFetch':
         return this._prepareHttpRequest(item);
-        break;
       default:
         throw new Error('Transaction item has unknown action!');
-        break;
     }
   }
 
-  _request({ action, url, req }) {
-    return fetch(url).then((res) => {
-      return { res, req };
-    }, (error) => {
-      return { error, req };
-    });
+  _request({ baseUrl, path, req }: { baseUrl: string, path: string, req: Object }) {
+    return fetch(`${baseUrl}/${path}`).then((res) => ({ res, req }),
+      (error) => ({ error, req }));
   }
 
   static methodMap = new Map();
+
+  static setBaseUrl(url: string) {
+    this._baseUrl = url;
+  }
 }
 
 HttpTransporter.methodMap.set('create', {
   method: 'POST',
-  urlTemplate: ':resourceName',
+  pathTemplate: ':resourceName',
 });
 
 HttpTransporter.methodMap.set('update', {
   method: 'PUT',
-  urlTemplate: ':resourceName/:id',
+  pathTemplate: ':resourceName/:id',
 });
 
 HttpTransporter.methodMap.set('delete', {
   method: 'DELETE',
-  urlTemplate: ':resourceName/:id',
+  pathTemplate: ':resourceName/:id',
 });
 
 HttpTransporter.methodMap.set('fetch', {
   method: 'GET',
-  urlTemplate: ':resourceName/:id',
+  pathTemplate: ':resourceName/:id',
 });
 
 HttpTransporter.methodMap.set('fetchAll', {
   method: 'GET',
-  urlTemplate: ':resourceName',
+  pathTemplate: ':resourceName',
 });
 
 HttpTransporter.methodMap.set('initialFetch', {
   method: 'GET',
-  urlTemplate: ':resourceName',
+  pathTemplate: ':resourceName',
 });
+
+
+[
+  {
+    id: 123,
+    authors: [
+      {
+        id: 312,
+        name: 'hans',
+      },
+    ],
+  },
+];

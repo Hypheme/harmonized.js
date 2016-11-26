@@ -101,6 +101,24 @@ const anItemKeys = [
   //     store: WheelStoreClass,
   //   }],
 
+  // To be implemented!!!
+  // new WheelStoreClass({Transporter: this.store.Transporter, ClientStorage: this.store.ClientStorage});
+  //
+  // WheelStoreClass.Item = MyFancyItem;
+  //
+  // static transporterOptions = {
+  //   http: {
+  //
+  //   },
+  //   socket: {
+  //
+  //   },
+  // }
+  //
+  // static itemKeys: {
+  //
+  // }
+
 ];
 class AnItem extends Item {
 
