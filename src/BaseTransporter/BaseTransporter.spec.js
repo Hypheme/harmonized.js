@@ -187,10 +187,7 @@ describe('BaseTransporter', function () {
         expect(TestTransporter.runMiddleware).toHaveBeenCalledTimes(2);
 
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('send', {
-          action: 'create',
-          req: {
-            prepared: 'item',
-          },
+          prepared: 'item',
         });
 
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('receive', {
@@ -242,10 +239,7 @@ describe('BaseTransporter', function () {
         expect(TestTransporter.runMiddleware).toHaveBeenCalledTimes(2);
 
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('send', {
-          action: 'create',
-          req: {
-            prepared: 'item',
-          },
+          prepared: 'item',
         });
 
         expect(TestTransporter.runMiddleware).not.toHaveBeenCalledWith('receive',

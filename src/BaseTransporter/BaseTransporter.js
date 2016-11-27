@@ -49,7 +49,7 @@ export default class BaseTransporter {
     const action = item.action;
 
     // run send middleware then send and afterwards work off the queue
-    return this.constructor.runMiddleware('send', { action, req: preparedReq })
+    return this.constructor.runMiddleware('send', preparedReq)
       .then(this._request.bind(this))
       // when error run transmissionError middleware
       .catch(({ error, req }) => this.constructor
