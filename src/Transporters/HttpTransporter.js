@@ -10,22 +10,42 @@ export default class HttpTransporter extends Transporter {
 
   constructor(options: Object) {
     super();
-    this.baseUrl = options.baseUrl;
+    this.baseUrl = options.baseUrl.replace(/\/$/, '');
     this.path = options.path;
     this.methodMap = new Map();
   }
 
-  _getMethodFromAction(action: string) {
-    return this.methodMap.get(action) || HttpTransporter.methodMap.get(action);
+  createPath(path: string, pathTemplate: string, payload: Object) {
+    let constructedPath = pathTemplate.replace(/:basePath(\/|$)/, path);
+    constructedPath = constructedPath.replace(/:id(\/|$)/, payload.id);
+    return constructedPath;
+  }
+
+  getPathForItem(payload: Object) {
+    const action = 'fetch';
+    const preparedReq = this._prepareHttpRequest({ action, payload });
+
+    // run send middleware then send and afterwards work off the queue
+    return this.constructor.runMiddleware('send', { action, req: preparedReq })
+      .then(({ path, templatePath, req }) => this.createPath(path, templatePath, req.body));
+  }
+
+  _getMethodFromAction(action: string): Object {
+    return this.methodMap.get(action) || HttpTransporter.methodMap.get(action) || {};
   }
 
   _prepareHttpRequest({ action, payload }: { action: string, payload: Object }) {
+    const methodOptions: Object = this._getMethodFromAction(action);
     return {
       action,
       baseUrl: (this._baseUrl || this.constructor._baseUrl),
-      path: (this.createPath(this.fullPath) || this.createPath()),
+      path: (this.fullPath || this.path),
+      pathTemplate: methodOptions.pathTemplate,
       req: {
-        method: this._getMethodFromAction(action),
+        method: methodOptions.method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         mode: 'cors',
         body: payload,
       },
@@ -46,9 +66,12 @@ export default class HttpTransporter extends Transporter {
     }
   }
 
-  _request({ baseUrl, path, req }: { baseUrl: string, path: string, req: Object }) {
-    return fetch(`${baseUrl}/${path}`).then((res) => ({ res, req }),
-      (error) => ({ error, req }));
+  _request({ baseUrl, path, templatePath, req }:
+    { baseUrl: string, path: string, templatePath: string, req: Object }) {
+    req.headers = new Headers(req.headers);
+    const url: string = `${baseUrl}/${this.createPath(path, templatePath, req.body)}`;
+    req.body = JSON.stringify(req.body);
+    return fetch(url, req).then((res) => ({ res, req }), (error) => ({ error, req }));
   }
 
   static methodMap = new Map();
@@ -60,43 +83,30 @@ export default class HttpTransporter extends Transporter {
 
 HttpTransporter.methodMap.set('create', {
   method: 'POST',
-  pathTemplate: ':resourceName',
+  pathTemplate: ':basePath',
 });
 
 HttpTransporter.methodMap.set('update', {
   method: 'PUT',
-  pathTemplate: ':resourceName/:id',
+  pathTemplate: ':basePath/:id',
 });
 
 HttpTransporter.methodMap.set('delete', {
   method: 'DELETE',
-  pathTemplate: ':resourceName/:id',
+  pathTemplate: ':basePath/:id',
 });
 
 HttpTransporter.methodMap.set('fetch', {
   method: 'GET',
-  pathTemplate: ':resourceName/:id',
+  pathTemplate: ':basePath/:id',
 });
 
 HttpTransporter.methodMap.set('fetchAll', {
   method: 'GET',
-  pathTemplate: ':resourceName',
+  pathTemplate: ':basePath',
 });
 
 HttpTransporter.methodMap.set('initialFetch', {
   method: 'GET',
-  pathTemplate: ':resourceName',
+  pathTemplate: ':basePath',
 });
-
-
-[
-  {
-    id: 123,
-    authors: [
-      {
-        id: 312,
-        name: 'hans',
-      },
-    ],
-  },
-];
