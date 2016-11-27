@@ -6,7 +6,7 @@ import {
 
 export default class Store {
 
-  transporterOptions = {
+  static transporterOptions = {
     http: {
       url: 'http',
     },
@@ -24,7 +24,7 @@ export default class Store {
     this.Item = Item;
 
     if (Transporter) {
-      this.transporter = new Transporter(transporterOptions[Transporter.name]);
+      this.transporter = new Transporter(this.constructor.transporterOptions[Transporter.name]);
     } else {
       this.transporter = new EmptyTransporter();
     }

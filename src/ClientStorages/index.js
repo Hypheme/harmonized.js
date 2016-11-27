@@ -1,4 +1,4 @@
-import LocalStorage from './LocalStorage';
+import ClientStorage from './ClientStorage';
 
-export default { Interface: LocalStorage, LocalStorage };
-export { LocalStorage as Interface, LocalStorage };
+export default { Interface: ClientStorage, ClientStorage };
+export { ClientStorage as Interface, ClientStorage };

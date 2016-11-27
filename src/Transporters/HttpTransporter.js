@@ -21,9 +21,9 @@ export default class HttpTransporter extends Transporter {
     return constructedPath;
   }
 
-  getItemPath(payload: Object) {
+  getItemPath(payloadBody: Object) {
     const action = 'fetch';
-    const preparedReq = this._prepareHttpRequest({ action, payload });
+    const preparedReq = this._prepareHttpRequest({ action, payload: payloadBody });
 
     // run send middleware then send and afterwards work off the queue
     return this.constructor.runMiddleware('send', preparedReq)
@@ -87,12 +87,10 @@ export default class HttpTransporter extends Transporter {
     return fetch(url, req).then((res) => {
       if (res.ok) {
         return { res, req };
-      } else {
-        return Promise.reject({ res, req });
       }
-    }, (error) => {
-      return Promise.reject({ error, req });
-    });
+
+      return Promise.reject({ res, req });
+    }, error => Promise.reject({ error, req }));
   }
 
   static methodMap = new Map();
