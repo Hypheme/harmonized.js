@@ -38,7 +38,7 @@ export default class HttpTransporter extends Transporter {
     const methodOptions: Object = this._getMethodFromAction(action);
     return {
       action,
-      baseUrl: (this._baseUrl || this.constructor._baseUrl),
+      baseUrl: (this.baseUrl || this.constructor.baseUrl),
       path: (this.fullPath || this.path),
       pathTemplate: methodOptions.pathTemplate,
       req: {
@@ -77,7 +77,7 @@ export default class HttpTransporter extends Transporter {
   static methodMap = new Map();
 
   static setBaseUrl(url: string) {
-    this._baseUrl = url;
+    this.baseUrl = url;
   }
 }
 
