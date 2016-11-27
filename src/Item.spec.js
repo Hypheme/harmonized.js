@@ -27,7 +27,7 @@ describe('Item', function () {
     @observable name
     @observable foreignEntry
   };
-  TestItem.keys = [
+  testStore.itemKeys = [
     'name', {
       name: 'id',
       primary: true,

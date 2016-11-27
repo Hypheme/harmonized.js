@@ -120,6 +120,17 @@ const anItemKeys = [
   // }
 
 ];
+
+{
+  name: 'itemName'
+  author: {
+    name: 'hans',
+  }
+}
+// post /item  { name: 'itemName', author: { name: 'hans'}}
+// post /item/:itemId/author { name: 'hans' }
+// item.store.transporter.update(this, 'author');
+
 class AnItem extends Item {
 
 }

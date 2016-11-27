@@ -48,9 +48,6 @@ export default class Item {
   // INTERFACE METHODS //
   // /////////////////////
 
-  // use this.constructor.keys
-  static keys = undefined;
-
   // //////////////////
   // PUBLIC METHODS //
   // //////////////////
@@ -126,7 +123,7 @@ export default class Item {
   }
 
   _setFromState(values) {
-    this.constructor.keys.forEach(key => {
+    this._store.itemKeys.forEach(key => {
       if (typeof key === 'string') {
         this[key] = values[key];
       } else if (key.store === undefined) {
@@ -151,7 +148,7 @@ export default class Item {
 
   _setFromOutside(values, prefix = '') {
     const promises = [];
-    this.constructor.keys.forEach(key => {
+    this._store.itemKeys.forEach(key => {
       if (typeof key === 'string') {
         this[key] = values[key];
       } else if (key.store === undefined) {
@@ -170,7 +167,7 @@ export default class Item {
   }
 
   _setPrimaryKey(givenKeys) {
-    this.constructor.keys.forEach(key => {
+    this._store.itemKeys.forEach(key => {
       if (key.primary === true && key.store === undefined) {
         this[key.key] = this[key.key] || givenKeys[key.key];
         this[key._key] = this[key._key] || givenKeys[key._key];
@@ -210,7 +207,7 @@ export default class Item {
   }
 
   _stateHandlerTrigger() {
-    this.constructor.keys.forEach(key => {
+    this._store.itemKeys.forEach(key => {
       if (typeof key === 'string') {
         return this[key];
       }
