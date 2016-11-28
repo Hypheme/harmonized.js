@@ -1,6 +1,6 @@
 // @flow
 import TransactionItem from './TransactionItem';
-import TransporterMiddleware from '../TransporterMiddleware/TransporterMiddleware';
+import TransporterMiddleware from './TransporterMiddleware/TransporterMiddleware';
 
 export default class BaseTransporter {
   static middleware: TransporterMiddleware[] = [];
