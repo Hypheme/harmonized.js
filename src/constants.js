@@ -19,4 +19,11 @@ const ACTION = {
   FETCH: 'fetch',
 };
 
-export { STATE, ACTION };
+const SOURCE = {
+  STATE: 0,
+  USER: 0,
+  TRANSPORTER: 1,
+  CLIENT_STORAGE: 2,
+};
+
+export { STATE, ACTION, SOURCE };

@@ -5,14 +5,54 @@
 // ///////////
 // store setup //
 // ///////////
+class Schema {}
 class Store {}
-class Item {}
+// class Item {}
+
+const driverStoreInstance = {};
+const passengerStoreInstance = {};
+const wheelsStoreInstance = {};
 
 class MyTransporter {}
 class MyClientStorage {}
 class MyItem {}
 
-class MyStore extends Store {}
+class MyStore extends Store {
+  static schema = new Schema({
+    brand: String,
+    price: { type: Number, observable: false },
+    seats: { // nested object instead of internal stores first
+      front: Number,
+      back: Number,
+    },
+    // id: Schema.Key, // in there by default
+    // or long: id: Key
+    // {
+    //   type: Key,
+    //   key: 'id',
+    //   _key: '_id',
+    // },
+    driver: {
+      type: Schema.Key,
+      key: 'driverId', // -> toTransporter driver transforms to
+        //  car.driverId === driver.primaryKey(TRANSPORTER)
+      _key: '_driverId',
+      ref: driverStoreInstance,
+    },
+    passengers: [{
+      type: Schema.Key,
+      // no key given, toTransporter transforms to car.passengers == [{ driver object1 }, ...]
+      // no _key given, toClientStorage transforms to car.passengers == [{ driver object1 }, ...]
+      ref: passengerStoreInstance,
+    }],
+    wheels: [{
+      type: Schema.Key,
+      key: plainWheel => plainWheel.id, // transforms to car.wheels == [1, 2, 3, ...]
+      _key: '_wheelId',
+      ref: wheelsStoreInstance,
+    }],
+  });
+}
 MyStore.Transporter = MyTransporter;
 MyStore.ClientStorage = MyClientStorage;
 MyStore.Item = MyItem;
@@ -46,95 +86,17 @@ store.findOne({
 store.findAsync({}); // same as find, but returns a promise + waits until the store is in sync
 store.findOneAsync({});
 // manipulate
-store.create(rawItem, {
+store.create(/* rawItem, */ {
   source: 'transporter',
 }); // returns item
 
-store.markCorruptItem(item); // removes item from the store (without any api or client storage calls)
+// removes item from the store (without any api or client storage calls)
+store.markCorruptItem(/*item*/);
 // only if sth goes completly wrong
 
 // ////////
 // Item //
 // ////////
-
-// ///////////////
-// item setup  //
-// ///////////////
-
-const anItemKeys = [
-    // normal item property
-  'brand',
-
-    // default primary key
-  {
-    name: 'id',
-    primary: true,
-    key: 'id',
-    _key: '_id',
-  },
-
-    // This is the definition for a relation to an existing store
-  {
-    name: 'driver',
-    key: 'driverId',
-    _key: '_driverId',
-    store: myStoreInstance,
-    storeKey: 'id',
-    _storeKey: '_id',
-  },
-
-    // This is the definition to a relation to a seperate store inside the item
-    // (1-1 relation)
-    // NOT IMPLEMENTED YET
-  // {
-  //   name: 'steeringwheel',
-  //   key: 'steeringwheelId',
-  //   _key: '_steeringwheelId',
-  //   store: SteeringWheelStoreClass,
-  // },
-  //
-  //   // (1-n relation)
-  //   [{
-  //     name: 'wheels',
-  //     key: 'wheels',
-  //     _key: 'wheels',
-  //     store: WheelStoreClass,
-  //   }],
-
-  // To be implemented!!!
-  // new WheelStoreClass({Transporter: this.store.Transporter, ClientStorage: this.store.ClientStorage});
-  //
-  // WheelStoreClass.Item = MyFancyItem;
-  //
-  // static transporterOptions = {
-  //   http: {
-  //
-  //   },
-  //   socket: {
-  //
-  //   },
-  // }
-  //
-  // static itemKeys: {
-  //
-  // }
-
-];
-
-{
-  name: 'itemName'
-  author: {
-    name: 'hans',
-  }
-}
-// post /item  { name: 'itemName', author: { name: 'hans'}}
-// post /item/:itemId/author { name: 'hans' }
-// item.store.transporter.update(this, 'author');
-
-class AnItem extends Item {
-
-}
-AnItem.keys = Item.autocompleteKeys(anItemKeys);
 
 // ////////////////////
 // create items //
@@ -149,6 +111,7 @@ let rawItemData = {
     kind: 'bigass steeringwheel',
   },
 };
+class AnItem {}
 let item = new AnItem(rawItemData, {
   store,
   source: 'transporter',
@@ -197,7 +160,8 @@ item = new AnItem(rawItemData, {
 // ///////////
 // methods //
 // ///////////
-
+let rawData;
+let anotherItem;
 item.fetch(); // fetches from transporter, returns harmonized promise
 item.remove({ // same as item.delete
   source: 'transporter',
@@ -254,9 +218,9 @@ store
       id: 'transporterId',
     })
     .fetch()
-    .then(({
-        status,
-        item,
-    }) => {
-      if (status === 'pending') alert('no connection');
+    .then((/* {
+         status,
+         item,
+    }*/) => {
+      /* if (status === 'pending') alert('no connection')*/
     });
