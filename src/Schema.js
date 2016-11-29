@@ -1,6 +1,6 @@
 class Schema {
-  constructor(definition) {
-  }
+  // constructor(definition) {
+  // }
 
   // mobx observables
   // hits all observables once. Needed for mobx
