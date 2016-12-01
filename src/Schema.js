@@ -1,6 +1,92 @@
+// @flow
+import _ from 'lodash';
+
+// doesn't need any logic for now. Is used to determine keys in schema setup
+class Key {}
+class NumberKey {}
+
 class Schema {
-  // constructor(definition) {
-  // }
+  _definition: Object;
+  _primaryKey: Object;
+  _isLocked: boolean;
+
+  constructor(definition: Object, lock: boolean = true) {
+    this._definition = _.cloneDeep(definition);
+    Schema._normalizeDefinition(this._definition);
+
+    // Check for available primary key
+    const properties = this._definition.properties;
+    Object.keys(properties).forEach((key) => {
+      const property = properties[key];
+      if (Schema.isKey(property) && property.primary) {
+        this._primaryKey = property;
+      }
+    });
+
+    // If not available add default one
+    if (!this._primaryKey) {
+      this._primaryKey = properties.id = {
+        type: Key,
+        key: 'id',
+        _key: '_id',
+        primary: true,
+      };
+    }
+
+    this._isLocked = lock;
+  }
+
+  static _normalizeDefinition(definition) {
+    if (!_.isPlainObject(definition.properties)) return;
+
+    const properties = definition.properties;
+    _.forEach(properties, (property, key) => {
+      if (!_.isPlainObject(property)) {
+        properties[key] = {
+          type: property,
+        };
+        return;
+      }
+
+      switch (property.type) {
+        case Key:
+          Schema._transformKeyFunctions(property);
+          return;
+        case Array:
+          Schema._transformArrayType(property);
+          return;
+        case Object:
+          Schema._normalizeDefinition(property);
+          return;
+        default:
+          return;
+      }
+    });
+  }
+
+  static _transformArrayType(property) {
+    if (!_.isPlainObject(property.items)) {
+      property.items = {
+        type: property.items,
+      };
+    } else {
+      this._transformKeyFunctions(property.items);
+    }
+  }
+
+  static _transformKeyFunctions(property) {
+    if (_.isString(property.key)) {
+      property.key = (item) => item[property.key];
+    }
+
+    if (_.isString(property._key)) {
+      property._key = (item) => item[property._key];
+    }
+  }
+
+  static isKey(property) {
+    return property.type === Key || property.type === NumberKey;
+  }
 
   // mobx observables
   // hits all observables once. Needed for mobx
@@ -21,7 +107,20 @@ class Schema {
   // all return promises
   // set the primary keys (both transporter and client) Once a key is set
   // it shall never be overwritten again
-  setPrimaryKey(/* item, data */) {}
+  setPrimaryKey(item: Object, data: Object) {
+    // TODO make this async, but why/how?
+    const key = this._primaryKey.key;
+    const _key = this._primaryKey._key;
+    Schema._setKeyIfUndefined(key, item, data);
+    Schema._setKeyIfUndefined(_key, item, data);
+  }
+
+  static _setKeyIfUndefined(key: string, item: Object, data: Object) {
+    if (data[key] !== undefined && item[key] === undefined) {
+      data[key] = item[key];
+    }
+  }
+
   // set everything except primary keys:
   // item: item in which the data is written
   // data: the data to write
@@ -87,8 +186,5 @@ class Schema {
   // getPrimaryKey(item){}
 }
 
-// doesn't need any logic for now. Is used to determine keys in schema setup
-class Key {}
-
 export default Schema;
-export { Key } ;
+export { Key, NumberKey } ;
