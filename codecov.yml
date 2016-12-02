@@ -17,6 +17,7 @@ coverage:
         target: 96%
         threshold: 6
         branches: null
+        only_pulls: true
     changes:
       default:
         branches: null
