@@ -9,15 +9,26 @@ coverage:
   status:
     project:
       default:
-        target: 90%
-        threshold: 20
-        branches: null
+        target: 98%
+        threshold: 8
+        branches:
+          - "!feature/*"
+      feature:
+        target: 96%
+        threshold: 26
+        branches:
+          - "feature/*"
+      pr:
+        target: 98%
+        threshold: 8
+        branches: 'master'
+        only_pulls: true
     patch:
       default:
-        target: 96%
-        threshold: 6
+        target: 98%
+        threshold: 4
         branches: null
-        only_pulls: true
+         only_pulls: true
     changes:
       default:
         branches: null
