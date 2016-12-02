@@ -16,11 +16,15 @@ describe('Schema', function () {
         seats: {
           type: Object,
           properties: {
-            front: Number,
-            back: {
+            front: {
+              observable: false,
               type: Number,
             },
+            back: Number,
           },
+        },
+        empty: {
+          type: Object,
         },
         uuid: {
           type: Key,
@@ -58,7 +62,7 @@ describe('Schema', function () {
         seats: {
           type: Object,
           properties: {
-            front: { type: Number },
+            front: { type: Number, observable: false },
             back: { type: Number },
           },
         },
@@ -93,6 +97,16 @@ describe('Schema', function () {
       },
     });
 
+    expect(schema.observables).toEqual({
+      brand: true,
+      seats: {
+        back: true,
+      },
+      uuid: true,
+      passengers: true,
+      numbers: true,
+    });
+
     expect(schema._isLocked).toBe(true);
   });
 
@@ -123,6 +137,11 @@ describe('Schema', function () {
     expect(item).toEqual({ id: 124, _id: 321 });
     schema._definition.properties.id._setKey(item, 421);
     expect(item).toEqual({ id: 124, _id: 421 });
+
+    expect(schema.observables).toEqual({
+      brand: true,
+      id: true,
+    });
   });
 
   it('should create Schema without lock', function () {

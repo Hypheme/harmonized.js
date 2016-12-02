@@ -27,19 +27,13 @@ class Schema {
     if (!this._primaryKey) {
       this._primaryKey = properties.id = {
         type: Key,
-        getKey: (item) => item.id,
-        _getKey: (item) => item._id,
-        setKey: (item, key) => { item.id = key; },
-        _setKey: (item, key) => { item._id = key; },
+        key: 'id',
+        _key: '_id',
         primary: true,
       };
     }
 
     this._isLocked = lock;
-  }
-
-  lock() {
-    this._isLocked = true;
   }
 
   static _normalizeDefinition(definition) {
@@ -81,14 +75,12 @@ class Schema {
   }
 
   static _transformKeyFunctions(property) {
-    if (property.key) {
-      property.getKey = (item) => item[property.key];
-      property.setKey = (item, value) => { item[property.key] = value; };
+    if (_.isString(property.key)) {
+      property.key = (item) => item[property.key];
     }
 
-    if (property._key) {
-      property._getKey = (item) => item[property._key];
-      property._setKey = (item, value) => { item[property._key] = value; };
+    if (_.isString(property._key)) {
+      property._key = (item) => item[property._key];
     }
   }
 
@@ -116,17 +108,16 @@ class Schema {
   // set the primary keys (both transporter and client) Once a key is set
   // it shall never be overwritten again
   setPrimaryKey(item: Object, data: Object) {
-    this._setKeyIfUndefined('', item, data);
-    this._setKeyIfUndefined('_', item, data);
+    // TODO make this async, but why/how?
+    const key = this._primaryKey.key;
+    const _key = this._primaryKey._key;
+    Schema._setKeyIfUndefined(key, item, data);
+    Schema._setKeyIfUndefined(_key, item, data);
   }
 
-  _setKeyIfUndefined(prefix: string, item: Object, data: Object) {
-    const getKey = this._primaryKey[`${prefix}getKey`];
-    const dataKey = getKey(data);
-    const itemKey = getKey(item);
-    if (dataKey !== undefined && itemKey === undefined) {
-      const setKey = this._primaryKey[`${prefix}setKey`];
-      setKey(item, dataKey);
+  static _setKeyIfUndefined(key: string, item: Object, data: Object) {
+    if (data[key] !== undefined && item[key] === undefined) {
+      data[key] = item[key];
     }
   }
 
