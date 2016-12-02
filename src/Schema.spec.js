@@ -1,4 +1,4 @@
-import Schema, { Key, StringKey } from './Schema';
+import Schema, { Key, NumberKey } from './Schema';
 
 describe('Schema', function () {
   beforeEach(function () {
@@ -35,7 +35,7 @@ describe('Schema', function () {
         passengers: {
           type: Array,
           items: {
-            type: StringKey,
+            type: NumberKey,
             key: 'pid',
             _getKey: (item) => item.sub.internalId,
             _setKey: (item, value) => (item.sub.internalId = value),
@@ -76,10 +76,13 @@ describe('Schema', function () {
           _setKey: jasmine.any(Function),
           primary: true,
         },
+        empty: {
+          type: Object,
+        },
         passengers: {
           type: Array,
           items: {
-            type: StringKey,
+            type: NumberKey,
             key: 'pid',
             getKey: jasmine.any(Function),
             _getKey: jasmine.any(Function),
@@ -102,6 +105,7 @@ describe('Schema', function () {
       seats: {
         back: true,
       },
+      empty: {},
       uuid: true,
       passengers: true,
       numbers: true,

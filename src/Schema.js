@@ -8,6 +8,7 @@ class NumberKey {}
 class Schema {
   _definition: Object;
   _primaryKey: Object;
+  observables: Object;
   _isLocked: boolean;
 
   constructor(definition: Object, lock: boolean = true) {
@@ -27,16 +28,43 @@ class Schema {
     if (!this._primaryKey) {
       this._primaryKey = properties.id = {
         type: Key,
-        key: 'id',
-        _key: '_id',
+        getKey: (item) => item.id,
+        _getKey: (item) => item._id,
+        setKey: (item, key) => { item.id = key; },
+        _setKey: (item, key) => { item._id = key; },
         primary: true,
       };
     }
 
+    // Handle observables mirror
+    this.observables = Schema._createObservablesObj(this._definition);
+
     this._isLocked = lock;
   }
 
-  static _normalizeDefinition(definition) {
+  lock() {
+    this._isLocked = true;
+  }
+
+  static _createObservablesObj(definition): Object {
+    const observablesObj = {};
+    if (!_.isPlainObject(definition.properties)) return observablesObj;
+
+    Object.keys(definition.properties)
+      .map((key) => ({ property: definition.properties[key], key }))
+      .filter(({ property }) => property.observable !== false)
+      .forEach(({ key, property }) => {
+        if (property.type !== Object) {
+          observablesObj[key] = true;
+        } else {
+          observablesObj[key] = Schema._createObservablesObj(property);
+        }
+      });
+
+    return observablesObj;
+  }
+
+  static _normalizeDefinition(definition: Object) {
     if (!_.isPlainObject(definition.properties)) return;
 
     const properties = definition.properties;
@@ -75,12 +103,14 @@ class Schema {
   }
 
   static _transformKeyFunctions(property) {
-    if (_.isString(property.key)) {
-      property.key = (item) => item[property.key];
+    if (property.key) {
+      property.getKey = (item) => item[property.key];
+      property.setKey = (item, value) => { item[property.key] = value; };
     }
 
-    if (_.isString(property._key)) {
-      property._key = (item) => item[property._key];
+    if (property._key) {
+      property._getKey = (item) => item[property._key];
+      property._setKey = (item, value) => { item[property._key] = value; };
     }
   }
 
@@ -88,36 +118,32 @@ class Schema {
     return property.type === Key || property.type === NumberKey;
   }
 
-  // mobx observables
-  // hits all observables once. Needed for mobx
-  // THIS HAS TO BE SYNCHRONOUS, no promise pls
-  getObservables(/* item */) {}
-  // note: this needs to be nested now as well as keys in state view need to be observables as well
-  // _stateHandlerTrigger() {
-  //   // this._store.schema.observables.forEach(key => {
-  //   this._store.itemKeys.forEach(key => {
-  //     if (typeof key === 'string') {
-  //       return this[key];
-  //     }
-  //     return this[key.name];
-  //   });
-  // }
-
-  // populate the given item with the given data
-  // all return promises
-  // set the primary keys (both transporter and client) Once a key is set
-  // it shall never be overwritten again
-  setPrimaryKey(item: Object, data: Object) {
-    // TODO make this async, but why/how?
-    const key = this._primaryKey.key;
-    const _key = this._primaryKey._key;
-    Schema._setKeyIfUndefined(key, item, data);
-    Schema._setKeyIfUndefined(_key, item, data);
+  getObservables(item: Object) {
+    Schema._getObservables(item, this.observables);
   }
 
-  static _setKeyIfUndefined(key: string, item: Object, data: Object) {
-    if (data[key] !== undefined && item[key] === undefined) {
-      data[key] = item[key];
+  static _getObservables(item, observables) {
+    _.forEach(observables, (key, value) => {
+      if (_.isPlainObject(value)) {
+        return Schema._getObservables(item[key], observables[key]);
+      }
+
+      return item[key];
+    });
+  }
+
+  setPrimaryKey(item: Object, data: Object) {
+    this._setKeyIfUndefined('', item, data);
+    this._setKeyIfUndefined('_', item, data);
+  }
+
+  _setKeyIfUndefined(prefix: string, item: Object, data: Object) {
+    const getKey = this._primaryKey[`${prefix}getKey`];
+    const dataKey = getKey(data);
+    const itemKey = getKey(item);
+    if (dataKey !== undefined && itemKey === undefined) {
+      const setKey = this._primaryKey[`${prefix}setKey`];
+      setKey(item, dataKey);
     }
   }
 
