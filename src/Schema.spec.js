@@ -33,9 +33,14 @@ describe('Schema', function () {
           items: {
             type: StringKey,
             key: 'pid',
-            _key: (item) => item.sub.internalId,
+            _getKey: (item) => item.sub.internalId,
+            _setKey: (item, value) => (item.sub.internalId = value),
             ref: this.passengerStoreInstance,
           },
+        },
+        numbers: {
+          type: Array,
+          items: Number,
         },
       },
     };
@@ -59,24 +64,168 @@ describe('Schema', function () {
         },
         uuid: {
           type: Key,
-          key: jasmine.any(Function),
-          _key: jasmine.any(Function),
+          key: 'uuid',
+          _key: '_id',
+          getKey: jasmine.any(Function),
+          _getKey: jasmine.any(Function),
+          setKey: jasmine.any(Function),
+          _setKey: jasmine.any(Function),
           primary: true,
         },
         passengers: {
           type: Array,
           items: {
             type: StringKey,
-            key: jasmine.any(Function),
-            _key: jasmine.any(Function),
+            key: 'pid',
+            getKey: jasmine.any(Function),
+            _getKey: jasmine.any(Function),
+            setKey: jasmine.any(Function),
+            _setKey: jasmine.any(Function),
             ref: this.passengerStoreInstance,
+          },
+        },
+        numbers: {
+          type: Array,
+          items: {
+            type: Number,
           },
         },
       },
     });
+
+    expect(schema._isLocked).toBe(true);
+  });
+
+  it('should create Schema without defined primary key', function () {
+    const inputDefinition = {
+      properties: {
+        brand: String,
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+
+    expect(schema._definition).not.toBe(inputDefinition);
+    expect(schema._definition.properties.id).toEqual({
+      type: Key,
+      getKey: jasmine.any(Function),
+      _getKey: jasmine.any(Function),
+      setKey: jasmine.any(Function),
+      _setKey: jasmine.any(Function),
+      primary: true,
+    });
+
+    expect(schema._definition.properties.id.getKey({ id: 123, _id: 321 })).toBe(123);
+    expect(schema._definition.properties.id._getKey({ id: 123, _id: 321 })).toBe(321);
+
+    const item = { id: 123, _id: 321 };
+    schema._definition.properties.id.setKey(item, 124);
+    expect(item).toEqual({ id: 124, _id: 321 });
+    schema._definition.properties.id._setKey(item, 421);
+    expect(item).toEqual({ id: 124, _id: 421 });
   });
 
   it('should create Schema without lock', function () {
+    const inputDefinition = {
+      properties: {
+        brand: String,
+      },
+    };
 
+    const schema = new Schema(inputDefinition, false);
+    expect(schema._isLocked).toBe(false);
+
+    schema.lock();
+    expect(schema._isLocked).toBe(true);
+  });
+
+  it('should set primary transporter key', function () {
+    const inputDefinition = {
+      properties: {
+        brand: String,
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+
+    const item = {
+      brand: 'Volkswagen',
+      _id: 567,
+    };
+
+    schema.setPrimaryKey(item, { id: 123 });
+    expect(item).toEqual({
+      brand: 'Volkswagen',
+      id: 123,
+      _id: 567,
+    });
+  });
+
+  it('should not set primary transporter key after it was already set', function () {
+    const inputDefinition = {
+      properties: {
+        brand: String,
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+
+    const item = {
+      brand: 'Volkswagen',
+      id: 9001,
+      _id: 567,
+    };
+
+    schema.setPrimaryKey(item, { id: 123 });
+    expect(item).toEqual({
+      brand: 'Volkswagen',
+      id: 9001,
+      _id: 567,
+    });
+  });
+
+  it('should set primary client storage key', function () {
+    const inputDefinition = {
+      properties: {
+        brand: String,
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+
+    const item = {
+      brand: 'Volkswagen',
+      id: 456,
+    };
+
+    schema.setPrimaryKey(item, { _id: 123 });
+    expect(item).toEqual({
+      brand: 'Volkswagen',
+      id: 456,
+      _id: 123,
+    });
+  });
+
+  it('should not set primary client storage key after it was already set', function () {
+    const inputDefinition = {
+      properties: {
+        brand: String,
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+
+    const item = {
+      brand: 'Volkswagen',
+      id: 456,
+      _id: 9001,
+    };
+
+    schema.setPrimaryKey(item, { _id: 123 });
+    expect(item).toEqual({
+      brand: 'Volkswagen',
+      id: 456,
+      _id: 9001,
+    });
   });
 });
