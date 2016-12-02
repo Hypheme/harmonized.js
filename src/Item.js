@@ -67,9 +67,8 @@ export default class Item {
     this.removed = (this._storeState === STATE.REMOVED);
     this.stored = true;
     this.synced = (this._syncState === STATE.EXISTENT);
-    return this._store.schema.setPrimaryKey(this, values)
-      .then(() => this._store.schema
-        .setFromClientStorage(this, values, { establishObservables: true }));
+    this._store.schema.setPrimaryKey(this, values);
+    return this._store.schema.setFromClientStorage(this, values, { establishObservables: true });
   }
 
   _createFromState(values) {
@@ -89,9 +88,8 @@ export default class Item {
     this.removed = false;
     this.stored = false;
     this.synced = true;
-    return this._store.schema.setPrimaryKey(this, values)
-      .then(() => this._store.schema
-        .setFromTransporter(this, values, { establishObservables: true }));
+    this._store.schema.setPrimaryKey(this, values);
+    return this._store.schema.setFromTransporter(this, values, { establishObservables: true });
   }
 
   _getValidNewState(current, newState) {

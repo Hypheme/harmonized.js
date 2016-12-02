@@ -100,7 +100,7 @@ describe('Item', function () {
 
     it('should create item from client storage', function () {
       spyOn(testStore.schema, 'setPrimaryKey').and
-        .returnValue(Promise.resolve('setPrimaryKeyResponse'));
+        .returnValue('setPrimaryKeyResponse');
       spyOn(testStore.schema, 'setFromClientStorage').and
         .returnValue(Promise.resolve('setFromClientStorageResponse'));
       const myItem = new TestItem({
@@ -129,7 +129,7 @@ describe('Item', function () {
 
     it('should create item from client storage thats marked as removed', function () {
       spyOn(testStore.schema, 'setPrimaryKey').and
-        .returnValue(Promise.resolve('setPrimaryKeyResponse'));
+        .returnValue('setPrimaryKeyResponse');
       spyOn(testStore.schema, 'setFromClientStorage').and
         .returnValue(Promise.resolve('setFromClientStorageResponse'));
       const myItem = new TestItem({
@@ -159,7 +159,7 @@ describe('Item', function () {
 
     it('should create item from transporter', function () {
       spyOn(testStore.schema, 'setPrimaryKey').and
-        .returnValue(Promise.resolve('setPrimaryKeyResponse'));
+        .returnValue('setPrimaryKeyResponse');
       spyOn(testStore.schema, 'setFromTransporter').and
         .returnValue(Promise.resolve('setFromTransporterResponse'));
       const myItem = new TestItem({
@@ -188,7 +188,7 @@ describe('Item', function () {
 
     it('should error', function () {
       spyOn(testStore.schema, 'setPrimaryKey').and
-        .returnValue(Promise.resolve('setPrimaryKeyResponse'));
+        .returnValue('setPrimaryKeyResponse');
       spyOn(testStore.schema, 'setFromTransporter').and
         .returnValue(Promise.reject(new Error('some error')));
       const myItem = new TestItem({
