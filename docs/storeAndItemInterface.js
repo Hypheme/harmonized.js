@@ -18,60 +18,39 @@ class MyClientStorage {}
 class MyItem {}
 
 class MyStore extends Store {
-  // Schema is as similar as possible to JSON schema
-  // This way import/export from JSON Schema is really simple and this could
-  // help with multiple things:
-  // * The schema can also be used to describe validation (with JSON Schema validation)
-  // * Schema can be shared between backend and frontend!
   static schema = new Schema({
-    properties: {
-      brand: String,
-      price: {
-        type: Number,
-        observable: false,
-      },
-      seats: {
-        type: Object,
-        properties: {
-          front: Number,
-          back: Number,
-        },
-      },
-
-      // id: Schema.Key, // in there by default
-      // or long: id: Key
-      // {
-      //   type: Key,
-      //   key: 'id',
-      //   _key: '_id',
-      //   primary: true,
-      // },
-      driver: {
-        type: Schema.Key,
-        key: 'driverId', // -> toTransporter driver transforms to
-          //  car.driverId === driver.primaryKey(TRANSPORTER)
-        _key: '_driverId',
-        ref: driverStoreInstance,
-      },
-      passengers: {
-        type: Array,
-        items: {
-          type: Schema.key,
-          // no key given, toTransporter transforms to car.passengers == [{ driver object1 }, ...]
-          // no _key given, toClientStorage transforms to car.passengers == [{ driver object1 }, ..]
-          ref: passengerStoreInstance,
-        },
-      },
-      wheels: {
-        type: Array,
-        items: {
-          type: Schema.Key,
-          key: plainWheel => plainWheel.id, // transforms to car.wheels == [1, 2, 3, ...]
-          _key: '_wheelId',
-          ref: wheelsStoreInstance,
-        },
-      },
+    brand: String,
+    price: { type: Number, observable: false },
+    seats: { // nested object instead of internal stores first
+      front: Number,
+      back: Number,
     },
+    // id: Schema.Key, // in there by default
+    // or long: id: Key
+    // {
+    //   type: Key,
+    //   key: 'id',
+    //   _key: '_id',
+    // },
+    driver: {
+      type: Schema.Key,
+      key: 'driverId', // -> toTransporter driver ransforms to
+        //  car.driverId === driver.primaryKey(TRANSPORTER)
+      _key: '_driverId',
+      ref: driverStoreInstance,
+    },
+    passengers: [{
+      type: Schema.Key,
+      // no key given, toTransporter transforms to car.passengers == [{ driver object1 }, ...]
+      // no _key given, toClientStorage transforms to car.passengers == [{ driver object1 }, ...]
+      ref: passengerStoreInstance,
+    }],
+    wheels: [{
+      type: Schema.Key,
+      key: plainWheel => plainWheel.id, // transforms to car.wheels == [1, 2, 3, ...]
+      _key: '_wheelId',
+      ref: wheelsStoreInstance,
+    }],
   });
 }
 MyStore.Transporter = MyTransporter;

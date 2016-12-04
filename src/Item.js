@@ -28,6 +28,7 @@ export default class Item {
       this._dispose = autorun(() => {
         finishConstruct = this._stateHandler(call++);
       });
+      // TODO not sure about this yet as _synchronize might not be able to return a promise
       return finishConstruct;
     }).catch(err => {
       this._syncState = STATE.LOCKED;
@@ -92,56 +93,93 @@ export default class Item {
     return this._store.schema.setFromTransporter(this, values, { establishObservables: true });
   }
 
-  _getValidNewState(current, newState) {
-    // TODO add fetch to the list
+  _getNextActionState(current, next, newState) {
+    // first we determine if the newState is allowed based on the current one
+    let allowedNewStates;
     switch (current) {
-      case STATE.LOCKED:
-        return newState === STATE.DELETED ? STATE.DELETED : STATE.LOCKED;
-      case STATE.DELETED:
-        return STATE.DELETED;
-      case STATE.REMOVED:
-        return newState === STATE.DELETED ? STATE.DELETED : STATE.REMOVED;
-      case STATE.EXISTENT:
-        return newState === STATE.BEING_UPDATED || newState === STATE.BEING_DELETED ?
-          newState : current;
       case STATE.BEING_CREATED:
-        return newState === STATE.EXISTENT ||
-          newState === STATE.BEING_UPDATED ||
-          newState === STATE.BEING_DELETED ?
-          newState : current;
+        allowedNewStates = [STATE.BEING_UPDATED, STATE.BEING_DELETED, STATE.BEING_FETCHED];
+        break;
       case STATE.BEING_UPDATED:
-        return newState === STATE.EXISTENT || newState === STATE.BEING_DELETED ?
-          newState : current;
-      case STATE.BEING_DELETED:
+        allowedNewStates = [STATE.BEING_UPDATED, STATE.BEING_DELETED, STATE.BEING_FETCHED];
+        break;
+      case STATE.BEING_DELETED: // after deleting there is no change possible anymore
+        return undefined;
+      case STATE.BEING_FETCHED:
+        // after fetching the item is alwas been created and has the most recent data
+        // only deleting an item right after a fetch makes sense
+        allowedNewStates = [STATE.BEING_DELETED];
+        break;
+      // case STATE.BEING_REMOVED: // TODO not sure if even needed
+      case STATE.EXISTENT:
+        allowedNewStates = [STATE.BEING_UPDATED, STATE.BEING_DELETED, STATE.BEING_FETCHED];
+        break;
+      case STATE.LOCKED: // TODO not sure yet, we might can un-LOCK in the future
+        return undefined;
+      case STATE.DELETED: // pretty much the same as BEING_DELETED.
+        return undefined;
+      // case STATE.REMOVED: // TODO once again not sure if needed anymore
+      default: // we don't change anything
+        return next;
+    }
+    if (allowedNewStates.reduce((isAllowed, allowedNewState) =>
+      isAllowed || (allowedNewState === newState), false) === false) {
+        // if the new state is not in the allowed we don't change the next state
+      return next;
+    }
+    return this._mergeNextState(next, newState);
+  }
+
+  _mergeNextState(next, newState) {
+    switch (next) {
+      case undefined:
+        return newState;
+      case STATE.BEING_CREATED:
+        if (newState === STATE.BEING_DELETED) {
+          return undefined;
+        }
+        return STATE.BEING_CREATED;
+      case STATE.BEING_UPDATED:
         switch (newState) {
-          case STATE.DELETED:
-            return STATE.DELETED;
-          case STATE.REMOVED:
-            return STATE.REMOVED;
+          case STATE.BEING_DELETED:
+            return STATE.BEING_DELETED;
+          case STATE.BEING_FETCHED:
+            return STATE.BEING_FETCHED;
           default:
-            return STATE.LOCKED;
+            return STATE.BEING_UPDATED;
+        }
+      case STATE.BEING_DELETED:
+      // once deleted there is no return
+        return STATE.BEING_DELETED;
+      case STATE.BEING_FETCHED:
+      // for now we overwrite fetches if there are changes before the fetch takes place
+      // to be discussed though.
+        switch (newState) {
+          case STATE.BEING_DELETED:
+            return STATE.BEING_DELETED;
+          case STATE.BEING_UPDATED:
+            return STATE.BEING_UPDATED;
+          default:
+            return STATE.BEING_FETCHED;
         }
       default:
-        return current;
+        return undefined;
     }
   }
 
-  _setStoreState(state) {
-    this._storeState = this._getValidNewState(this._storeState, state);
-    if (this._storeState === STATE.EXISTENT || this._storeState === STATE.DELTED) {
-      this.stored = true;
-    } else {
-      this.stored = false;
-    }
-  }
+  // TODO get _syncState we will compute _syncState out of _transporterStates
 
-  _setSyncState(state) {
-    this._syncState = this._getValidNewState(this._syncState, state);
-    if (this._syncState === STATE.EXISTENT || this._syncState === STATE.DELETED) {
-      this.synced = true;
-    } else {
-      this.synced = false;
-    }
+  _setNextStoreState(state) {
+    this._storeStates.next = this._getNextState(
+      this._storeStates.inProgress || this._storeStates.current,
+      this._storeStates.next,
+      state);
+  }
+  _setNextTransporterState(state) {
+    this._transporterStates.next = this._getNextState(
+      this._transporterStates.inProgress || this._transporterStates.current,
+      this._transporterStates.next,
+      state);
   }
 
   _stateHandler(call) {
@@ -150,14 +188,17 @@ export default class Item {
       return this._synchronize(this._storeState, this._syncState);
     }
     if (this.autoSave) {
-      this._setStoreState(STATE.BEING_UPDATED);
-      this._setSyncState(STATE.BEING_UPDATED);
-      return this._synchronize(this._storeState, this._syncState);
+      return this._synchronize(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
     }
     return Promise.resolve();
   }
 
-
-  _synchronize(/* storeState, syncState*/) {}
+  _synchronize(storeState, syncState) {
+    this._setNextStoreState(storeState);
+    this._setNextTransporterState(syncState);
+    return Promise.all(
+      this._triggerClientStorageSync(),
+      this._triggerTransporterSync());
+  }
 
 }
