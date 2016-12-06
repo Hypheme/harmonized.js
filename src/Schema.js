@@ -212,13 +212,15 @@ class Schema {
    * gets all data for the transporter except for the primary key
    * (an item can't have a key until its created in the transporter for example )
    * has to wait until all foreing keys are created. (this is tricky,
-   * pls aks johannes before implementing)
+   * pls aks johannes before implementing).
+   *
+   * initialData is an object with data, that has to be in the result as well
    */
-  // getForTransporter(item){}
+  // getForTransporter(item, initialData){}
   /**
    * same as getForTransporter but for the clientStorage
    */
-  // getForClientStorage(item){}
+  // getForClientStorage(item, initialData){}
   /**
    * gets the transporter primary key. The function is only called when the key
    * already exists, so this should be sync. returns { <key_name> : <key_value> }

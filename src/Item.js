@@ -1,6 +1,6 @@
 import { observable, autorun/* , computed*/ } from 'mobx';
 import uuid from 'uuid-v4';
-import { /* ACTION,*/ STATE, SOURCE } from './constants';
+import { STATE, SOURCE, PROMISE_STATE } from './constants';
 
 export default class Item {
 
@@ -215,7 +215,28 @@ export default class Item {
   }
 
   _triggerClientStorageSync() {
-
+    const workingState = this._clientStorageStates.next;
+    const itemKeys = workingState === STATE.BEING_CREATED ? {} :
+      this._store.schema.getPrimaryKeyForClientStorage(this);
+    return ((workingState === STATE.BEING_DELETED || workingState === STATE.BEING_FETCHED) ?
+      Promise.resolve(itemKeys) : // no payload needed for deleting/fetching
+      this._store.schema.getForClientStorage(this, itemKeys))
+      .then(itemData => {
+        this._clientStorageStates.inProgress = workingState;
+        this._clientStorageStates.next = undefined;
+        this._store.clientStorage[workingState.ACTION](itemData);
+      })
+      .then(result => {
+        if (result.status === PROMISE_STATE.PENDING) {
+          // move inProgress to next and subscribe to clientStorage
+          // once connection is there again call _triggerClientStorageSync again
+        }
+        // update _clientStorageStates.current && inProgress
+        // (optional) setPrimaryKey
+        // (optional) setFetchResponse
+        // call _triggerClientStorageSync if next is set
+        // else resolve
+      });
   }
 
 }

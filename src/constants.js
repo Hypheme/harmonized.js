@@ -1,29 +1,32 @@
 const STATE = {
   // fixed states
-  LOCKED: -3, // this state is needed to prevent multiple delete actions from happening
-  DELETED: -2, // end of an item lifetime
-  REMOVED: -1, // removed locally but not yet deleted
-  EXISTENT: 0, // the item exists and everything is in sync
+  LOCKED: { STATE: 'LOCKED' },
+  DELETED: { STATE: 'DELETED' }, // end of an item lifetime
+  REMOVED: { STATE: 'REMOVED' }, // removed locally but not yet deleted
+  EXISTENT: { STATE: 'EXISTENT' }, // the item exists and everything is in sync
   // actions (result in state changes)
-  BEING_CREATED: 1, // the item is being created -> results in state 0
-  BEING_UPDATED: 2, // the item is being updated -> results in state 0
-  BEING_DELETED: 3, // the item is being deleted -> results in state -2
-  BEING_REMOVED: 4, // the item is being removed -> results in state -1
-  BEING_FETCHED: 5, // the item is resynced with the resource, results in state 0
-};
-const ACTION = {
-  CREATE: 'create',
-  UPDATE: 'update',
-  DELETE: 'delete',
-  REMOVE: 'remove',
-  FETCH: 'fetch',
+  // the item is being created -> results in state 0
+  BEING_CREATED: { STATE: 'BEING_CREATED', ACTION: 'create' },
+  // the item is being updated -> results in state 0
+  BEING_UPDATED: { STATE: 'BEING_UPDATED', ACTION: 'update' },
+  // the item is being deleted -> results in state -2
+  BEING_DELETED: { STATE: 'BEING_DELETED', ACTION: 'delete' },
+  // the item is being removed -> results in state -1
+  BEING_REMOVED: { STATE: 'BEING_REMOVED', ACTION: 'remove' },
+  // the item is resynced with the resource, results in state 0
+  BEING_FETCHED: { STATE: 'BEING_FETCHED', ACTION: 'fetch' },
 };
 
 const SOURCE = {
-  STATE: 0,
-  USER: 0,
-  TRANSPORTER: 1,
-  CLIENT_STORAGE: 2,
+  STATE: { SOURCE: 'STATE' },
+  TRANSPORTER: { SOURCE: 'TRANSPORTER' },
+  CLIENT_STORAGE: { SOURCE: 'CLIENT_STORAGE' },
+};
+SOURCE.USER = SOURCE.STATE;
+
+const PROMISE_STATE = {
+  PENDING: { PROMISE_STATE: 'PENDING' },
+  RESOLVED: { PROMISE_STATE: 'RESOLVED' },
 };
 
-export { STATE, ACTION, SOURCE };
+export { STATE, SOURCE, PROMISE_STATE };
