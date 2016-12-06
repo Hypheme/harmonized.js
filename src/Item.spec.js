@@ -67,8 +67,7 @@ describe('Item', function () {
       input = {
         name: 'hans',
       };
-      spyOn(TestItem.prototype, '_synchronize')
-        .and.returnValue(Promise.resolve('syncResponse'));
+      spyOn(TestItem.prototype, '_synchronize');
       spyOn(testStore.schema, 'getObservables').and.returnValue('something');
     });
 
@@ -80,8 +79,8 @@ describe('Item', function () {
         store: testStore,
       });
       const construction = myItem.construct(input, { source: SOURCE.STATE });
-      expect(myItem._syncState).toEqual(STATE.BEING_CREATED);
-      expect(myItem._storeState).toEqual(STATE.BEING_CREATED);
+      expect(myItem._transporterState).toEqual(STATE.BEING_CREATED);
+      expect(myItem._clientStorageState).toEqual(STATE.BEING_CREATED);
       expect(myItem.stored).toBe(false);
       expect(myItem.synced).toBe(false);
       expect(myItem.removed).toBe(false);
@@ -89,12 +88,11 @@ describe('Item', function () {
 
       expect(myItem.__id).toBeDefined();
       expect(myItem._store).toEqual(testStore);
-      return construction.then(syncResponse => {
+      return construction.then(() => {
         expect(testStore.schema.setFromState)
           .toHaveBeenCalledWith(myItem, input, { establishObservables: true });
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.BEING_CREATED, STATE.BEING_CREATED);
-        expect(syncResponse).toEqual('syncResponse');
       });
     });
 
@@ -108,8 +106,8 @@ describe('Item', function () {
         store: testStore,
       });
       const construction = myItem.construct(input, { source: SOURCE.CLIENT_STORAGE });
-      expect(myItem._syncState).toEqual(STATE.BEING_CREATED);
-      expect(myItem._storeState).toEqual(STATE.EXISTENT);
+      expect(myItem._transporterState).toEqual(STATE.BEING_CREATED);
+      expect(myItem._clientStorageState).toEqual(STATE.EXISTENT);
       expect(myItem.stored).toBe(true);
       expect(myItem.synced).toBe(false);
       expect(myItem.removed).toBe(false);
@@ -117,13 +115,12 @@ describe('Item', function () {
 
       expect(myItem.__id).toBeDefined();
       expect(myItem._store).toEqual(testStore);
-      return construction.then(syncResponse => {
+      return construction.then(() => {
         expect(testStore.schema.setPrimaryKey).toHaveBeenCalledWith(myItem, input);
         expect(testStore.schema.setFromClientStorage)
           .toHaveBeenCalledWith(myItem, input, { establishObservables: true });
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.EXISTENT, STATE.BEING_CREATED);
-        expect(syncResponse).toEqual('syncResponse');
       });
     });
 
@@ -136,10 +133,10 @@ describe('Item', function () {
         autoSave: true,
         store: testStore,
       });
-      input._syncState = STATE.BEING_DELETED;
+      input._transporterState = STATE.BEING_DELETED;
       const construction = myItem.construct(input, { source: SOURCE.CLIENT_STORAGE });
-      expect(myItem._syncState).toEqual(STATE.BEING_DELETED);
-      expect(myItem._storeState).toEqual(STATE.REMOVED);
+      expect(myItem._transporterState).toEqual(STATE.BEING_DELETED);
+      expect(myItem._clientStorageState).toEqual(STATE.REMOVED);
       expect(myItem.stored).toBe(true);
       expect(myItem.synced).toBe(false);
       expect(myItem.removed).toBe(true);
@@ -147,13 +144,12 @@ describe('Item', function () {
 
       expect(myItem.__id).toBeDefined();
       expect(myItem._store).toEqual(testStore);
-      return construction.then(syncResponse => {
+      return construction.then(() => {
         expect(testStore.schema.setPrimaryKey).toHaveBeenCalledWith(myItem, input);
         expect(testStore.schema.setFromClientStorage)
           .toHaveBeenCalledWith(myItem, input, { establishObservables: true });
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.REMOVED, STATE.BEING_DELETED);
-        expect(syncResponse).toEqual('syncResponse');
       });
     });
 
@@ -167,8 +163,8 @@ describe('Item', function () {
         store: testStore,
       });
       const construction = myItem.construct(input, { source: SOURCE.TRANSPORTER });
-      expect(myItem._syncState).toEqual(STATE.EXISTENT);
-      expect(myItem._storeState).toEqual(STATE.BEING_CREATED);
+      expect(myItem._transporterState).toEqual(STATE.EXISTENT);
+      expect(myItem._clientStorageState).toEqual(STATE.BEING_CREATED);
       expect(myItem.stored).toBe(false);
       expect(myItem.synced).toBe(true);
       expect(myItem.removed).toBe(false);
@@ -176,13 +172,12 @@ describe('Item', function () {
 
       expect(myItem.__id).toBeDefined();
       expect(myItem._store).toEqual(testStore);
-      return construction.then(syncResponse => {
+      return construction.then(() => {
         expect(testStore.schema.setPrimaryKey).toHaveBeenCalledWith(myItem, input);
         expect(testStore.schema.setFromTransporter)
           .toHaveBeenCalledWith(myItem, input, { establishObservables: true });
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
         expect(myItem._synchronize).toHaveBeenCalledWith(STATE.BEING_CREATED, STATE.EXISTENT);
-        expect(syncResponse).toEqual('syncResponse');
       });
     });
 
@@ -196,8 +191,8 @@ describe('Item', function () {
         store: testStore,
       });
       const construction = myItem.construct(input, { source: SOURCE.TRANSPORTER });
-      expect(myItem._syncState).toEqual(STATE.EXISTENT);
-      expect(myItem._storeState).toEqual(STATE.BEING_CREATED);
+      expect(myItem._transporterState).toEqual(STATE.EXISTENT);
+      expect(myItem._clientStorageState).toEqual(STATE.BEING_CREATED);
       expect(myItem.stored).toBe(false);
       expect(myItem.synced).toBe(true);
       expect(myItem.removed).toBe(false);
@@ -206,8 +201,8 @@ describe('Item', function () {
       expect(myItem.__id).toBeDefined();
       expect(myItem._store).toEqual(testStore);
       return construction.catch(err => {
-        expect(myItem._syncState).toEqual(STATE.LOCKED);
-        expect(myItem._storeState).toEqual(STATE.LOCKED);
+        expect(myItem._transporterState).toEqual(STATE.LOCKED);
+        expect(myItem._clientStorageState).toEqual(STATE.LOCKED);
         expect(myItem.removed).toBe(true);
         expect(err).toEqual(new Error('some error'));
         expect(myItem._synchronize).not.toHaveBeenCalled();

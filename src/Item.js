@@ -24,16 +24,13 @@ export default class Item {
     }
     let call = 0;
     return p.then(() => {
-      let finishConstruct;
       this._dispose = autorun(() => {
-        finishConstruct = this._stateHandler(call++);
+        this._stateHandler(call++);
       });
-      // TODO not sure about this yet as _synchronize might not be able to return a promise
-      return finishConstruct;
     }).catch(err => {
-      this._syncState = STATE.LOCKED;
-      this._storeState = STATE.LOCKED;
-      this.removed = true; // we remove item from store
+      this._transporterState = STATE.LOCKED;
+      this._clientStorageState = STATE.LOCKED;
+      this.removed = true; // TODO we remove item from store
       throw err;
     });
   }
@@ -62,12 +59,12 @@ export default class Item {
   }
 
   _createFromClientStorage(values) {
-    this._syncState = values._syncState || STATE.BEING_CREATED;
-    this._storeState = this._syncState === STATE.BEING_DELETED ?
+    this._transporterState = values._transporterState || STATE.BEING_CREATED;
+    this._clientStorageState = this._transporterState === STATE.BEING_DELETED ?
       STATE.REMOVED : STATE.EXISTENT;
-    this.removed = (this._storeState === STATE.REMOVED);
+    this.removed = (this._clientStorageState === STATE.REMOVED);
     this.stored = true;
-    this.synced = (this._syncState === STATE.EXISTENT);
+    this.synced = (this._transporterState === STATE.EXISTENT);
     this._store.schema.setPrimaryKey(this, values);
     return this._store.schema.setFromClientStorage(this, values, { establishObservables: true });
   }
@@ -76,16 +73,16 @@ export default class Item {
     this.synced = false;
     this.stored = false;
     this.removed = false;
-    this._syncState = STATE.BEING_CREATED;
-    this._storeState = STATE.BEING_CREATED;
+    this._transporterState = STATE.BEING_CREATED;
+    this._clientStorageState = STATE.BEING_CREATED;
     // no need for keys as its from the state and therefore has no keys yet
     return this._store.schema
       .setFromState(this, values, { establishObservables: true });
   }
 
   _createFromTransporter(values) {
-    this._syncState = STATE.EXISTENT;
-    this._storeState = STATE.BEING_CREATED;
+    this._transporterState = STATE.EXISTENT;
+    this._clientStorageState = STATE.BEING_CREATED;
     this.removed = false;
     this.stored = false;
     this.synced = true;
@@ -167,12 +164,12 @@ export default class Item {
     }
   }
 
-  // TODO get _syncState we will compute _syncState out of _transporterStates
+  // TODO get _transporterState we will compute _transporterState out of _transporterStates
 
   _setNextStoreState(state) {
-    this._storeStates.next = this._getNextState(
-      this._storeStates.inProgress || this._storeStates.current,
-      this._storeStates.next,
+    this._clientStorageStates.next = this._getNextState(
+      this._clientStorageStates.inProgress || this._clientStorageStates.current,
+      this._clientStorageStates.next,
       state);
   }
   _setNextTransporterState(state) {
@@ -185,7 +182,7 @@ export default class Item {
   _stateHandler(call) {
     this._store.schema.getObservables(this); // we need this for mobx
     if (call === 0) {
-      return this._synchronize(this._storeState, this._syncState);
+      return this._synchronize(this._clientStorageState, this._transporterState);
     }
     if (this.autoSave) {
       return this._synchronize(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
@@ -193,12 +190,22 @@ export default class Item {
     return Promise.resolve();
   }
 
-  _synchronize(storeState, syncState) {
-    this._setNextStoreState(storeState);
-    this._setNextTransporterState(syncState);
-    return Promise.all(
-      this._triggerClientStorageSync(),
-      this._triggerTransporterSync());
+  _synchronize(clientStorageState, transporterState) {
+    // first determine if a sync process is already happening
+    const clientStorageSyncInProgress = this._clientStorageStates.inProgress
+      || this._clientStorageStates.next;
+    const transporterSyncInProgress = this._transporterStates.inProgress
+      || this._transporterStates.next;
+    // merge the new state with the exiting ones
+    this._setNextStoreState(clientStorageState);
+    this._setNextTransporterState(transporterState);
+    // trigger sync processes if it's not already happening
+    if (!clientStorageSyncInProgress) {
+      this._triggerClientStorageSync();
+    }
+    if (!transporterSyncInProgress) {
+      this._triggerTransporterSync();
+    }
   }
 
 }
