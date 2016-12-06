@@ -23,9 +23,9 @@ export default class Item {
         break;
     }
     let call = 0;
-    return p.then(() => {
+    return p.then(() /* TODO: states*/ => {
       this._dispose = autorun(() => {
-        this._stateHandler(call++);
+        this._stateHandler(call++/* , states*/);
       });
     }).catch(err => {
       this._transporterState = STATE.LOCKED;
@@ -59,6 +59,7 @@ export default class Item {
   }
 
   _createFromClientStorage(values) {
+    // TODO change this to states
     this._transporterState = values._transporterState || STATE.BEING_CREATED;
     this._clientStorageState = this._transporterState === STATE.BEING_DELETED ?
       STATE.REMOVED : STATE.EXISTENT;
@@ -67,20 +68,24 @@ export default class Item {
     this.synced = (this._transporterState === STATE.EXISTENT);
     this._store.schema.setPrimaryKey(this, values);
     return this._store.schema.setFromClientStorage(this, values, { establishObservables: true });
+      // TODO then return states
   }
 
   _createFromState(values) {
     this.synced = false;
     this.stored = false;
     this.removed = false;
+    // TODO change this to states
     this._transporterState = STATE.BEING_CREATED;
     this._clientStorageState = STATE.BEING_CREATED;
     // no need for keys as its from the state and therefore has no keys yet
     return this._store.schema
       .setFromState(this, values, { establishObservables: true });
+      // TODO then return states
   }
 
   _createFromTransporter(values) {
+    // TODO change this states
     this._transporterState = STATE.EXISTENT;
     this._clientStorageState = STATE.BEING_CREATED;
     this.removed = false;
@@ -88,6 +93,7 @@ export default class Item {
     this.synced = true;
     this._store.schema.setPrimaryKey(this, values);
     return this._store.schema.setFromTransporter(this, values, { establishObservables: true });
+    // TODO then return states
   }
 
   _getNextActionState(current, next, newState) {
@@ -206,6 +212,10 @@ export default class Item {
     if (!transporterSyncInProgress) {
       this._triggerTransporterSync();
     }
+  }
+
+  _triggerClientStorageSync() {
+
   }
 
 }

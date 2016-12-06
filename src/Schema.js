@@ -206,10 +206,28 @@ class Schema {
   // }
   //
 
-  // TODO getForState(item){}
+  // getForState(item){} // least important one, not even sure if needed
+
+  /**
+   * gets all data for the transporter except for the primary key
+   * (an item can't have a key until its created in the transporter for example )
+   * has to wait until all foreing keys are created. (this is tricky,
+   * pls aks johannes before implementing)
+   */
   // getForTransporter(item){}
-  // getForLocalStorage(item){}
-  // getPrimaryKey(item){}
+  /**
+   * same as getForTransporter but for the clientStorage
+   */
+  // getForClientStorage(item){}
+  /**
+   * gets the transporter primary key. The function is only called when the key
+   * already exists, so this should be sync. returns { <key_name> : <key_value> }
+   */
+  // getPrimaryKeyForTransporter(item) {}
+  /**
+   * same as getPrimaryKeyForTransporter but for clientStorage
+   */
+  // getPrimaryKeyForClientStorage(item) {}
 }
 
 export default Schema;
