@@ -123,8 +123,8 @@ class Schema {
   }
 
   static _getObservables(item, observables) {
-    _.forEach(observables, (key, value) => {
-      if (_.isPlainObject(value)) {
+    _.forEach(observables, (value, key) => {
+      if (_.isObject(value)) {
         return Schema._getObservables(item[key], observables[key]);
       }
 
