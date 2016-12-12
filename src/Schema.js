@@ -1,4 +1,5 @@
 // @flow
+import { extendObservable } from 'mobx';
 import _ from 'lodash';
 
 // doesn't need any logic for now. Is used to determine keys in schema setup
@@ -8,10 +9,13 @@ class NumberKey {}
 class Schema {
   _definition: Object;
   _primaryKey: Object;
-  observables: Object;
+  observables: Array;
+  nonObservables: Array;
   _isLocked: boolean;
 
   constructor(definition: Object, lock: boolean = true) {
+    this.observables = [];
+    this.nonObservables = [];
     this._definition = _.cloneDeep(definition);
     Schema._normalizeDefinition(this._definition);
 
@@ -28,16 +32,13 @@ class Schema {
     if (!this._primaryKey) {
       this._primaryKey = properties.id = {
         type: Key,
-        getKey: (item) => item.id,
-        _getKey: (item) => item._id,
-        setKey: (item, key) => { item.id = key; },
-        _setKey: (item, key) => { item._id = key; },
+        key: 'id',
+        _key: '_id',
         primary: true,
       };
     }
 
-    // Handle observables mirror
-    this.observables = Schema._createObservablesObj(this._definition);
+    this._createObservableKeyList(this._definition);
 
     this._isLocked = lock;
   }
@@ -46,22 +47,25 @@ class Schema {
     this._isLocked = true;
   }
 
-  static _createObservablesObj(definition): Object {
-    const observablesObj = {};
-    if (!_.isPlainObject(definition.properties)) return observablesObj;
+  _createObservableKeyList(definition: Object, parentPath : string = '') {
+    if (!_.isPlainObject(definition.properties)) return;
 
     Object.keys(definition.properties)
-      .map((key) => ({ property: definition.properties[key], key }))
-      .filter(({ property }) => property.observable !== false)
-      .forEach(({ key, property }) => {
+      .filter((key) => !Schema.isKey(definition.properties[key]))
+      .forEach((key) => {
+        const property = definition.properties[key];
         if (property.type !== Object) {
-          observablesObj[key] = true;
-        } else {
-          observablesObj[key] = Schema._createObservablesObj(property);
+          if (property.observable === false) {
+            this.nonObservables.push(`${parentPath}${key}`);
+          } else {
+            this.observables.push(`${parentPath}${key}`);
+          }
+          return;
         }
-      });
 
-    return observablesObj;
+        const newParentPath = `${parentPath}${key}.`;
+        this._createObservableKeyList(property, newParentPath);
+      });
   }
 
   static _normalizeDefinition(definition: Object) {
@@ -77,9 +81,6 @@ class Schema {
       }
 
       switch (property.type) {
-        case Key:
-          Schema._transformKeyFunctions(property);
-          return;
         case Array:
           Schema._transformArrayType(property);
           return;
@@ -97,20 +98,6 @@ class Schema {
       property.items = {
         type: property.items,
       };
-    } else {
-      this._transformKeyFunctions(property.items);
-    }
-  }
-
-  static _transformKeyFunctions(property) {
-    if (property.key) {
-      property.getKey = (item) => item[property.key];
-      property.setKey = (item, value) => { item[property.key] = value; };
-    }
-
-    if (property._key) {
-      property._getKey = (item) => item[property._key];
-      property._setKey = (item, value) => { item[property._key] = value; };
     }
   }
 
@@ -119,17 +106,7 @@ class Schema {
   }
 
   getObservables(item: Object) {
-    Schema._getObservables(item, this.observables);
-  }
-
-  static _getObservables(item, observables) {
-    _.forEach(observables, (value, key) => {
-      if (_.isObject(value)) {
-        return Schema._getObservables(item[key], observables[key]);
-      }
-
-      return item[key];
-    });
+    return this.observables.map(key => _.get(item, key));
   }
 
   setPrimaryKey(item: Object, data: Object) {
@@ -138,12 +115,22 @@ class Schema {
   }
 
   _setKeyIfUndefined(prefix: string, item: Object, data: Object) {
-    const getKey = this._primaryKey[`${prefix}getKey`];
-    const dataKey = getKey(data);
-    const itemKey = getKey(item);
+    const key = this._primaryKey[`${prefix}key`];
+    const dataKey = data[key];
+    const itemKey = item[key];
     if (dataKey !== undefined && itemKey === undefined) {
-      const setKey = this._primaryKey[`${prefix}setKey`];
-      setKey(item, dataKey);
+      item[key] = dataKey;
+    }
+  }
+
+  setFromState(item: Object, data: Object, establishObservables: boolean) {
+    const observables = _.pick(data, this.observables);
+    const nonObservables = _.pick(data, this.nonObservables);
+    const filteredData = observables.concat(nonObservables);
+
+    Object.assign(item, filteredData);
+    if (establishObservables) {
+      extendObservable(item, observables);
     }
   }
 
@@ -154,7 +141,6 @@ class Schema {
   // mobx observers have to be established as well
   // you do that with extendObservable
   // https://mobxjs.github.io/mobx/refguide/extend-observable.html
-  setFromState(/* item, data, {establishObservables:false}*/) {}
   setFromTransporter(/* item, data, {establishObservables:false}*/) {}
   setFromClientStorage(/* item, data, {establishObservables:false}*/) {}
   // below is the old code for this.

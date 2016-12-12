@@ -42,8 +42,7 @@ describe('Schema', function () {
           items: {
             type: NumberKey,
             key: 'pid',
-            _getKey: (item) => item.sub.internalId,
-            _setKey: (item, value) => (item.sub.internalId = value),
+            _key: '_pid',
             ref: this.passengerStoreInstance,
           },
         },
@@ -75,10 +74,6 @@ describe('Schema', function () {
           type: Key,
           key: 'uuid',
           _key: '_id',
-          getKey: jasmine.any(Function),
-          _getKey: jasmine.any(Function),
-          setKey: jasmine.any(Function),
-          _setKey: jasmine.any(Function),
           primary: true,
         },
         empty: {
@@ -89,10 +84,7 @@ describe('Schema', function () {
           items: {
             type: NumberKey,
             key: 'pid',
-            getKey: jasmine.any(Function),
-            _getKey: jasmine.any(Function),
-            setKey: jasmine.any(Function),
-            _setKey: jasmine.any(Function),
+            _key: '_pid',
             ref: this.passengerStoreInstance,
           },
         },
@@ -105,16 +97,8 @@ describe('Schema', function () {
       },
     });
 
-    expect(schema.observables).toEqual({
-      brand: true,
-      seats: {
-        back: true,
-      },
-      empty: {},
-      uuid: true,
-      passengers: true,
-      numbers: true,
-    });
+    expect(schema.observables).toEqual(['brand', 'seats.back', 'passengers', 'numbers']);
+    expect(schema.nonObservables).toEqual(['price', 'seats.front']);
 
     expect(schema._isLocked).toBe(true);
   });
@@ -131,26 +115,21 @@ describe('Schema', function () {
     expect(schema._definition).not.toBe(inputDefinition);
     expect(schema._definition.properties.id).toEqual({
       type: Key,
-      getKey: jasmine.any(Function),
-      _getKey: jasmine.any(Function),
-      setKey: jasmine.any(Function),
-      _setKey: jasmine.any(Function),
+      key: 'id',
+      _key: '_id',
       primary: true,
     });
 
-    expect(schema._definition.properties.id.getKey({ id: 123, _id: 321 })).toBe(123);
-    expect(schema._definition.properties.id._getKey({ id: 123, _id: 321 })).toBe(321);
-
     const item = { id: 123, _id: 321 };
-    schema._definition.properties.id.setKey(item, 124);
+    item[schema._definition.properties.id.key] = 123;
+    item[schema._definition.properties.id._key] = 321;
+
+    item[schema._definition.properties.id.key] = 124;
     expect(item).toEqual({ id: 124, _id: 321 });
-    schema._definition.properties.id._setKey(item, 421);
+    item[schema._definition.properties.id._key] = 421;
     expect(item).toEqual({ id: 124, _id: 421 });
 
-    expect(schema.observables).toEqual({
-      brand: true,
-      id: true,
-    });
+    expect(schema.observables).toEqual(['brand']);
   });
 
   it('should create Schema without lock', function () {
