@@ -9,8 +9,8 @@ class NumberKey {}
 class Schema {
   _definition: Object;
   _primaryKey: Object;
-  observables: Array;
-  nonObservables: Array;
+  observables: Array<string>;
+  nonObservables: Array<string>;
   _isLocked: boolean;
 
   constructor(definition: Object, lock: boolean = true) {
@@ -123,15 +123,29 @@ class Schema {
     }
   }
 
+  static setAsObservables(item, observables) {
+    Object.keys(observables).forEach(key => {
+      const obsValue = observables[key];
+      if (!_.isPlainObject(obsValue)) {
+        const extendObj = {};
+        extendObj[key] = obsValue;
+        extendObservable(item, extendObj);
+      } else {
+        Schema.setAsObservables(item[key], obsValue);
+      }
+    });
+  }
+
   setFromState(item: Object, data: Object, establishObservables: boolean) {
     const observables = _.pick(data, this.observables);
     const nonObservables = _.pick(data, this.nonObservables);
-    const filteredData = observables.concat(nonObservables);
-
-    Object.assign(item, filteredData);
+    const filteredData = _.merge({}, observables, nonObservables);
+    _.merge(item, filteredData);
     if (establishObservables) {
-      extendObservable(item, observables);
+      Schema.setAsObservables(item, observables);
     }
+
+    return Promise.resolve(item);
   }
 
   // set everything except primary keys:

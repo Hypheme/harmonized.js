@@ -93,6 +93,7 @@ module.exports = function (config) {
       reporters: [
         { type: 'lcovonly', subdir: '.' },
         { type: 'json', subdir: '.' },
+        { type: 'html', subdir: '.' },
       ],
     };
   } else {

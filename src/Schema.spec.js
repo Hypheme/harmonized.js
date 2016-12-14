@@ -334,4 +334,220 @@ describe('Schema', function () {
     testItem.seats.front.right = 3;
     expect(autorunCount).toBe(11);
   });
+
+  it('should set item from state without establishing observables', function () {
+    const inputDefinition = {
+      properties: {
+        brand: String,
+        price: {
+          type: String,
+          observable: false,
+        },
+        seats: {
+          type: Object,
+          properties: {
+            front: {
+              observable: false,
+              type: Number,
+            },
+            back: Number,
+            deeper: {
+              type: Object,
+              properties: {
+                test: Number,
+                evenDeeper: {
+                  type: Object,
+                  properties: {
+                    property1: {
+                      type: String,
+                      observable: false,
+                    },
+                    property2: Boolean,
+                  },
+                },
+              },
+            },
+          },
+        },
+        empty: {
+          type: Object,
+        },
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+
+    class TestItemClass {}
+    const item = new TestItemClass();
+    const data = {
+      brand: 'testbrand',
+      price: '9001€',
+      seats: {
+        front: 2,
+        deeper: {
+          test: 123,
+          evenDeeper: {
+            property1: 'hello',
+            property2: true,
+          },
+        },
+      },
+    };
+
+    schema.setFromState(item, data, false);
+    expect(item.brand).toBe('testbrand');
+    expect(item.price).toBe('9001€');
+    expect(item.seats).toEqual({
+      front: 2,
+      deeper: {
+        test: 123,
+        evenDeeper: {
+          property1: 'hello',
+          property2: true,
+        },
+      },
+    });
+
+    schema.setFromState(item, {
+      brand: 'newname',
+      seats: {
+        deeper: {
+          evenDeeper: {
+            property2: false,
+          },
+        },
+      },
+    }, false);
+
+    expect(item.brand).toBe('newname');
+    expect(item.price).toBe('9001€');
+    expect(item.seats).toEqual({
+      front: 2,
+      deeper: {
+        test: 123,
+        evenDeeper: {
+          property1: 'hello',
+          property2: false,
+        },
+      },
+    });
+  });
+
+  it('should set item from state with establishing observables', function () {
+    const inputDefinition = {
+      properties: {
+        brand: String,
+        price: {
+          type: String,
+          observable: false,
+        },
+        seats: {
+          type: Object,
+          properties: {
+            front: {
+              observable: false,
+              type: Number,
+            },
+            back: Number,
+            deeper: {
+              type: Object,
+              properties: {
+                test: Number,
+                evenDeeper: {
+                  type: Object,
+                  properties: {
+                    property1: {
+                      type: String,
+                      observable: false,
+                    },
+                    property2: Boolean,
+                  },
+                },
+              },
+            },
+          },
+        },
+        empty: {
+          type: Object,
+        },
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+
+    class TestItemClass {}
+    const item = new TestItemClass();
+    const data = {
+      brand: 'testbrand',
+      price: '9001€',
+      seats: {
+        front: 2,
+        deeper: {
+          test: 123,
+          evenDeeper: {
+            property1: 'hello',
+            property2: true,
+          },
+        },
+      },
+    };
+
+    schema.setFromState(item, data, true);
+    expect(item.brand).toBe('testbrand');
+    expect(item.price).toBe('9001€');
+    expect(item.seats.front).toBe(2);
+    expect(item.seats.deeper.test).toBe(123);
+    expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
+    expect(item.seats.deeper.evenDeeper.property2).toBe(true);
+
+    let autorunCount = 0;
+    autorun(() => {
+      let blub = '';
+      blub = item.brand;
+      blub = item.price;
+      blub = item.seats.deeper.evenDeeper.property1;
+      blub = item.seats.deeper.evenDeeper.property2;
+      autorunCount += 1;
+      return blub;
+    });
+
+    schema.setFromState(item, {
+      brand: 'newname',
+      seats: {
+        deeper: {
+          evenDeeper: {
+            property2: false,
+          },
+        },
+      },
+    }, false);
+
+    expect(item.brand).toBe('newname');
+    expect(item.price).toBe('9001€');
+    expect(item.seats.front).toBe(2);
+    expect(item.seats.deeper.test).toBe(123);
+    expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
+    expect(item.seats.deeper.evenDeeper.property2).toBe(false);
+
+    expect(autorunCount).toBe(3);
+
+    schema.setFromState(item, {
+      brand: 'supernewname',
+      seats: {
+        front: 3,
+        newProp: 1000,
+        deeper: {
+          evenDeeper: {
+            property1: 'hahaha',
+          },
+        },
+      },
+    }, false);
+
+    expect(autorunCount).toBe(4);
+    expect(item.seats.front).toBe(3);
+    expect(item.seats.newProp).toBe(undefined);
+    expect(item.seats.front).toBe(3);
+    expect(item.seats.deeper.evenDeeper.property1).toBe('hahaha');
+  });
 });
