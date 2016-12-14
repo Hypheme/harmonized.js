@@ -136,37 +136,51 @@ class Schema {
     });
   }
 
-  setFromState(item: Object, data: Object, establishObservables: boolean) {
+  setFromState(item: Object, data: Object, establishObservables: boolean): Promise {
+    const { observables, filteredData } = this._getPickedData(data);
+    Schema._mergeFromSet({ item, filteredData, establishObservables, observables });
+    return Promise.resolve(item);
+  }
+
+  _getPickedData(data: Object) {
     const observables = _.pick(data, this.observables);
     const nonObservables = _.pick(data, this.nonObservables);
     const filteredData = _.merge({}, observables, nonObservables);
+
+    return { observables, nonObservables, filteredData };
+  }
+
+  static _mergeFromSet({ item, filteredData, establishObservables, observables }) {
     _.merge(item, filteredData);
     if (establishObservables) {
       Schema.setAsObservables(item, observables);
     }
-
-    return Promise.resolve(item);
   }
 
-  // set everything except primary keys:
-  // item: item in which the data is written
-  // data: the data to write
-  // (optional) establishObservables: boolean, if set to true,
-  // mobx observers have to be established as well
-  // you do that with extendObservable
-  // https://mobxjs.github.io/mobx/refguide/extend-observable.html
-  setFromTransporter(/* item, data, {establishObservables:false}*/) {}
-  setFromClientStorage(/* item, data, {establishObservables:false}*/) {}
+  _setFromOutside(
+    keyPrefix: string,
+    item: Object,
+    data: Object,
+    establishObservables: boolean
+  ): Promise {
+    const { observables, filteredData } = this._getPickedData(data);
+    // TODO: filter out foreign keys
+    Schema._mergeFromSet({ item, filteredData, establishObservables, observables });
+
+    const promises = [];
+    // TODO: set keys
+    return Promise.all(promises).then(() => item);
+  }
+
+  setFromTransporter(item: Object, data: Object, establishObservables: boolean): Promise {
+    return this._setFromOutside('', item, data, establishObservables);
+  }
+
+  setFromClientStorage(item: Object, data: Object, establishObservables: boolean): Promise {
+    return this._setFromOutside('_', item, data, establishObservables);
+  }
+
   // below is the old code for this.
-  //   _setPrimaryKey(givenKeys) {
-  // ONLY ONE PRIMARY KEY from now
-  //   this._store.itemKeys.forEach(key => {
-  //     if (key.primary === true) {
-  //       this[key.key] = this[key.key] || givenKeys[key.key];
-  //       this[key._key] = this[key._key] || givenKeys[key._key];
-  //     }
-  //   });
-  // }
   // _setFromOutside(values, prefix = '') {
   //   const promises = [];
   //   // this._store.schema.entries.forEach(key => {
@@ -188,23 +202,6 @@ class Schema {
   //   });
   //   return Promise.all(promises);
   // }
-  // _setFromState(values) {
-  //   // this._store.schema.entries.forEach(key => {
-  //   this._store.itemKeys.forEach(key => {
-  //     if (typeof key === 'string') {
-  //       this[key] = values[key];
-  //     } else if (key.store === undefined) {
-  //       this._setPrimaryKey(values);
-  //       // TODO: internal relations
-  //     // } else if(typeof key.store === 'function') {
-  //     //   this[key.name] = new key.store(values[key.name]);
-  //     } else {
-  //       this[key.name] = values[key.name];
-  //     }
-  //   });
-  //   return Promise.resolve();
-  // }
-  //
 
   // getForState(item){} // least important one, not even sure if needed
 
