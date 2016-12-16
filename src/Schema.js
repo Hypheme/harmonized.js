@@ -11,11 +11,13 @@ class Schema {
   _primaryKey: Object;
   observables: Array<string>;
   nonObservables: Array<string>;
+  references: Map<string, Object>;
   _isLocked: boolean;
 
   constructor(definition: Object, lock: boolean = true) {
     this.observables = [];
     this.nonObservables = [];
+    this.references = new Map();
     this._definition = _.cloneDeep(definition);
     Schema._normalizeDefinition(this._definition);
 
@@ -51,12 +53,17 @@ class Schema {
     if (!_.isPlainObject(definition.properties)) return;
 
     Object.keys(definition.properties)
-      .filter((key) => !Schema.isKey(definition.properties[key]))
+      .filter((key) => !Schema.isPrimaryKey(definition.properties[key]))
       .forEach((key) => {
         const property = definition.properties[key];
         if (property.type !== Object) {
           if (property.observable === false) {
             this.nonObservables.push(`${parentPath}${key}`);
+          } else if (
+            Schema.isKey(property) ||
+            property.type === Array && Schema.isKey(property.items)
+          ) {
+            this.references.set(`${parentPath}${key}`, property);
           } else {
             this.observables.push(`${parentPath}${key}`);
           }
@@ -101,12 +108,17 @@ class Schema {
     }
   }
 
+  static isPrimaryKey(property) {
+    return Schema.isKey(property) && property.primary;
+  }
+
   static isKey(property) {
     return property.type === Key || property.type === NumberKey;
   }
 
   getObservables(item: Object) {
-    return this.observables.map(key => _.get(item, key));
+    const keys = this.observables.concat(Array.from(this.references.keys()));
+    return keys.map(key => _.get(item, key));
   }
 
   setPrimaryKey(item: Object, data: Object) {
@@ -137,24 +149,74 @@ class Schema {
   }
 
   setFromState(item: Object, data: Object, establishObservables: boolean): Promise {
-    const { observables, filteredData } = this._getPickedData(data);
-    Schema._mergeFromSet({ item, filteredData, establishObservables, observables });
+    const { allObservables, filteredData } = this._getPickedData(data);
+    Schema._mergeFromSet({ item, filteredData, establishObservables }, allObservables);
     return Promise.resolve(item);
   }
 
   _getPickedData(data: Object) {
     const observables = _.pick(data, this.observables);
+    const references = _.pick(data, Array.from(this.references.keys()));
     const nonObservables = _.pick(data, this.nonObservables);
-    const filteredData = _.merge({}, observables, nonObservables);
 
-    return { observables, nonObservables, filteredData };
+    // IDEA: Check if picking from concatinated array is cheaper
+    const allObservables = _.merge({}, observables, references);
+    const filteredData = _.merge({}, allObservables, nonObservables);
+
+    return { observables, nonObservables, filteredData, allObservables, references };
   }
 
-  static _mergeFromSet({ item, filteredData, establishObservables, observables }) {
+  static _mergeFromSet({ item, filteredData, establishObservables }, observables) {
     _.merge(item, filteredData);
     if (establishObservables) {
       Schema.setAsObservables(item, observables);
     }
+  }
+
+  static _resolveForeignValues(
+    { definition, key, propertyKey, parentObj, extendFn },
+    foreignKey: string|Number
+  ): Promise {
+    return definition.ref.onceLoaded().then(() => {
+      const resolver = {};
+      resolver[key] = foreignKey;
+      const newContent = {};
+      newContent[propertyKey] = definition.ref.findOne(resolver);
+      extendFn(parentObj, newContent);
+    });
+  }
+
+  _setForeignValues(item: Object, data: Object, prefix: string, extendFn: Function) {
+    let promises:Array<Promise> = [];
+
+    this.references.forEach((definition, path) => {
+      const lastDotIndex = path.lastIndexOf('.');
+      const options: Object = {
+        extendFn,
+        key: definition[`${prefix}key`],
+        parentPath: path.substr(0, lastDotIndex),
+        propertyKey: path.substr(lastDotIndex),
+      };
+
+      // Create parent path in if not there yet
+      options.parentObj = _.get(item, options.parentPath);
+      if (options.parentObj === undefined) {
+        options.parentObj = {};
+        _.set(item, options.parentPath, options.parentObj);
+      }
+
+      const thisValue = _.get(data, path);
+
+      if (definition.type === Array) {
+        promises = promises.concat(thisValue.map(
+          foreignKey => Schema._resolveForeignValues(options, foreignKey))
+        );
+      } else {
+        promises.push(Schema._resolveForeignValues(options, thisValue));
+      }
+    });
+
+    return promises;
   }
 
   _setFromOutside(
@@ -164,11 +226,11 @@ class Schema {
     establishObservables: boolean
   ): Promise {
     const { observables, filteredData } = this._getPickedData(data);
-    // TODO: filter out foreign keys
-    Schema._mergeFromSet({ item, filteredData, establishObservables, observables });
+    Schema._mergeFromSet({ item, filteredData, establishObservables }, observables);
 
     const promises = [];
-    // TODO: set keys
+    const extendFn = establishObservables ? extendObservable : Object.assign;
+    promises.concat(this._setForeignValues(item, data, keyPrefix, extendFn));
     return Promise.all(promises).then(() => item);
   }
 
@@ -179,29 +241,6 @@ class Schema {
   setFromClientStorage(item: Object, data: Object, establishObservables: boolean): Promise {
     return this._setFromOutside('_', item, data, establishObservables);
   }
-
-  // below is the old code for this.
-  // _setFromOutside(values, prefix = '') {
-  //   const promises = [];
-  //   // this._store.schema.entries.forEach(key => {
-  //   this._store.itemKeys.forEach(key => {
-  //     if (typeof key === 'string') {
-  //       this[key] = values[key];
-  //     } else if (key.store === undefined) { // depcecated, we dont set primary keys here any more
-  //       this._setPrimaryKey(values);
-  //     } else {
-  //       const resolver = {};
-  //       resolver[key[`${prefix}storeKey`]] = values[key[`${prefix}relationKey`]];
-  //       // TODO add internal stores to the mix (hurray)
-  //       promises.push(key.store.onceLoaded() // this is tricky.
-  //            // You have to wait for the foreign store to load before you can start searching
-  //         .then(() => {
-  //           this[key.name] = key.store.findOne(resolver);
-  //         }));
-  //     }
-  //   });
-  //   return Promise.all(promises);
-  // }
 
   // getForState(item){} // least important one, not even sure if needed
 

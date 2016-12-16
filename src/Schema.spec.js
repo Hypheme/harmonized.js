@@ -8,6 +8,7 @@ import Schema, { Key, NumberKey } from './Schema';
 describe('Schema', function () {
   beforeEach(function () {
     this.passengerStoreInstance = {};
+    this.superStoreInstance = {};
   });
 
   it('should create Schema', function () {
@@ -36,6 +37,12 @@ describe('Schema', function () {
           key: 'uuid',
           _key: '_id',
           primary: true,
+        },
+        oneToOne: {
+          type: NumberKey,
+          key: 'pid',
+          _key: '_pid',
+          ref: this.superStoreInstance,
         },
         passengers: {
           type: Array,
@@ -79,6 +86,12 @@ describe('Schema', function () {
         empty: {
           type: Object,
         },
+        oneToOne: {
+          type: NumberKey,
+          key: 'pid',
+          _key: '_pid',
+          ref: this.superStoreInstance,
+        },
         passengers: {
           type: Array,
           items: {
@@ -97,7 +110,21 @@ describe('Schema', function () {
       },
     });
 
-    expect(schema.observables).toEqual(['brand', 'seats.back', 'passengers', 'numbers']);
+    expect(schema.observables).toEqual(['brand', 'seats.back', 'numbers']);
+    expect(Array.from(schema.references)).toEqual([['oneToOne', {
+      type: NumberKey,
+      key: 'pid',
+      _key: '_pid',
+      ref: this.superStoreInstance,
+    }], ['passengers', {
+      type: Array,
+      items: {
+        type: NumberKey,
+        key: 'pid',
+        _key: '_pid',
+        ref: this.passengerStoreInstance,
+      },
+    }]]);
     expect(schema.nonObservables).toEqual(['price', 'seats.front']);
 
     expect(schema._isLocked).toBe(true);
