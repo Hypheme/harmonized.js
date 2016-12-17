@@ -577,4 +577,652 @@ describe('Schema', function () {
     expect(item.seats.front).toBe(3);
     expect(item.seats.deeper.evenDeeper.property1).toBe('hahaha');
   });
+
+  it('should item set from transporter without establishing observables', function (done) {
+    const passengerStoreInstance = {
+      onceLoaded: jasmine.createSpy('once loaded').and.returnValues(
+        Promise.resolve(),
+        Promise.resolve(),
+        Promise.resolve(),
+        Promise.resolve(),
+        Promise.resolve(),
+      ),
+      findOne: jasmine.createSpy('find one').and.returnValues(
+        'item 123',
+        'item 124',
+        'item 125',
+        'item 200',
+        'item one',
+      ),
+    };
+
+    const oneToOneStoreInstance = {
+      onceLoaded: jasmine.createSpy('once loaded').and.returnValue(Promise.resolve()),
+      findOne: jasmine.createSpy('find one').and.returnValue('over 9000'),
+    };
+
+    const inputDefinition = {
+      properties: {
+        brand: String,
+        price: {
+          type: String,
+          observable: false,
+        },
+        passengers: {
+          type: Array,
+          items: {
+            type: NumberKey,
+            key: 'pid',
+            _key: '_pid',
+            ref: passengerStoreInstance,
+          },
+        },
+        seats: {
+          type: Object,
+          properties: {
+            oneToOne: {
+              type: NumberKey,
+              key: 'pid',
+              _key: '_pid',
+              ref: oneToOneStoreInstance,
+            },
+            front: {
+              observable: false,
+              type: Number,
+            },
+            back: Number,
+            deeper: {
+              type: Object,
+              properties: {
+                test: Number,
+                evenDeeper: {
+                  type: Object,
+                  properties: {
+                    property1: {
+                      type: String,
+                      observable: false,
+                    },
+                    property2: Boolean,
+                  },
+                },
+              },
+            },
+          },
+        },
+        empty: {
+          type: Object,
+        },
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+
+    class TestItemClass {}
+    const item = new TestItemClass();
+    const data = {
+      brand: 'testbrand',
+      price: '9001€',
+      passengers: [123, 124, 125, 200],
+      seats: {
+        oneToOne: 9001,
+        front: 2,
+        deeper: {
+          test: 123,
+          evenDeeper: {
+            property1: 'hello',
+            property2: true,
+          },
+        },
+      },
+    };
+
+    schema.setFromTransporter(item, data, false);
+
+    setTimeout(() => {
+      expect(item.brand).toBe('testbrand');
+      expect(item.price).toBe('9001€');
+      expect(item.seats.oneToOne).toBe('over 9000');
+      expect(item.seats.front).toBe(2);
+      expect(item.seats.deeper.test).toBe(123);
+      expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
+      expect(item.seats.deeper.evenDeeper.property2).toBe(true);
+      expect(item.passengers).toEqual(['item 123', 'item 124', 'item 125', 'item 200']);
+
+      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledTimes(1);
+      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledWith({
+        pid: 9001,
+      });
+
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(4);
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        pid: 123,
+      });
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        pid: 124,
+      });
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        pid: 125,
+      });
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        pid: 200,
+      });
+
+      data.passengers = [1];
+      schema.setFromTransporter(item, data, false);
+
+      setTimeout(() => {
+        expect(item.passengers).toEqual(['item one']);
+        expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(5);
+        expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+          pid: 1,
+        });
+      });
+
+      done();
+    });
+  });
+
+  it('should item set from transporter with establishing observables', function (done) {
+    const passengerStoreInstance = {
+      onceLoaded: jasmine.createSpy('once loaded').and.returnValues(
+        Promise.resolve(),
+        Promise.resolve(),
+        Promise.resolve(),
+        Promise.resolve(),
+        Promise.resolve(),
+      ),
+      findOne: jasmine.createSpy('find one').and.returnValues(
+        'item 123',
+        'item 124',
+        'item 125',
+        'item 200',
+        'item one',
+      ),
+    };
+
+    const oneToOneStoreInstance = {
+      onceLoaded: jasmine.createSpy('once loaded').and.returnValue(Promise.resolve()),
+      findOne: jasmine.createSpy('find one').and.returnValue('over 9000'),
+    };
+
+    const inputDefinition = {
+      properties: {
+        brand: String,
+        price: {
+          type: String,
+          observable: false,
+        },
+        passengers: {
+          type: Array,
+          items: {
+            type: NumberKey,
+            key: 'pid',
+            _key: '_pid',
+            ref: passengerStoreInstance,
+          },
+        },
+        onlyOneChild: {
+          type: Object,
+          properties: {
+            oneToOne: {
+              type: NumberKey,
+              key: 'pid',
+              _key: '_pid',
+              ref: oneToOneStoreInstance,
+            },
+          },
+        },
+        seats: {
+          type: Object,
+          properties: {
+            front: {
+              observable: false,
+              type: Number,
+            },
+            back: Number,
+            deeper: {
+              type: Object,
+              properties: {
+                test: Number,
+                evenDeeper: {
+                  type: Object,
+                  properties: {
+                    property1: {
+                      type: String,
+                      observable: false,
+                    },
+                    property2: Boolean,
+                  },
+                },
+              },
+            },
+          },
+        },
+        empty: {
+          type: Object,
+        },
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+
+    class TestItemClass {}
+    const item = new TestItemClass();
+    const data = {
+      brand: 'testbrand',
+      price: '9001€',
+      onlyOneChild: {
+        oneToOne: 9001,
+      },
+      passengers: [123, 124, 125, 200],
+      seats: {
+        front: 2,
+        deeper: {
+          test: 123,
+          evenDeeper: {
+            property1: 'hello',
+            property2: true,
+          },
+        },
+      },
+    };
+
+    schema.setFromTransporter(item, data, true);
+
+    setTimeout(() => {
+      expect(item.brand).toBe('testbrand');
+      expect(item.price).toBe('9001€');
+      expect(item.seats.front).toBe(2);
+      expect(item.seats.deeper.test).toBe(123);
+      expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
+      expect(item.seats.deeper.evenDeeper.property2).toBe(true);
+      expect(item.onlyOneChild.oneToOne).toBe('over 9000');
+      expect(item.passengers.length).toBe(4);
+      expect(item.passengers[0]).toBe('item 123');
+      expect(item.passengers[1]).toBe('item 124');
+      expect(item.passengers[2]).toBe('item 125');
+      expect(item.passengers[3]).toBe('item 200');
+
+      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledTimes(1);
+      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledWith({
+        pid: 9001,
+      });
+
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(4);
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        pid: 123,
+      });
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        pid: 124,
+      });
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        pid: 125,
+      });
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        pid: 200,
+      });
+
+      let autorunCount = 0;
+      autorun(() => {
+        let blub = '';
+        blub = item.brand;
+        blub = item.price;
+        blub = item.passengers;
+        blub = item.seats.deeper.evenDeeper.property1;
+        blub = item.seats.deeper.evenDeeper.property2;
+        autorunCount += 1;
+        return blub;
+      });
+
+      schema.setFromTransporter(item, {
+        brand: 'newname',
+        seats: {
+          deeper: {
+            evenDeeper: {
+              property2: false,
+            },
+          },
+        },
+      }, false);
+
+      expect(item.brand).toBe('newname');
+      expect(item.price).toBe('9001€');
+      expect(item.seats.front).toBe(2);
+      expect(item.seats.deeper.test).toBe(123);
+      expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
+      expect(item.seats.deeper.evenDeeper.property2).toBe(false);
+
+      expect(autorunCount).toBe(3);
+
+      schema.setFromTransporter(item, {
+        brand: 'supernewname',
+        passengers: [1],
+        seats: {
+          front: 3,
+          newProp: 1000,
+          deeper: {
+            evenDeeper: {
+              property1: 'hahaha',
+            },
+          },
+        },
+      }, false);
+
+      expect(autorunCount).toBe(5);
+      expect(item.seats.front).toBe(3);
+      expect(item.seats.newProp).toBe(undefined);
+      expect(item.seats.front).toBe(3);
+      expect(item.seats.deeper.evenDeeper.property1).toBe('hahaha');
+
+      setTimeout(() => {
+        expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(5);
+        expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+          pid: 1,
+        });
+        expect(item.passengers.length).toBe(1);
+        expect(item.passengers[0]).toBe('item one');
+        done();
+      });
+    });
+  });
+
+  it('should item set from client storage without establishing observables', function (done) {
+    const passengerStoreInstance = {
+      onceLoaded: jasmine.createSpy('once loaded').and.returnValues(
+        Promise.resolve(),
+        Promise.resolve(),
+        Promise.resolve(),
+        Promise.resolve(),
+        Promise.resolve(),
+      ),
+      findOne: jasmine.createSpy('find one').and.returnValues(
+        'item 123',
+        'item 124',
+        'item 125',
+        'item 200',
+        'item one',
+      ),
+    };
+
+    const oneToOneStoreInstance = {
+      onceLoaded: jasmine.createSpy('once loaded').and.returnValue(Promise.resolve()),
+      findOne: jasmine.createSpy('find one').and.returnValue('over 9000'),
+    };
+
+    const inputDefinition = {
+      properties: {
+        brand: String,
+        price: {
+          type: String,
+          observable: false,
+        },
+        passengers: {
+          type: Array,
+          items: {
+            type: NumberKey,
+            key: 'pid',
+            _key: '_pid',
+            ref: passengerStoreInstance,
+          },
+        },
+        seats: {
+          type: Object,
+          properties: {
+            oneToOne: {
+              type: NumberKey,
+              key: 'pid',
+              _key: '_pid',
+              ref: oneToOneStoreInstance,
+            },
+            front: {
+              observable: false,
+              type: Number,
+            },
+            back: Number,
+            deeper: {
+              type: Object,
+              properties: {
+                test: Number,
+                evenDeeper: {
+                  type: Object,
+                  properties: {
+                    property1: {
+                      type: String,
+                      observable: false,
+                    },
+                    property2: Boolean,
+                  },
+                },
+              },
+            },
+          },
+        },
+        empty: {
+          type: Object,
+        },
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+
+    class TestItemClass {}
+    const item = new TestItemClass();
+    const data = {
+      brand: 'testbrand',
+      price: '9001€',
+      passengers: [123, 124, 125, 200],
+      seats: {
+        oneToOne: 9001,
+        front: 2,
+        deeper: {
+          test: 123,
+          evenDeeper: {
+            property1: 'hello',
+            property2: true,
+          },
+        },
+      },
+    };
+
+    schema.setFromClientStorage(item, data, false);
+
+    setTimeout(() => {
+      expect(item.brand).toBe('testbrand');
+      expect(item.price).toBe('9001€');
+      expect(item.seats.oneToOne).toBe('over 9000');
+      expect(item.seats.front).toBe(2);
+      expect(item.seats.deeper.test).toBe(123);
+      expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
+      expect(item.seats.deeper.evenDeeper.property2).toBe(true);
+      expect(item.passengers).toEqual(['item 123', 'item 124', 'item 125', 'item 200']);
+
+      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledTimes(1);
+      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledWith({
+        _pid: 9001,
+      });
+
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(4);
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        _pid: 123,
+      });
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        _pid: 124,
+      });
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        _pid: 125,
+      });
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        _pid: 200,
+      });
+
+      data.passengers = [1];
+      schema.setFromClientStorage(item, data, false);
+
+      setTimeout(() => {
+        expect(item.passengers).toEqual(['item one']);
+        expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(5);
+        expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+          _pid: 1,
+        });
+
+        done();
+      });
+    });
+  });
+
+  it('should item set from client storage with establishing observables', function (done) {
+    const passengerStoreInstance = {
+      onceLoaded: jasmine.createSpy('once loaded').and.returnValues(
+        Promise.resolve(),
+        Promise.resolve(),
+        Promise.resolve(),
+        Promise.resolve(),
+        Promise.resolve(),
+      ),
+      findOne: jasmine.createSpy('find one').and.returnValues(
+        'item 123',
+        'item 124',
+        'item 125',
+        'item 200',
+        'item one',
+      ),
+    };
+
+    const oneToOneStoreInstance = {
+      onceLoaded: jasmine.createSpy('once loaded').and.returnValue(Promise.resolve()),
+      findOne: jasmine.createSpy('find one').and.returnValue('over 9000'),
+    };
+
+    const inputDefinition = {
+      properties: {
+        brand: String,
+        price: {
+          type: String,
+          observable: false,
+        },
+        passengers: {
+          type: Array,
+          items: {
+            type: NumberKey,
+            key: 'pid',
+            _key: '_pid',
+            ref: passengerStoreInstance,
+          },
+        },
+        onlyOneChild: {
+          type: Object,
+          properties: {
+            oneToOne: {
+              type: NumberKey,
+              key: 'pid',
+              _key: '_pid',
+              ref: oneToOneStoreInstance,
+            },
+          },
+        },
+        seats: {
+          type: Object,
+          properties: {
+            front: {
+              observable: false,
+              type: Number,
+            },
+            back: Number,
+            deeper: {
+              type: Object,
+              properties: {
+                test: Number,
+                evenDeeper: {
+                  type: Object,
+                  properties: {
+                    property1: {
+                      type: String,
+                      observable: false,
+                    },
+                    property2: Boolean,
+                  },
+                },
+              },
+            },
+          },
+        },
+        empty: {
+          type: Object,
+        },
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+
+    class TestItemClass {}
+    const item = new TestItemClass();
+    const data = {
+      brand: 'testbrand',
+      price: '9001€',
+      onlyOneChild: {
+        oneToOne: 9001,
+      },
+      passengers: [123, 124, 125, 200],
+      seats: {
+        front: 2,
+        deeper: {
+          test: 123,
+          evenDeeper: {
+            property1: 'hello',
+            property2: true,
+          },
+        },
+      },
+    };
+
+    schema.setFromClientStorage(item, data, true);
+
+    setTimeout(() => {
+      expect(item.brand).toBe('testbrand');
+      expect(item.price).toBe('9001€');
+      expect(item.seats.front).toBe(2);
+      expect(item.seats.deeper.test).toBe(123);
+      expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
+      expect(item.seats.deeper.evenDeeper.property2).toBe(true);
+      expect(item.onlyOneChild.oneToOne).toBe('over 9000');
+      expect(item.passengers.length).toBe(4);
+      expect(item.passengers[0]).toBe('item 123');
+      expect(item.passengers[1]).toBe('item 124');
+      expect(item.passengers[2]).toBe('item 125');
+      expect(item.passengers[3]).toBe('item 200');
+
+      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledTimes(1);
+      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledWith({
+        _pid: 9001,
+      });
+
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(4);
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        _pid: 123,
+      });
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        _pid: 124,
+      });
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        _pid: 125,
+      });
+      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+        _pid: 200,
+      });
+
+      let autorunCount = 0;
+      autorun(() => {
+        let blub = '';
+        blub = item.brand;
+        blub = item.price;
+        blub = item.passengers;
+        blub = item.seats.deeper.evenDeeper.property1;
+        blub = item.seats.deeper.evenDeeper.property2;
+        autorunCount += 1;
+        return blub;
+      });
+
+      done();
+    });
+  });
 });
