@@ -23,9 +23,9 @@ export default class Item {
         break;
     }
     let call = 0;
-    return p.then(() /* TODO: states*/ => {
+    return p.then(() => {
       this._dispose = autorun(() => {
-        this._stateHandler(call++/* , states*/);
+        this._stateHandler(call++);
       });
     }).catch(err => {
       this._transporterState = STATE.LOCKED;
@@ -54,21 +54,52 @@ export default class Item {
   // PRIVATE METHODS //
   // ///////////////////
 
+  _computeInitialStates(initialState) {
+    switch (initialState) {
+      case STATE.BEING_CREATED:
+        return {
+          current: undefined,
+          inProgress: undefined,
+          next: initialState,
+        };
+      case STATE.BEING_DELETED:
+      case STATE.BEING_UPDATED:
+      case STATE.BEING_FETCHED:
+      case STATE.BEING_REMOVED:
+        return {
+          current: STATE.EXISTENT,
+          inProgress: undefined,
+          next: initialState,
+        };
+      case STATE.LOCKED:
+      case STATE.REMOVED:
+      case STATE.EXISTENT:
+      case STATE.DELETED:
+        return {
+          current: initialState,
+          inProgress: undefined,
+          next: undefined,
+        };
+      default:
+        throw new Error('inkown initial state');
+    }
+  }
+
   _createRunTimeId() {
     this.__id = uuid();
   }
 
   _createFromClientStorage(values) {
-    // TODO change this to states
-    this._transporterState = values._transporterState || STATE.BEING_CREATED;
-    this._clientStorageState = this._transporterState === STATE.BEING_DELETED ?
-      STATE.REMOVED : STATE.EXISTENT;
-    this.removed = (this._clientStorageState === STATE.REMOVED);
+    this._transporterStates =
+      this._computeInitialStates(values._transporterState || STATE.BEING_CREATED);
+    this._clientStorageStates =
+      this._computeInitialStates(this._transporterState === STATE.BEING_DELETED ?
+        STATE.REMOVED : STATE.EXISTENT);
+    this.removed = (this._clientStorageStates.current === STATE.REMOVED);
     this.stored = true;
-    this.synced = (this._transporterState === STATE.EXISTENT);
+    this.synced = (this._transporterStates.next === undefined);
     this._store.schema.setPrimaryKey(this, values);
     return this._store.schema.setFromClientStorage(this, values, { establishObservables: true });
-      // TODO then return states
   }
 
   _createFromState(values) {
@@ -76,24 +107,36 @@ export default class Item {
     this.stored = false;
     this.removed = false;
     // TODO change this to states
-    this._transporterState = STATE.BEING_CREATED;
-    this._clientStorageState = STATE.BEING_CREATED;
+    this._transporterStates = this._computeInitialStates(STATE.BEING_CREATED);
+    this._clientStorageStates = this._computeInitialStates(STATE.BEING_CREATED);
     // no need for keys as its from the state and therefore has no keys yet
     return this._store.schema
       .setFromState(this, values, { establishObservables: true });
-      // TODO then return states
   }
 
   _createFromTransporter(values) {
-    // TODO change this states
-    this._transporterState = STATE.EXISTENT;
-    this._clientStorageState = STATE.BEING_CREATED;
+    this._transporterStates = this._computeInitialStates(STATE.EXISTENT);
+    this._clientStorageStates = this._computeInitialStates(STATE.BEING_CREATED);
     this.removed = false;
     this.stored = false;
     this.synced = true;
     this._store.schema.setPrimaryKey(this, values);
     return this._store.schema.setFromTransporter(this, values, { establishObservables: true });
-    // TODO then return states
+  }
+
+  _getDesiredFixedState(action) {
+    switch (action) {
+      case STATE.BEING_CREATED:
+      case STATE.BEING_UPDATED:
+      case STATE.BEING_FETCHED:
+        return STATE.EXISTENT;
+      case STATE.BEING_DELETED:
+        return STATE.DELETED;
+      case STATE.BEING_REMOVED:
+        return STATE.REMOVED;
+      default:
+        return STATE.LOCKED;
+    }
   }
 
   _getNextActionState(current, next, newState) {
@@ -131,6 +174,19 @@ export default class Item {
       return next;
     }
     return this._mergeNextState(next, newState);
+  }
+
+  _getNextFixedState(current, action) {
+    switch (current) {
+      case STATE.LOCKED:
+      case STATE.DELETED:
+        return current;
+      case STATE.REMOVED:
+        return this._getDesiredFixedState(action) === STATE.DELETED ?
+          STATE.DELETED : STATE.REMOVED;
+      default:
+        return this._getDesiredFixedState(action);
+    }
   }
 
   _mergeNextState(next, newState) {
