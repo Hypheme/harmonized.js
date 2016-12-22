@@ -34,16 +34,9 @@ export default class Item {
     });
   }
 
-  // ///////////
-  // statics //
-  // ///////////
-  @observable removed;
-  @observable synced;
-  @observable stored;
-
-  // /////////////////////
-  // INTERFACE METHODS //
-  // /////////////////////
+  @observable removed = false;
+  @observable synced = true;
+  @observable stored = true;
 
   // //////////////////
   // PUBLIC METHODS //
@@ -98,7 +91,8 @@ export default class Item {
     this.stored = true;
     this.synced = (this._transporterStates.next === undefined);
     this._store.schema.setPrimaryKey(this, values);
-    return this._store.schema.setFromClientStorage(this, values, { establishObservables: true });
+    return this._store.schema.setFrom(SOURCE.CLIENT_STORAGE, this, values,
+      { establishObservables: true });
   }
 
   _createFromState(values) {
@@ -110,7 +104,7 @@ export default class Item {
     this._clientStorageStates = this._computeInitialStates(STATE.BEING_CREATED);
     // no need for keys as its from the state and therefore has no keys yet
     return this._store.schema
-      .setFromState(this, values, { establishObservables: true });
+      .setFrom(SOURCE.STATE, this, values, { establishObservables: true });
   }
 
   _createFromTransporter(values) {
@@ -120,7 +114,8 @@ export default class Item {
     this.stored = false;
     this.synced = true;
     this._store.schema.setPrimaryKey(this, values);
-    return this._store.schema.setFromTransporter(this, values, { establishObservables: true });
+    return this._store.schema.setFrom(SOURCE.TRANSPORTER, this, values,
+      { establishObservables: true });
   }
 
   _getDesiredFixedState(action) {
@@ -163,6 +158,8 @@ export default class Item {
         return undefined;
       case STATE.DELETED: // pretty much the same as BEING_DELETED.
         return undefined;
+      case undefined:
+        return newState === STATE.BEING_CREATED ? STATE.BEING_CREATED : undefined;
       // case STATE.REMOVED: // TODO once again not sure if needed anymore
       default: // we don't change anything
         return next;
@@ -288,12 +285,20 @@ export default class Item {
     this._setNextStoreState(clientStorageState);
     this._setNextTransporterState(transporterState);
     // trigger sync processes if it's not already happening
-    if (!clientStorageSyncInProgress) {
+    if (!clientStorageSyncInProgress && this._clientStorageStates.next) {
+      this.stored = false;
       this._triggerSync(TARGET.CLIENT_STORAGE)
+        .then(() => {
+          this.stored = true;
+        })
         .catch(err => this._lock(TARGET.CLIENT_STORAGE, err));
     }
-    if (!transporterSyncInProgress) {
+    if (!transporterSyncInProgress && this._transporterStates.next) {
+      this.synced = false;
       this._triggerSync(TARGET.TRANSPORTER)
+        .then(() => {
+          this.synced = true;
+        })
         .catch(err => this._lock(TARGET.TRANSPORTER, err));
     }
   }
@@ -336,7 +341,7 @@ export default class Item {
             this._store.schema.setFrom(target, this, result.data) :
             Promise.resolve()
             .then(() => this[target.POST_SYNC_PROCESSOR]())
-            .then(() => { // TODO: finishSync per target
+            .then(() => {
               if (this[target.STATES].next) {
                 return this._triggerSync(target);
               }

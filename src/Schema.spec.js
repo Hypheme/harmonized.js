@@ -320,11 +320,10 @@ describe('Schema', function () {
 
     const testItem = new TestItem();
 
-    autorun(() => {
+    const dispose = autorun(() => {
       schema.getObservables(testItem);
       autorunCount += 1;
     });
-
     expect(autorunCount).toBe(1);
 
     testItem.brand = 'OtherTestCar';
@@ -360,6 +359,7 @@ describe('Schema', function () {
 
     testItem.seats.front.right = 3;
     expect(autorunCount).toBe(11);
+    dispose();
   });
 
   it('should set item from state without establishing observables', function () {

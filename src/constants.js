@@ -32,7 +32,7 @@ const TARGET = {
     POST_SYNC_PROCESSOR: '_postSyncTransporter',
   },
   CLIENT_STORAGE: {
-    TARGET: 'TRANSPORTER',
+    TARGET: 'CLIENT_STORAGE',
     STATES: '_clientStorageStates',
     PROCESSOR: 'clientStorage',
     POST_SYNC_PROCESSOR: '_postSyncClientStorage',
