@@ -28,8 +28,7 @@ export default class Item {
         this._stateHandler(call++);
       });
     }).catch(err => {
-      this._transporterState = STATE.LOCKED;
-      this._clientStorageState = STATE.LOCKED;
+      this._lock(undefined, err);
       this.removed = true; // TODO we remove item from store
       throw err;
     });
@@ -93,7 +92,7 @@ export default class Item {
     this._transporterStates =
       this._computeInitialStates(values._transporterState || STATE.BEING_CREATED);
     this._clientStorageStates =
-      this._computeInitialStates(this._transporterState === STATE.BEING_DELETED ?
+      this._computeInitialStates(this._transporterStates.next === STATE.BEING_DELETED ?
         STATE.REMOVED : STATE.EXISTENT);
     this.removed = (this._clientStorageStates.current === STATE.REMOVED);
     this.stored = true;
@@ -189,6 +188,23 @@ export default class Item {
     }
   }
 
+  _lock(origin, err) {
+    this._transporterStates = {
+      current: STATE.LOCKED,
+      inProgress: undefined,
+      next: undefined,
+    };
+    this._clientStorageStates = {
+      current: STATE.LOCKED,
+      inProgress: undefined,
+      next: undefined,
+    };
+    this.error = {
+      origin,
+      error: err,
+    };
+  }
+
   _mergeNextState(next, newState) {
     switch (next) {
       case undefined:
@@ -254,7 +270,7 @@ export default class Item {
   _stateHandler(call) {
     this._store.schema.getObservables(this); // we need this for mobx
     if (call === 0) {
-      return this._synchronize(this._clientStorageState, this._transporterState);
+      return this._synchronize();
     }
     if (this.autoSave) {
       return this._synchronize(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
@@ -273,10 +289,12 @@ export default class Item {
     this._setNextTransporterState(transporterState);
     // trigger sync processes if it's not already happening
     if (!clientStorageSyncInProgress) {
-      this._triggerSync(TARGET.CLIENT_STORAGE);
+      this._triggerSync(TARGET.CLIENT_STORAGE)
+        .catch(err => this._lock(TARGET.CLIENT_STORAGE, err));
     }
     if (!transporterSyncInProgress) {
-      this._triggerSync(TARGET.TRANSPORTER);
+      this._triggerSync(TARGET.TRANSPORTER)
+        .catch(err => this._lock(TARGET.TRANSPORTER, err));
     }
   }
 

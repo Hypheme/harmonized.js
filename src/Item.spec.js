@@ -79,8 +79,16 @@ describe('Item', function () {
         store: testStore,
       });
       const construction = myItem.construct(input, { source: SOURCE.STATE });
-      expect(myItem._transporterState).toEqual(STATE.BEING_CREATED);
-      expect(myItem._clientStorageState).toEqual(STATE.BEING_CREATED);
+      expect(myItem._transporterStates).toEqual({
+        current: undefined,
+        inProgress: undefined,
+        next: STATE.BEING_CREATED,
+      });
+      expect(myItem._clientStorageStates).toEqual({
+        current: undefined,
+        inProgress: undefined,
+        next: STATE.BEING_CREATED,
+      });
       expect(myItem.stored).toBe(false);
       expect(myItem.synced).toBe(false);
       expect(myItem.removed).toBe(false);
@@ -92,7 +100,7 @@ describe('Item', function () {
         expect(testStore.schema.setFromState)
           .toHaveBeenCalledWith(myItem, input, { establishObservables: true });
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
-        expect(myItem._synchronize).toHaveBeenCalledWith(STATE.BEING_CREATED, STATE.BEING_CREATED);
+        expect(myItem._synchronize).toHaveBeenCalledWith();
       });
     });
 
@@ -106,8 +114,16 @@ describe('Item', function () {
         store: testStore,
       });
       const construction = myItem.construct(input, { source: SOURCE.CLIENT_STORAGE });
-      expect(myItem._transporterState).toEqual(STATE.BEING_CREATED);
-      expect(myItem._clientStorageState).toEqual(STATE.EXISTENT);
+      expect(myItem._transporterStates).toEqual({
+        current: undefined,
+        inProgress: undefined,
+        next: STATE.BEING_CREATED,
+      });
+      expect(myItem._clientStorageStates).toEqual({
+        current: STATE.EXISTENT,
+        inProgress: undefined,
+        next: undefined,
+      });
       expect(myItem.stored).toBe(true);
       expect(myItem.synced).toBe(false);
       expect(myItem.removed).toBe(false);
@@ -120,7 +136,7 @@ describe('Item', function () {
         expect(testStore.schema.setFromClientStorage)
           .toHaveBeenCalledWith(myItem, input, { establishObservables: true });
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
-        expect(myItem._synchronize).toHaveBeenCalledWith(STATE.EXISTENT, STATE.BEING_CREATED);
+        expect(myItem._synchronize).toHaveBeenCalledWith();
       });
     });
 
@@ -135,8 +151,16 @@ describe('Item', function () {
       });
       input._transporterState = STATE.BEING_DELETED;
       const construction = myItem.construct(input, { source: SOURCE.CLIENT_STORAGE });
-      expect(myItem._transporterState).toEqual(STATE.BEING_DELETED);
-      expect(myItem._clientStorageState).toEqual(STATE.REMOVED);
+      expect(myItem._transporterStates).toEqual({
+        current: STATE.EXISTENT,
+        inProgress: undefined,
+        next: STATE.BEING_DELETED,
+      });
+      expect(myItem._clientStorageStates).toEqual({
+        current: STATE.REMOVED,
+        inProgress: undefined,
+        next: undefined,
+      });
       expect(myItem.stored).toBe(true);
       expect(myItem.synced).toBe(false);
       expect(myItem.removed).toBe(true);
@@ -149,7 +173,7 @@ describe('Item', function () {
         expect(testStore.schema.setFromClientStorage)
           .toHaveBeenCalledWith(myItem, input, { establishObservables: true });
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
-        expect(myItem._synchronize).toHaveBeenCalledWith(STATE.REMOVED, STATE.BEING_DELETED);
+        expect(myItem._synchronize).toHaveBeenCalledWith();
       });
     });
 
@@ -163,8 +187,16 @@ describe('Item', function () {
         store: testStore,
       });
       const construction = myItem.construct(input, { source: SOURCE.TRANSPORTER });
-      expect(myItem._transporterState).toEqual(STATE.EXISTENT);
-      expect(myItem._clientStorageState).toEqual(STATE.BEING_CREATED);
+      expect(myItem._transporterStates).toEqual({
+        current: STATE.EXISTENT,
+        inProgress: undefined,
+        next: undefined,
+      });
+      expect(myItem._clientStorageStates).toEqual({
+        current: undefined,
+        inProgress: undefined,
+        next: STATE.BEING_CREATED,
+      });
       expect(myItem.stored).toBe(false);
       expect(myItem.synced).toBe(true);
       expect(myItem.removed).toBe(false);
@@ -177,7 +209,7 @@ describe('Item', function () {
         expect(testStore.schema.setFromTransporter)
           .toHaveBeenCalledWith(myItem, input, { establishObservables: true });
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
-        expect(myItem._synchronize).toHaveBeenCalledWith(STATE.BEING_CREATED, STATE.EXISTENT);
+        expect(myItem._synchronize).toHaveBeenCalledWith();
       });
     });
 
@@ -191,8 +223,16 @@ describe('Item', function () {
         store: testStore,
       });
       const construction = myItem.construct(input, { source: SOURCE.TRANSPORTER });
-      expect(myItem._transporterState).toEqual(STATE.EXISTENT);
-      expect(myItem._clientStorageState).toEqual(STATE.BEING_CREATED);
+      expect(myItem._transporterStates).toEqual({
+        current: STATE.EXISTENT,
+        inProgress: undefined,
+        next: undefined,
+      });
+      expect(myItem._clientStorageStates).toEqual({
+        current: undefined,
+        inProgress: undefined,
+        next: STATE.BEING_CREATED,
+      });
       expect(myItem.stored).toBe(false);
       expect(myItem.synced).toBe(true);
       expect(myItem.removed).toBe(false);
@@ -201,8 +241,16 @@ describe('Item', function () {
       expect(myItem.__id).toBeDefined();
       expect(myItem._store).toEqual(testStore);
       return construction.catch(err => {
-        expect(myItem._transporterState).toEqual(STATE.LOCKED);
-        expect(myItem._clientStorageState).toEqual(STATE.LOCKED);
+        expect(myItem._transporterStates).toEqual({
+          current: STATE.LOCKED,
+          inProgress: undefined,
+          next: undefined,
+        });
+        expect(myItem._clientStorageStates).toEqual({
+          current: STATE.LOCKED,
+          inProgress: undefined,
+          next: undefined,
+        });
         expect(myItem.removed).toBe(true);
         expect(err).toEqual(new Error('some error'));
         expect(myItem._synchronize).not.toHaveBeenCalled();
