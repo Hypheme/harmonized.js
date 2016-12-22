@@ -1,6 +1,6 @@
 import { observable, autorun/* , computed*/ } from 'mobx';
 import uuid from 'uuid-v4';
-import { STATE, SOURCE, PROMISE_STATE } from './constants';
+import { STATE, SOURCE, PROMISE_STATE, TARGET } from './constants';
 
 export default class Item {
 
@@ -170,6 +170,16 @@ export default class Item {
     }
   }
 
+  _postSyncClientStorage() {
+    return Promise.resolve();
+  }
+
+  _postSyncTransporter() {
+    return this._store.schema.getPrimaryKey(TARGET.CLIENT_STORAGE, this)
+      .then(itemKeys => this._store.schema.getFor(TARGET.CLIENT_STORAGE, this, itemKeys))
+      .then(data => this._store.clientStorage.update(data));
+  }
+
   // TODO get _transporterState we will compute _transporterState out of _transporterStates
 
   _setNextStoreState(state) {
@@ -207,53 +217,56 @@ export default class Item {
     this._setNextTransporterState(transporterState);
     // trigger sync processes if it's not already happening
     if (!clientStorageSyncInProgress) {
-      this._triggerClientStorageSync();
+      this._triggerSync(TARGET.CLIENT_STORAGE);
     }
     if (!transporterSyncInProgress) {
-      this._triggerTransporterSync();
+      this._triggerSync(TARGET.TRANSPORTER);
     }
   }
 
-  _triggerClientStorageSync() {
-    const workingState = this._clientStorageStates.next;
+  _triggerSync(target) {
+    const workingState = this[target.STATES].next;
     // all actions except creating a new item need the primary key
     const itemKeys = workingState === STATE.BEING_CREATED ? {} :
-      this._store.schema.getPrimaryKeyForClientStorage(this);
+      this._store.schema.getPrimaryKey(target, this);
     return ((workingState === STATE.BEING_DELETED || workingState === STATE.BEING_FETCHED) ?
       Promise.resolve(itemKeys) : // no payload needed for deleting/fetching
-      this._store.schema.getForClientStorage(this, itemKeys))
+      this._store.schema.getFor(target, this, itemKeys))
     .then(itemData => {
-      if (workingState !== this._clientStorageStates.next) {
+      if (workingState !== this[target.STATES].next) {
         // redo everything if sth has changed in the meantime
-        return this._triggerClientStorageSync();
+        return this._triggerSync(target);
       }
-      this._clientStorageStates.inProgress = workingState;
-      this._clientStorageStates.next = undefined;
+      this[target.STATES].inProgress = workingState;
+      this[target.STATES].next = undefined;
       // this is the actual call to the outside world
-      return this._store.clientStorage[workingState.ACTION](itemData)
+      return this._store[target.PROCESSOR][workingState.ACTION](itemData)
         .then(result => {
           if (result.status === PROMISE_STATE.PENDING) {
-            this._clientStorageStates.next = this._getNextActionState(
-              this._clientStorageStates.current,
-              this._clientStorageStates.inProgress,
-              this._clientStorageStates.next);
-            this._clientStorageStates.inProgress = undefined;
-            return this._store.clientStorage.onceAvailable()
-              .then(() => this._triggerClientStorageSync());
+            this[target.STATES].next = this._getNextActionState(
+              this[target.STATES].current,
+              this[target.STATES].inProgress,
+              this[target.STATES].next);
+            this[target.STATES].inProgress = undefined;
+            return this._store[target.PROCESSOR].onceAvailable()
+              .then(() => this._triggerSync(target));
           }
-          if (this._clientStorageStates.inProgress === STATE.BEING_CREATED) {
+          if (this[target.STATES].inProgress === STATE.BEING_CREATED) {
             this._store.schema.setPrimaryKey(this, result.data);
           }
-          return this._clientStorageStates.inProgress === STATE.BEING_FETCHED ?
-            this._store.schema.setFromClientStorage(this, result.data) :
+          this[target.STATES].current = this._getNextFixedState(
+            this[target.STATES].current,
+            workingState);
+          this[target.STATES].inProgress = undefined;
+          return workingState === STATE.BEING_FETCHED ?
+            this._store.schema.setFrom(target, this, result.data) :
             Promise.resolve()
-            .then(() => {
-              this._clientStorageStates.current = this._getNextFixedState(
-              this._clientStorageStates.current,
-              this._clientStorageStates.inProgress);
-              this._clientStorageStates.inProgress = undefined;
-              return this._clientStorageStates.next ?
-                this._triggerClientStorageSync() : Promise.resolve();
+            .then(() => this[target.POST_SYNC_PROCESSOR]())
+            .then(() => { // TODO: finishSync per target
+              if (this[target.STATES].next) {
+                return this._triggerSync(target);
+              }
+              return Promise.resolve();
             });
         });
     });

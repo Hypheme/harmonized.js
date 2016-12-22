@@ -239,15 +239,12 @@ describe('Item', function () {
       it('should delete an item from transporter');
       it('should fetch an item from transporter');
 
-      it('should first sync with local storage and then with transporter');
       it('should merge next actions if something is already in progress');
       it('should remerge actions and update states if inProgress comes back pending');
       it('should work the next action if inProgress comes back resolved');
-      it('should update states if inProgress comes back resolved and there is no next');
-      // action has to be in next, gets moved to inProgress once all keys are there
-      it('should wait for all foreign keys before sending to transporter');
-      it('should wait for all foreign keys before sending to client storage');
-      it('should wait for parent key before sending to transporter');
+      it('should update state.current if inProgress comes back resolved and there is no next');
+      it('should wait for all foreign keys before sending');
+      it('should redo the sync process if next action has changed in the preparation process');
     });
   });
 });

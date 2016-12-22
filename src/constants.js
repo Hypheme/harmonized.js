@@ -24,9 +24,24 @@ const SOURCE = {
 };
 SOURCE.USER = SOURCE.STATE;
 
+const TARGET = {
+  TRANSPORTER: {
+    TARGET: 'TRANSPORTER',
+    STATES: '_transporterStates',
+    PROCESSOR: 'transporter',
+    POST_SYNC_PROCESSOR: '_postSyncTransporter',
+  },
+  CLIENT_STORAGE: {
+    TARGET: 'TRANSPORTER',
+    STATES: '_clientStorageStates',
+    PROCESSOR: 'clientStorage',
+    POST_SYNC_PROCESSOR: '_postSyncClientStorage',
+  },
+};
+
 const PROMISE_STATE = {
   PENDING: { PROMISE_STATE: 'PENDING' },
   RESOLVED: { PROMISE_STATE: 'RESOLVED' },
 };
 
-export { STATE, SOURCE, SOURCE as TARGET, PROMISE_STATE };
+export { STATE, SOURCE, TARGET, PROMISE_STATE };
