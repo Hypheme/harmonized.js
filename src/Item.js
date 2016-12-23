@@ -350,5 +350,4 @@ export default class Item {
         });
     });
   }
-
 }

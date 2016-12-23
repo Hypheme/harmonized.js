@@ -6,6 +6,10 @@ import {
 import Schema, { Key, NumberKey } from './Schema';
 
 describe('Schema', function () {
+  function detach(cb) {
+    setTimeout(cb, 0);
+  }
+
   beforeEach(function () {
     this.passengerStoreInstance = {};
     this.superStoreInstance = {};
@@ -263,7 +267,7 @@ describe('Schema', function () {
     });
   });
 
-  it('should get observables', function () {
+  it('should get observables', function (done) {
     const inputDefinition = {
       properties: {
         brand: String,
@@ -299,6 +303,7 @@ describe('Schema', function () {
     const schema = new Schema(inputDefinition);
 
     let autorunCount = 0;
+    let autorunNav = 1;
 
     class TestItem {
       @observable brand = 'TestCar';
@@ -321,45 +326,61 @@ describe('Schema', function () {
     const testItem = new TestItem();
 
     const dispose = autorun(() => {
-      schema.getObservables(testItem);
-      autorunCount += 1;
+      try {
+        schema.getObservables(testItem);
+        autorunCount++;
+        switch (autorunNav) {
+          case 1:
+            autorunNav = 2;
+          // we detach our first change as it would be recognized otherwise
+            detach(() => { testItem.brand = 'OtherTestCar'; });
+            break;
+          case 2:
+            autorunNav = 3;
+            testItem.price = 1;
+            break;
+          case 3:
+            autorunNav = 4;
+            testItem.seats.front.left = 1;
+            break;
+          case 4:
+            autorunNav = 5;
+            testItem.seats.front.right = 2;
+            break;
+          case 5:
+            autorunNav = 6;
+            testItem.seats.back = 2;
+            break;
+          case 6:
+            autorunNav = 7;
+            testItem.wheels.frontLeft = 'blub';
+            break;
+          case 7:
+            autorunNav = 8;
+            testItem.wheels.frontRight = 'blub';
+            break;
+          case 8:
+            autorunNav = 9;
+            testItem.wheels.backLeft = 'blub';
+            break;
+          case 9:
+            autorunNav = 10;
+            testItem.seats.front.right = 3;
+            testItem.wheels.backLeft = 'other_test';
+            break;
+          case 10:
+            testItem.wheels.backRight = 'blub';
+            expect(autorunCount).toBe(10);
+            detach(dispose);
+            detach(done);
+            break;
+          default:
+            done(new Error('utorun nav run out of cases'));
+        }
+      } catch (e) {
+        done(e);
+      }
     });
-    expect(autorunCount).toBe(1);
-
-    testItem.brand = 'OtherTestCar';
-    expect(autorunCount).toBe(2);
-
-    testItem.price = 1;
-    expect(autorunCount).toBe(3);
-
-    testItem.seats.front.left = 1;
-    expect(autorunCount).toBe(4);
-
-    testItem.seats.front.right = 2;
-    expect(autorunCount).toBe(5);
-
-    testItem.seats.back = 2;
-    expect(autorunCount).toBe(6);
-
-    testItem.wheels.frontLeft = 'blub';
-    expect(autorunCount).toBe(7);
-
-    testItem.wheels.frontRight = 'blub';
-    expect(autorunCount).toBe(8);
-
-    testItem.wheels.backLeft = 'blub';
-    expect(autorunCount).toBe(9);
-
-    testItem.wheels.backRight = 'blub';
-    expect(autorunCount).toBe(9);
-
-    testItem.seats.front.right = 3;
-    testItem.wheels.backLeft = 'other_test';
-    expect(autorunCount).toBe(11);
-
-    testItem.seats.front.right = 3;
-    expect(autorunCount).toBe(11);
-    dispose();
   });
 
   it('should set item from state without establishing observables', function () {
@@ -460,7 +481,7 @@ describe('Schema', function () {
     });
   });
 
-  it('should set item from state with establishing observables', function () {
+  it('should set item from state with establishing observables', function (done) {
     const inputDefinition = {
       properties: {
         brand: String,
@@ -528,7 +549,7 @@ describe('Schema', function () {
     expect(item.seats.deeper.evenDeeper.property2).toBe(true);
 
     let autorunCount = 0;
-    autorun(() => {
+    const dispose = autorun(() => {
       let blub = '';
       blub = item.brand;
       blub = item.price;
@@ -537,45 +558,48 @@ describe('Schema', function () {
       autorunCount += 1;
       return blub;
     });
-
-    schema.setFromState(item, {
-      brand: 'newname',
-      seats: {
-        deeper: {
-          evenDeeper: {
-            property2: false,
+    detach(() => {
+      schema.setFromState(item, {
+        brand: 'newname',
+        seats: {
+          deeper: {
+            evenDeeper: {
+              property2: false,
+            },
           },
         },
-      },
-    }, false);
+      }, false);
 
-    expect(item.brand).toBe('newname');
-    expect(item.price).toBe('9001€');
-    expect(item.seats.front).toBe(2);
-    expect(item.seats.deeper.test).toBe(123);
-    expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
-    expect(item.seats.deeper.evenDeeper.property2).toBe(false);
+      expect(item.brand).toBe('newname');
+      expect(item.price).toBe('9001€');
+      expect(item.seats.front).toBe(2);
+      expect(item.seats.deeper.test).toBe(123);
+      expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
+      expect(item.seats.deeper.evenDeeper.property2).toBe(false);
 
-    expect(autorunCount).toBe(3);
+      expect(autorunCount).toBe(3);
 
-    schema.setFromState(item, {
-      brand: 'supernewname',
-      seats: {
-        front: 3,
-        newProp: 1000,
-        deeper: {
-          evenDeeper: {
-            property1: 'hahaha',
+      schema.setFromState(item, {
+        brand: 'supernewname',
+        seats: {
+          front: 3,
+          newProp: 1000,
+          deeper: {
+            evenDeeper: {
+              property1: 'hahaha',
+            },
           },
         },
-      },
-    }, false);
+      }, false);
 
-    expect(autorunCount).toBe(4);
-    expect(item.seats.front).toBe(3);
-    expect(item.seats.newProp).toBe(undefined);
-    expect(item.seats.front).toBe(3);
-    expect(item.seats.deeper.evenDeeper.property1).toBe('hahaha');
+      expect(autorunCount).toBe(4);
+      expect(item.seats.front).toBe(3);
+      expect(item.seats.newProp).toBe(undefined);
+      expect(item.seats.front).toBe(3);
+      expect(item.seats.deeper.evenDeeper.property1).toBe('hahaha');
+      detach(dispose);
+      detach(done);
+    });
   });
 
   it('should item set from transporter without establishing observables', function (done) {
@@ -863,7 +887,7 @@ describe('Schema', function () {
       });
 
       let autorunCount = 0;
-      autorun(() => {
+      const dispose = autorun(() => {
         let blub = '';
         blub = item.brand;
         blub = item.price;
@@ -873,55 +897,57 @@ describe('Schema', function () {
         autorunCount += 1;
         return blub;
       });
-
-      schema.setFromTransporter(item, {
-        brand: 'newname',
-        seats: {
-          deeper: {
-            evenDeeper: {
-              property2: false,
+      detach(() => {
+        schema.setFromTransporter(item, {
+          brand: 'newname',
+          seats: {
+            deeper: {
+              evenDeeper: {
+                property2: false,
+              },
             },
           },
-        },
-      }, false);
+        }, false);
 
-      expect(item.brand).toBe('newname');
-      expect(item.price).toBe('9001€');
-      expect(item.seats.front).toBe(2);
-      expect(item.seats.deeper.test).toBe(123);
-      expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
-      expect(item.seats.deeper.evenDeeper.property2).toBe(false);
+        expect(item.brand).toBe('newname');
+        expect(item.price).toBe('9001€');
+        expect(item.seats.front).toBe(2);
+        expect(item.seats.deeper.test).toBe(123);
+        expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
+        expect(item.seats.deeper.evenDeeper.property2).toBe(false);
 
-      expect(autorunCount).toBe(3);
+        expect(autorunCount).toBe(3);
 
-      schema.setFromTransporter(item, {
-        brand: 'supernewname',
-        passengers: [1],
-        seats: {
-          front: 3,
-          newProp: 1000,
-          deeper: {
-            evenDeeper: {
-              property1: 'hahaha',
+        schema.setFromTransporter(item, {
+          brand: 'supernewname',
+          passengers: [1],
+          seats: {
+            front: 3,
+            newProp: 1000,
+            deeper: {
+              evenDeeper: {
+                property1: 'hahaha',
+              },
             },
           },
-        },
-      }, false);
+        }, false);
 
-      expect(autorunCount).toBe(5);
-      expect(item.seats.front).toBe(3);
-      expect(item.seats.newProp).toBe(undefined);
-      expect(item.seats.front).toBe(3);
-      expect(item.seats.deeper.evenDeeper.property1).toBe('hahaha');
+        expect(autorunCount).toBe(5);
+        expect(item.seats.front).toBe(3);
+        expect(item.seats.newProp).toBe(undefined);
+        expect(item.seats.front).toBe(3);
+        expect(item.seats.deeper.evenDeeper.property1).toBe('hahaha');
 
-      setTimeout(() => {
-        expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(5);
-        expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-          pid: 1,
+        setTimeout(() => {
+          expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(5);
+          expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
+            pid: 1,
+          });
+          expect(item.passengers.length).toBe(1);
+          expect(item.passengers[0]).toBe('item one');
+          detach(dispose);
+          detach(done);
         });
-        expect(item.passengers.length).toBe(1);
-        expect(item.passengers[0]).toBe('item one');
-        done();
       });
     });
   });
@@ -1211,7 +1237,7 @@ describe('Schema', function () {
       });
 
       let autorunCount = 0;
-      autorun(() => {
+      const dispose = autorun(() => { // what does this even do??
         let blub = '';
         blub = item.brand;
         blub = item.price;
@@ -1221,8 +1247,8 @@ describe('Schema', function () {
         autorunCount += 1;
         return blub;
       });
-
-      done();
+      detach(dispose);
+      detach(done);
     });
   });
 });

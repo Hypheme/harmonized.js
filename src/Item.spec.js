@@ -320,9 +320,10 @@ describe('Item', function () {
             // check not schema getPrimaryKey
             // check schema setPrimaryKey
             done();
+          } else {
+            this.item._synchronize(STATE.BEING_CREATED, STATE.EXISTENT);
           }
         });
-        this.item._synchronize(STATE.BEING_CREATED, STATE.EXISTENT);
       });
       it('should update an item in client storage');
       it('should delete an item from client storage');
