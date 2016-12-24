@@ -330,6 +330,11 @@ describe('Item', function () {
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { _id: 456 });
             expect(testStore.schema.setFrom)
             .not.toHaveBeenCalled();
+            expect(this.item._clientStorageStates).toEqual({
+              current: STATE.EXISTENT,
+              inProgress: undefined,
+              next: undefined,
+            });
             done();
           } else {
             this.item._synchronize(STATE.BEING_CREATED, STATE.EXISTENT);
@@ -357,6 +362,11 @@ describe('Item', function () {
             .not.toHaveBeenCalled();
             expect(testStore.schema.setFrom)
             .not.toHaveBeenCalled();
+            expect(this.item._clientStorageStates).toEqual({
+              current: STATE.EXISTENT,
+              inProgress: undefined,
+              next: undefined,
+            });
             done();
           } else {
             this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
@@ -384,6 +394,11 @@ describe('Item', function () {
             .not.toHaveBeenCalled();
             expect(testStore.schema.setFrom)
             .not.toHaveBeenCalled();
+            expect(this.item._clientStorageStates).toEqual({
+              current: STATE.DELETED,
+              inProgress: undefined,
+              next: undefined,
+            });
             done();
           } else {
             this.item._synchronize(STATE.BEING_DELETED, STATE.EXISTENT);
@@ -413,6 +428,11 @@ describe('Item', function () {
             .not.toHaveBeenCalled();
             expect(testStore.schema.setFrom)
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { fetched: 'data' });
+            expect(this.item._clientStorageStates).toEqual({
+              current: STATE.EXISTENT,
+              inProgress: undefined,
+              next: undefined,
+            });
             done();
           } else {
             this.item._synchronize(STATE.BEING_FETCHED, STATE.EXISTENT);
