@@ -1,6 +1,6 @@
 export default class TestLocalStorage {
   create() {}
-  save() {}
+  update() {}
   delete() {}
-  remove() {}
+  fetch() {}
 }

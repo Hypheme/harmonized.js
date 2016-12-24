@@ -10,7 +10,7 @@ import {
   autorun,
 } from 'mobx';
 
-import { /* ACTION,*/ STATE, SOURCE, TARGET } from './constants';
+import { /* ACTION,*/ STATE, SOURCE, TARGET, PROMISE_STATE } from './constants';
 
 describe('Item', function () {
   // Core data. No test should alter this. Use stubs for your test logic
@@ -272,7 +272,9 @@ describe('Item', function () {
       return this.item.construct({
         name: 'hans',
         foreignEntry: foreignItem, // relation by reference
-      }, { source: 'state' });
+      }, { source: 'state' }).then(() => {
+        testStore.schema.setFrom.calls.reset();
+      });
     });
 
     describe('_synchronize', function () {
@@ -293,20 +295,24 @@ describe('Item', function () {
           next: undefined,
         };
         spyOn(testStore.schema, 'getPrimaryKey')
-          .and.callFake(target =>
-            Promise.resolve(target === TARGET.TRANSPORTER ?
-              { id: 123 } : { _id: 456 }));
+          .and.callFake(target => {
+            const result = target === TARGET.TRANSPORTER ?
+              { id: 123 } : { _id: 456 };
+            return result;
+          });
         spyOn(testStore.schema, 'getFor')
-          .and.callFake(target =>
-            Promise.resolve(target === TARGET.TRANSPORTER ?
-              { id: 123, transporter: 'data' } :
-              { _id: 456, clientStorage: 'data' }));
+          .and.callFake((target, item, data) => {
+            const result = Object.assign({}, data);
+            result.data = target === TARGET.TRANSPORTER ?
+              'transporter' : 'clientStorage';
+            return Promise.resolve(result);
+          });
         spyOn(testStore.schema, 'setPrimaryKey').and.returnValue(Promise.resolve());
       });
 
       it('should create item in client storage', function (done) {
         spyOn(testStore.clientStorage, 'create')
-          .and.returnValue(Promise.resolve({ _id: 456 }));
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: { _id: 456 } }));
         this.item._transporterStates.current = STATE.EXISTENT;
         let call = 0;
         const dispose = autorun(() => {
@@ -315,19 +321,104 @@ describe('Item', function () {
             dispose();
             expect(result).toBe(true);
             expect(testStore.clientStorage.create)
-            .toHaveBeenCalledWith({ _id: 456, clientStorage: 'data' });
-            // TODO check schema getFor
-            // check not schema getPrimaryKey
-            // check schema setPrimaryKey
+            .toHaveBeenCalledWith({ data: 'clientStorage' });
+            expect(testStore.schema.getPrimaryKey)
+            .not.toHaveBeenCalled();
+            expect(testStore.schema.getFor)
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, {});
+            expect(testStore.schema.setPrimaryKey)
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { _id: 456 });
+            expect(testStore.schema.setFrom)
+            .not.toHaveBeenCalled();
             done();
           } else {
             this.item._synchronize(STATE.BEING_CREATED, STATE.EXISTENT);
           }
         });
       });
-      it('should update an item in client storage');
-      it('should delete an item from client storage');
-      it('should fetch an item from client storage');
+      it('should update an item in client storage', function (done) {
+        spyOn(testStore.clientStorage, 'update')
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
+        this.item._transporterStates.current = STATE.EXISTENT;
+        this.item._clientStorageStates.current = STATE.EXISTENT;
+        let call = 0;
+        const dispose = autorun(() => {
+          const result = this.item.stored;
+          if (call++ === 1) {
+            dispose();
+            expect(result).toBe(true);
+            expect(testStore.clientStorage.update)
+            .toHaveBeenCalledWith({ _id: 456, data: 'clientStorage' });
+            expect(testStore.schema.getPrimaryKey)
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
+            expect(testStore.schema.getFor)
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { _id: 456 });
+            expect(testStore.schema.setPrimaryKey)
+            .not.toHaveBeenCalled();
+            expect(testStore.schema.setFrom)
+            .not.toHaveBeenCalled();
+            done();
+          } else {
+            this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+          }
+        });
+      });
+      it('should delete an item from client storage', function (done) {
+        spyOn(testStore.clientStorage, 'delete')
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
+        this.item._transporterStates.current = STATE.EXISTENT;
+        this.item._clientStorageStates.current = STATE.EXISTENT;
+        let call = 0;
+        const dispose = autorun(() => {
+          const result = this.item.stored;
+          if (call++ === 1) {
+            dispose();
+            expect(result).toBe(true);
+            expect(testStore.clientStorage.delete)
+            .toHaveBeenCalledWith({ _id: 456 });
+            expect(testStore.schema.getPrimaryKey)
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
+            expect(testStore.schema.getFor)
+            .not.toHaveBeenCalled();
+            expect(testStore.schema.setPrimaryKey)
+            .not.toHaveBeenCalled();
+            expect(testStore.schema.setFrom)
+            .not.toHaveBeenCalled();
+            done();
+          } else {
+            this.item._synchronize(STATE.BEING_DELETED, STATE.EXISTENT);
+          }
+        });
+      });
+      it('should fetch an item from client storage', function (done) {
+        spyOn(testStore.clientStorage, 'fetch')
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {
+            fetched: 'data',
+          } }));
+        this.item._transporterStates.current = STATE.EXISTENT;
+        this.item._clientStorageStates.current = STATE.EXISTENT;
+        let call = 0;
+        const dispose = autorun(() => {
+          const result = this.item.stored;
+          if (call++ === 1) {
+            dispose();
+            expect(result).toBe(true);
+            expect(testStore.clientStorage.fetch)
+            .toHaveBeenCalledWith({ _id: 456 });
+            expect(testStore.schema.getPrimaryKey)
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
+            expect(testStore.schema.getFor)
+            .not.toHaveBeenCalled();
+            expect(testStore.schema.setPrimaryKey)
+            .not.toHaveBeenCalled();
+            expect(testStore.schema.setFrom)
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { fetched: 'data' });
+            done();
+          } else {
+            this.item._synchronize(STATE.BEING_FETCHED, STATE.EXISTENT);
+          }
+        });
+      });
 
       it('should create item in transporter');
       it('should update an item in transporter');

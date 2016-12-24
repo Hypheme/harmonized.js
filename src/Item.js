@@ -243,10 +243,15 @@ export default class Item {
     return Promise.resolve();
   }
 
-  _postSyncTransporter() {
+  _postSyncTransporter(workingState) {
     return this._store.schema.getPrimaryKey(TARGET.CLIENT_STORAGE, this)
-      .then(itemKeys => this._store.schema.getFor(TARGET.CLIENT_STORAGE, this, itemKeys))
-      .then(data => this._store.clientStorage.update(data));
+      .then(itemKeys => {
+        if (workingState === STATE.BEING_DELETED) {
+          return this._store.clientStorage.delete(itemKeys);
+        }
+        return this._store.schema.getFor(TARGET.CLIENT_STORAGE, this, itemKeys)
+          .then(data => this._store.clientStorage.update(data));
+      });
   }
 
   // TODO get _transporterState we will compute _transporterState out of _transporterStates
@@ -331,7 +336,7 @@ export default class Item {
               .then(() => this._triggerSync(target));
           }
           if (this[target.STATES].inProgress === STATE.BEING_CREATED) {
-            this._store.schema.setPrimaryKey(this, result.data);
+            this._store.schema.setPrimaryKey(target, this, result.data);
           }
           this[target.STATES].current = this._getNextFixedState(
             this[target.STATES].current,
@@ -340,7 +345,7 @@ export default class Item {
           return workingState === STATE.BEING_FETCHED ?
             this._store.schema.setFrom(target, this, result.data) :
             Promise.resolve()
-            .then(() => this[target.POST_SYNC_PROCESSOR]())
+            .then(() => this[target.POST_SYNC_PROCESSOR](workingState))
             .then(() => {
               if (this[target.STATES].next) {
                 return this._triggerSync(target);
