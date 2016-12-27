@@ -27,12 +27,14 @@ SOURCE.USER = SOURCE.STATE;
 const TARGET = {
   TRANSPORTER: {
     TARGET: 'TRANSPORTER',
+    AS_SOURCE: SOURCE.TRANSPORTER,
     STATES: '_transporterStates',
     PROCESSOR: 'transporter',
     POST_SYNC_PROCESSOR: '_postSyncTransporter',
   },
   CLIENT_STORAGE: {
     TARGET: 'CLIENT_STORAGE',
+    AS_SOURCE: SOURCE.CLIENT_STORAGE,
     STATES: '_clientStorageStates',
     PROCESSOR: 'clientStorage',
     POST_SYNC_PROCESSOR: '_postSyncClientStorage',

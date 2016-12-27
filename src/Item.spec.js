@@ -327,7 +327,7 @@ describe('Item', function () {
             expect(testStore.schema.getFor)
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, {});
             expect(testStore.schema.setPrimaryKey)
-            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { _id: 456 });
+            .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, this.item, { _id: 456 });
             expect(testStore.schema.setFrom)
             .not.toHaveBeenCalled();
             expect(this.item._clientStorageStates).toEqual({
@@ -427,7 +427,7 @@ describe('Item', function () {
             expect(testStore.schema.setPrimaryKey)
             .not.toHaveBeenCalled();
             expect(testStore.schema.setFrom)
-            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { fetched: 'data' });
+            .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, this.item, { fetched: 'data' });
             expect(this.item._clientStorageStates).toEqual({
               current: STATE.EXISTENT,
               inProgress: undefined,

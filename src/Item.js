@@ -336,14 +336,14 @@ export default class Item {
               .then(() => this._triggerSync(target));
           }
           if (this[target.STATES].inProgress === STATE.BEING_CREATED) {
-            this._store.schema.setPrimaryKey(target, this, result.data);
+            this._store.schema.setPrimaryKey(target.AS_SOURCE, this, result.data);
           }
           this[target.STATES].current = this._getNextFixedState(
             this[target.STATES].current,
             workingState);
           this[target.STATES].inProgress = undefined;
           return workingState === STATE.BEING_FETCHED ?
-            this._store.schema.setFrom(target, this, result.data) :
+            this._store.schema.setFrom(target.AS_SOURCE, this, result.data) :
             Promise.resolve()
             .then(() => this[target.POST_SYNC_PROCESSOR](workingState))
             .then(() => {
