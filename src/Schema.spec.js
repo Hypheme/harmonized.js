@@ -4,6 +4,7 @@ import {
 } from 'mobx';
 
 import Schema, { Key, NumberKey } from './Schema';
+import { SOURCE } from './constants';
 
 describe('Schema', function () {
   function detach(cb) {
@@ -442,7 +443,7 @@ describe('Schema', function () {
       },
     };
 
-    schema.setFromState(item, data, false);
+    schema.setFrom(SOURCE.STATE, item, data, false);
     expect(item.brand).toBe('testbrand');
     expect(item.price).toBe('9001€');
     expect(item.seats).toEqual({
@@ -456,7 +457,7 @@ describe('Schema', function () {
       },
     });
 
-    schema.setFromState(item, {
+    schema.setFrom(SOURCE.STATE, item, {
       brand: 'newname',
       seats: {
         deeper: {
@@ -540,7 +541,9 @@ describe('Schema', function () {
       },
     };
 
-    schema.setFromState(item, data, true);
+    schema.setFrom(SOURCE.STATE, item, data, {
+      establishObservables: true,
+    });
     expect(item.brand).toBe('testbrand');
     expect(item.price).toBe('9001€');
     expect(item.seats.front).toBe(2);
@@ -559,7 +562,7 @@ describe('Schema', function () {
       return blub;
     });
     detach(() => {
-      schema.setFromState(item, {
+      schema.setFrom(SOURCE.STATE, item, {
         brand: 'newname',
         seats: {
           deeper: {
@@ -568,7 +571,9 @@ describe('Schema', function () {
             },
           },
         },
-      }, false);
+      }, {
+        establishObservables: false,
+      });
 
       expect(item.brand).toBe('newname');
       expect(item.price).toBe('9001€');
@@ -579,7 +584,7 @@ describe('Schema', function () {
 
       expect(autorunCount).toBe(3);
 
-      schema.setFromState(item, {
+      schema.setFrom(SOURCE.STATE, item, {
         brand: 'supernewname',
         seats: {
           front: 3,
@@ -590,7 +595,9 @@ describe('Schema', function () {
             },
           },
         },
-      }, false);
+      }, {
+        establishObservables: false,
+      });
 
       expect(autorunCount).toBe(4);
       expect(item.seats.front).toBe(3);
@@ -700,9 +707,9 @@ describe('Schema', function () {
       },
     };
 
-    schema.setFromTransporter(item, data, false);
-
-    setTimeout(() => {
+    schema.setFrom(SOURCE.TRANSPORTER, item, data, {
+      establishObservables: false,
+    }).then(() => {
       expect(item.brand).toBe('testbrand');
       expect(item.price).toBe('9001€');
       expect(item.seats.oneToOne).toBe('over 9000');
@@ -732,7 +739,9 @@ describe('Schema', function () {
       });
 
       data.passengers = [1];
-      schema.setFromTransporter(item, data, false);
+      schema.setFrom(SOURCE.TRANSPORTER, item, data, {
+        establishObservables: false,
+      });
 
       setTimeout(() => {
         expect(item.passengers).toEqual(['item one']);
@@ -851,7 +860,9 @@ describe('Schema', function () {
       },
     };
 
-    schema.setFromTransporter(item, data, true);
+    schema.setFrom(SOURCE.TRANSPORTER, item, data, {
+      establishObservables: true,
+    });
 
     setTimeout(() => {
       expect(item.brand).toBe('testbrand');
@@ -898,7 +909,7 @@ describe('Schema', function () {
         return blub;
       });
       detach(() => {
-        schema.setFromTransporter(item, {
+        schema.setFrom(SOURCE.TRANSPORTER, item, {
           brand: 'newname',
           seats: {
             deeper: {
@@ -907,7 +918,7 @@ describe('Schema', function () {
               },
             },
           },
-        }, false);
+        });
 
         expect(item.brand).toBe('newname');
         expect(item.price).toBe('9001€');
@@ -918,7 +929,7 @@ describe('Schema', function () {
 
         expect(autorunCount).toBe(3);
 
-        schema.setFromTransporter(item, {
+        schema.setFrom(SOURCE.TRANSPORTER, item, {
           brand: 'supernewname',
           passengers: [1],
           seats: {
@@ -930,7 +941,9 @@ describe('Schema', function () {
               },
             },
           },
-        }, false);
+        }, {
+          establishObservables: false,
+        });
 
         expect(autorunCount).toBe(5);
         expect(item.seats.front).toBe(3);
@@ -1050,9 +1063,7 @@ describe('Schema', function () {
       },
     };
 
-    schema.setFromClientStorage(item, data, false);
-
-    setTimeout(() => {
+    schema.setFrom(SOURCE.CLIENT_STORAGE, item, data).then((resolvedItem) => {
       expect(item.brand).toBe('testbrand');
       expect(item.price).toBe('9001€');
       expect(item.seats.oneToOne).toBe('over 9000');
@@ -1082,9 +1093,7 @@ describe('Schema', function () {
       });
 
       data.passengers = [1];
-      schema.setFromClientStorage(item, data, false);
-
-      setTimeout(() => {
+      schema.setFrom(SOURCE.CLIENT_STORAGE, item, data).then(() => {
         expect(item.passengers).toEqual(['item one']);
         expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(5);
         expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
@@ -1201,7 +1210,9 @@ describe('Schema', function () {
       },
     };
 
-    schema.setFromClientStorage(item, data, true);
+    schema.setFrom(SOURCE.CLIENT_STORAGE, item, data, {
+      establishObservables: true,
+    });
 
     setTimeout(() => {
       expect(item.brand).toBe('testbrand');

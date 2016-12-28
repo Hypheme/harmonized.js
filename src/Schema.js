@@ -1,6 +1,9 @@
 // @flow
 import { extendObservable } from 'mobx';
 import _ from 'lodash';
+import { SOURCE } from './constants';
+
+type DataSource = SOURCE.STATE|SOURCE.TRANSPORTER|SOURCE.CLIENT_STORAGE;
 
 // doesn't need any logic for now. Is used to determine keys in schema setup
 class Key {}
@@ -59,18 +62,24 @@ class Schema {
     this._setKeyIfUndefined('_', item, data);
   }
 
-  setFromState(item: Object, data: Object, establishObservables: boolean): Promise {
+  _setFromState(item: Object, data: Object, options: Object): Promise {
     const { allObservables, filteredData } = this._getPickedData(data);
-    Schema._mergeFromSet({ item, filteredData, establishObservables }, allObservables);
+
+    Schema._mergeFromSet({ item, filteredData, options }, allObservables);
     return Promise.resolve(item);
   }
 
-  setFromTransporter(item: Object, data: Object, establishObservables: boolean): Promise {
-    return this._setFromOutside('', item, data, establishObservables);
-  }
-
-  setFromClientStorage(item: Object, data: Object, establishObservables: boolean): Promise {
-    return this._setFromOutside('_', item, data, establishObservables);
+  setFrom(source: DataSource, item: Object, data: Object, options = {}): Promise {
+    switch (source) {
+      case SOURCE.TRANSPORTER:
+        return this._setFromOutside('', item, data, options);
+      case SOURCE.CLIENT_STORAGE:
+        return this._setFromOutside('_', item, data, options);
+      case SOURCE.STATE:
+        return this._setFromState(item, data, options);
+      default:
+        throw new Error('source type is not known');
+    }
   }
 
   static extendObservable(item, key, value) {
@@ -141,12 +150,12 @@ class Schema {
     path: string,
     item: Object,
     prefix: string,
-    establishObservables: boolean
+    options: Object
   ) {
     const def = definition.type === Array ? definition.items : definition;
-    const options: Object = {
+    const refOptions: Object = {
       definition,
-      establishObservables,
+      options,
       key: def[`${prefix}key`],
     };
 
@@ -154,49 +163,47 @@ class Schema {
     const lastDotIndex = path.lastIndexOf('.');
     if (lastDotIndex !== -1) {
       const parentPath = path.substr(0, lastDotIndex);
-      options.propertyKey = path.substr(lastDotIndex + 1);
-      options.parentObj = _.get(item, parentPath);
-      if (options.parentObj === undefined) {
-        options.parentObj = {};
-        _.set(item, parentPath, options.parentObj);
+      refOptions.propertyKey = path.substr(lastDotIndex + 1);
+      refOptions.parentObj = _.get(item, parentPath);
+      if (refOptions.parentObj === undefined) {
+        refOptions.parentObj = {};
+        _.set(item, parentPath, refOptions.parentObj);
       }
     } else {
-      options.parentObj = item;
-      options.parentPath = '';
-      options.propertyKey = path;
+      refOptions.parentObj = item;
+      refOptions.parentPath = '';
+      refOptions.propertyKey = path;
     }
 
-    return options;
+    return refOptions;
   }
 
-  _setForeignValues(item: Object, data: Object, prefix: string, establishObservables: boolean) {
+  _setForeignValues(item: Object, data: Object, prefix: string, options: Object) {
     let promises:Array<Promise> = [];
-
     this.references.forEach((definition, path) => {
       const thisValue = _.get(data, path);
       if (!thisValue) return;
 
-      const options = this._createReferenceOptions(
+      const refOptions = this._createReferenceOptions(
         definition,
         path,
         item,
         prefix,
-        establishObservables
+        options,
       );
 
-
       if (definition.type === Array) {
-        if (establishObservables) {
-          Schema.extendObservable(item, options.propertyKey, []);
+        if (options.establishObservables) {
+          Schema.extendObservable(item, refOptions.propertyKey, []);
         } else {
-          options.parentObj[options.propertyKey] = [];
+          refOptions.parentObj[refOptions.propertyKey] = [];
         }
 
         promises = promises.concat(thisValue.map(
-          (foreignKey, index) => Schema._resolveForeignValues(options, foreignKey, index))
+          (foreignKey, index) => Schema._resolveForeignValues(refOptions, foreignKey, index))
         );
       } else {
-        promises.push(Schema._resolveForeignValues(options, thisValue));
+        promises.push(Schema._resolveForeignValues(refOptions, thisValue));
       }
     });
 
@@ -207,11 +214,13 @@ class Schema {
     keyPrefix: string,
     item: Object,
     data: Object,
-    establishObservables: boolean
+    options: Object
   ): Promise {
     const { observables, filteredData } = this._getPickedData(data);
-    Schema._mergeFromSet({ item, filteredData, establishObservables }, observables);
-    const promises = this._setForeignValues(item, data, keyPrefix, establishObservables);
+    Schema._mergeFromSet({ item, filteredData, options }, observables);
+    console.log('inside item', item);
+    const promises = this._setForeignValues(item, data, keyPrefix, options);
+    console.log('after foreign valus item', item);
     return Promise.all(promises).then(() => item);
   }
 
@@ -224,7 +233,8 @@ class Schema {
     }
   }
 
-  static _mergeFromSet({ item, filteredData, establishObservables }, observables) {
+  static _mergeFromSet({ item, filteredData, options }, observables) {
+    const { establishObservables } = options;
     _.merge(item, filteredData);
     if (establishObservables) {
       Schema.setAsObservables(item, observables);
@@ -232,16 +242,16 @@ class Schema {
   }
 
   static _resolveForeignValues(
-    { definition, key, propertyKey, parentObj, establishObservables },
+    { definition, key, propertyKey, parentObj, options },
     foreignKey: string|Number,
-    index: Number
+    index: ?Number
   ): Promise {
     const ref = (definition.items) ? definition.items.ref : definition.ref;
     return ref.onceLoaded().then(() => {
       const resolver = {};
       resolver[key] = foreignKey;
       const newValue = ref.findOne(resolver);
-      if (establishObservables && index === undefined) {
+      if (options.establishObservables && index === undefined) {
         Schema.extendObservable(parentObj, propertyKey, newValue);
       } else if (index === undefined) {
         parentObj[propertyKey] = newValue;
