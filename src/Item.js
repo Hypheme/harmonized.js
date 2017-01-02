@@ -244,14 +244,12 @@ export default class Item {
   }
 
   _postSyncTransporter(workingState) {
-    return this._store.schema.getPrimaryKey(TARGET.CLIENT_STORAGE, this)
-      .then(itemKeys => {
-        if (workingState === STATE.BEING_DELETED) {
-          return this._store.clientStorage.delete(itemKeys);
-        }
-        return this._store.schema.getFor(TARGET.CLIENT_STORAGE, this, itemKeys)
-          .then(data => this._store.clientStorage.update(data));
-      });
+    const itemKeys = this._store.schema.getPrimaryKey(TARGET.CLIENT_STORAGE, this);
+    if (workingState === STATE.BEING_DELETED) {
+      return this._store.clientStorage.delete(itemKeys);
+    }
+    return this._store.schema.getFor(TARGET.CLIENT_STORAGE, this, itemKeys)
+      .then(data => this._store.clientStorage.update(data));
   }
 
   // TODO get _transporterState we will compute _transporterState out of _transporterStates

@@ -440,16 +440,53 @@ describe('Item', function () {
         });
       });
 
-      it('should create item in transporter');
+      it('should create item in transporter', function (done) {
+        spyOn(testStore.transporter, 'create')
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: { id: 123 } }));
+        spyOn(testStore.clientStorage, 'update')
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
+        this.item._clientStorageStates.current = STATE.EXISTENT;
+        let call = 0;
+
+        const dispose = autorun(() => {
+          const result = this.item.synced;
+          if (call++ === 1) {
+            dispose();
+            expect(result).toBe(true);
+            expect(testStore.transporter.create)
+            .toHaveBeenCalledWith({ data: 'transporter' });
+            expect(testStore.schema.getFor)
+            .toHaveBeenCalledWith(TARGET.TRANSPORTER, this.item, {});
+            expect(testStore.schema.setPrimaryKey)
+            .toHaveBeenCalledWith(SOURCE.TRANSPORTER, this.item, { id: 123 });
+            expect(testStore.schema.setFrom)
+            .not.toHaveBeenCalled();
+            expect(this.item._transporterStates).toEqual({
+              current: STATE.EXISTENT,
+              inProgress: undefined,
+              next: undefined,
+            });
+            // after syncing, we check if the new status is stored in our clientStorage
+            expect(testStore.schema.getPrimaryKey)
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
+            expect(testStore.clientStorage.update)
+            .toHaveBeenCalledWith({ _id: 456, data: 'clientStorage' });
+            done();
+          } else {
+            this.item._synchronize(STATE.EXISTENT, STATE.BEING_CREATED);
+          }
+        });
+      });
+
       it('should update an item in transporter');
       it('should delete an item from transporter');
       it('should fetch an item from transporter');
 
-      it('should merge next actions if something is already in progress');
+      it('should merge next actions if something is already in next');
       it('should remerge actions and update states if inProgress comes back pending');
       it('should work the next action if inProgress comes back resolved');
       it('should update state.current if inProgress comes back resolved and there is no next');
-      it('should wait for all foreign keys before sending');
+      // it('should wait for all foreign keys before sending'); // this is part of the schema now
       it('should redo the sync process if next action has changed in the preparation process');
     });
   });
