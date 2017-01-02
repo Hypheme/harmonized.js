@@ -218,9 +218,7 @@ class Schema {
   ): Promise {
     const { observables, filteredData } = this._getPickedData(data);
     Schema._mergeFromSet({ item, filteredData, options }, observables);
-    console.log('inside item', item);
     const promises = this._setForeignValues(item, data, keyPrefix, options);
-    console.log('after foreign valus item', item);
     return Promise.all(promises).then(() => item);
   }
 
