@@ -319,6 +319,10 @@ export default class Item {
       Promise.resolve(itemKeys) : // no payload needed for deleting/fetching
       this._store.schema.getFor(target, this, itemKeys))
     .then(itemData => {
+      if (!this[target.STATES].next) {
+        // if next is no longer set due to merging create and delete action together
+        return Promise.resolve();
+      }
       if (workingState !== this[target.STATES].next) {
         // redo everything if sth has changed in the meantime
         return this._triggerSync(target);
