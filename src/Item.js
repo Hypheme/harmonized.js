@@ -340,9 +340,9 @@ export default class Item {
             this[target.STATES].current,
             workingState);
           this[target.STATES].inProgress = undefined;
-          return workingState === STATE.BEING_FETCHED ?
+          return (workingState === STATE.BEING_FETCHED ?
             this._store.schema.setFrom(target.AS_SOURCE, this, result.data) :
-            Promise.resolve()
+            Promise.resolve())
             .then(() => this[target.POST_SYNC_PROCESSOR](workingState))
             .then(() => {
               if (this[target.STATES].next) {
