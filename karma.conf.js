@@ -1,5 +1,7 @@
 // Karma configuration
 // Generated on Fri May 27 2016 18:39:38 GMT+0200 (CEST)
+const webpackConf = require('./test/unit/webpack.config');
+const webpackConfTravis = require('./test/unit/webpack.travis.config');
 
 module.exports = function (config) {
   config.set({
@@ -10,12 +12,15 @@ module.exports = function (config) {
 
     // frameworks to use
     // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
-    frameworks: ['jasmine'],
-
+    frameworks: [
+      'jasmine',
+      'jasmine-matchers',
+    ],
 
     // list of files / patterns to load in the browser
     files: [
-      'test/unit/**/*.spec.js',
+      'node_modules/jasmine-promises/dist/jasmine-promises.js',
+      'test/unit/index.js',
     ],
 
 
@@ -28,15 +33,15 @@ module.exports = function (config) {
     // preprocess matching files before serving them to the browser
     // available preprocessors: https://npmjs.org/browse/keyword/karma-preprocessor
     preprocessors: {
-      'test/unit/**/*.js': ['webpack', 'sourcemap'],
-      // 'src/**/*.js': 'coverage',
+      'test/unit/index.js': ['webpack', 'sourcemap'],
     },
 
 
     // test results reporter to use
     // possible values: 'dots', 'progress'
     // available reporters: https://npmjs.org/browse/keyword/karma-reporter
-    reporters: ['coverage', 'progress'],
+    // reporters: ['progress'],
+    reporters: ['jasmine-diff', 'progress'],
 
 
     // web server port
@@ -48,41 +53,54 @@ module.exports = function (config) {
 
 
     // level of logging
-    // possible values: config.LOG_DISABLE || config.LOG_ERROR || config.LOG_WARN || config.LOG_INFO || config.LOG_DEBUG
+    // possible values:
+    // config.LOG_DISABLE || config.LOG_ERROR || config.LOG_WARN ||
+    // config.LOG_INFO || config.LOG_DEBUG
     logLevel: config.LOG_INFO,
 
 
     // enable / disable watching file and executing tests whenever any file changes
-    autoWatch: true,
-
-
-    // start these browsers
-    // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-    browsers: ['Chrome'], // ,'Firefox', 'Safari'],
-
+    autoWatch: false,
 
     // Continuous Integration mode
     // if true, Karma captures browsers, runs the tests and exits
-    singleRun: false,
+    singleRun: true,
 
     // Concurrency level
     // how many browser should be started simultaneous
     concurrency: Infinity,
-
-    // Configure code coverage reporter
-    coverageReporter: {
-      dir: 'coverage/',
-      reporters: [
-        { type: 'text-summary' },
-        { type: 'html' },
-      ],
-    },
-
-    webpack: require('./test/unit/webpack.config'),
 
     // Hide webpack build information from output
     webpackMiddleware: {
       noInfo: 'errors-only',
     },
   });
+
+  if (process.env.TRAVIS) {
+    config.customLaunchers = {
+      Chrome_no_sandbox: {
+        base: 'Chrome',
+        flags: ['--no-sandbox'],
+      },
+    };
+
+    config.browsers = ['Chrome_no_sandbox'];
+
+    config.webpack = webpackConfTravis;
+    config.reporters = ['progress', 'coverage'];
+    // config.reporters.push('coverage');
+
+    // Configure code coverage reporter
+    config.coverageReporter = {
+      dir: 'coverage/',
+      reporters: [
+        { type: 'lcovonly', subdir: '.' },
+        { type: 'json', subdir: '.' },
+        { type: 'html', subdir: '.' },
+      ],
+    };
+  } else {
+    config.webpack = webpackConf;
+    config.browsers = ['Chrome'];
+  }
 };

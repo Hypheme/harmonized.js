@@ -2,7 +2,14 @@ engines:
   eslint:
     enabled: true
     channel: "eslint-2"
+    checks:
+      complexity:
+        enabled: false
     config:
       extensions:
       - .es6
       - .js
+
+ratings:
+   paths:
+   - "**.js"

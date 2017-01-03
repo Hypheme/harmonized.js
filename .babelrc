@@ -4,5 +4,9 @@
     "es2015",
     "stage-1"
   ],
-  "plugins": ["transform-decorators-legacy"]
+  "plugins": [
+    "transform-flow-strip-types",
+    "es6-promise",
+    "transform-decorators-legacy"
+  ],
 }
