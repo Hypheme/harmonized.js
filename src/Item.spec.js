@@ -608,7 +608,285 @@ describe('Item', function () {
         });
       });
 
-      it('should merge next actions if something is already in next');
+      describe('merge next actions', function () {
+        beforeEach(function () {
+          this.item._transporterStates = {
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: undefined,
+          };
+          spyOn(this.item, '_triggerSync');
+        });
+        afterEach(function () {
+          expect(this.item._triggerSync).not.toHaveBeenCalled();
+        });
+        it('should merge create and update to create', function () {
+          this.item._clientStorageStates = {
+            current: undefined,
+            inProgress: undefined,
+            next: STATE.BEING_CREATED,
+          };
+          this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: undefined,
+            inProgress: undefined,
+            next: STATE.BEING_CREATED,
+          });
+        });
+        it('should merge create and delete to undefined', function () {
+          this.item._clientStorageStates = {
+            current: undefined,
+            inProgress: undefined,
+            next: STATE.BEING_CREATED,
+          };
+          this.item._synchronize(STATE.BEING_DELETED, STATE.EXISTENT);
+          // TODO not completly sure about this one yet
+          expect(this.item._clientStorageStates).toEqual({
+            current: undefined,
+            inProgress: undefined,
+            next: undefined,
+          });
+        });
+        it('should merge update and delete to delete', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_UPDATED,
+          };
+          this.item._synchronize(STATE.BEING_DELETED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_DELETED,
+          });
+        });
+        it('should merge update and fetch to fetch', function () {
+        // TODO: this can be discussed: if its converted to fetch all changes are overwritten
+        // if its not changed, the item might get stuck
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_UPDATED,
+          };
+          this.item._synchronize(STATE.BEING_FETCHED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_FETCHED,
+          });
+        });
+        it('should merge update and update to update', function () {
+        // TODO: this can be discussed: if its converted to fetch all changes are overwritten
+        // if its not changed, the item might get stuck
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_UPDATED,
+          };
+          this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_UPDATED,
+          });
+        });
+        it('should merge delete and anything to delete', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_DELETED,
+          };
+          this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_DELETED,
+          });
+        });
+        it('should merge fetch and update to update', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_FETCHED,
+          };
+          this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_UPDATED,
+          });
+        });
+        it('should merge fetch and delete to delete', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_FETCHED,
+          };
+          this.item._synchronize(STATE.BEING_DELETED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_DELETED,
+          });
+        });
+        it('should merge fetch and fetch to fetch', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_FETCHED,
+          };
+          this.item._synchronize(STATE.BEING_FETCHED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: undefined,
+            next: STATE.BEING_FETCHED,
+          });
+        });
+        it('should not merge if item is locked', function () {
+          this.item._clientStorageStates = {
+            current: STATE.LOCKED,
+            inProgress: undefined,
+            next: undefined,
+          };
+          this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.LOCKED,
+            inProgress: undefined,
+            next: undefined,
+          });
+        });
+        it('should not merge if item is deleted', function () {
+          this.item._clientStorageStates = {
+            current: STATE.DELETED,
+            inProgress: undefined,
+            next: undefined,
+          };
+          this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.DELETED,
+            inProgress: undefined,
+            next: undefined,
+          });
+        });
+        it('should not merge if item is being deleted', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_DELETED,
+            next: undefined,
+          };
+          this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_DELETED,
+            next: undefined,
+          });
+        });
+        it('should not merge if item is being deleted', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_DELETED,
+            next: undefined,
+          };
+          this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_DELETED,
+            next: undefined,
+          });
+        });
+        it('should merge update if item is being created', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_CREATED,
+            next: undefined,
+          };
+          this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_CREATED,
+            next: STATE.BEING_UPDATED,
+          });
+        });
+        it('should merge delete if item is being created', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_CREATED,
+            next: undefined,
+          };
+          this.item._synchronize(STATE.BEING_DELETED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_CREATED,
+            next: STATE.BEING_DELETED,
+          });
+        });
+        it('should merge fetch if item is being created', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_CREATED,
+            next: undefined,
+          };
+          this.item._synchronize(STATE.BEING_FETCHED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_CREATED,
+            next: STATE.BEING_FETCHED,
+          });
+        });
+        it('should merge update if item is being updated', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_UPDATED,
+            next: undefined,
+          };
+          this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_UPDATED,
+            next: STATE.BEING_UPDATED,
+          });
+        });
+        it('should merge delete if item is being updated', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_UPDATED,
+            next: undefined,
+          };
+          this.item._synchronize(STATE.BEING_DELETED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_UPDATED,
+            next: STATE.BEING_DELETED,
+          });
+        });
+        it('should merge fetch if item is being updated', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_UPDATED,
+            next: undefined,
+          };
+          this.item._synchronize(STATE.BEING_FETCHED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_UPDATED,
+            next: STATE.BEING_FETCHED,
+          });
+        });
+        it('should merge delete if item is being fetched', function () {
+          this.item._clientStorageStates = {
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_FETCHED,
+            next: undefined,
+          };
+          this.item._synchronize(STATE.BEING_DELETED, STATE.EXISTENT);
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.EXISTENT,
+            inProgress: STATE.BEING_FETCHED,
+            next: STATE.BEING_DELETED,
+          });
+        });
+      });
+
       it('should remerge actions and update states if inProgress comes back pending');
       it('should work the next action if inProgress comes back resolved');
       it('should update state.current if inProgress comes back resolved and there is no next');

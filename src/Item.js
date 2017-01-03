@@ -126,7 +126,7 @@ export default class Item {
         return STATE.EXISTENT;
       case STATE.BEING_DELETED:
         return STATE.DELETED;
-      case STATE.BEING_REMOVED:
+      case STATE.BEING_REMOVED: // TODO: not sure if needed
         return STATE.REMOVED;
       default:
         return STATE.LOCKED;
@@ -159,7 +159,11 @@ export default class Item {
       case STATE.DELETED: // pretty much the same as BEING_DELETED.
         return undefined;
       case undefined:
-        return newState === STATE.BEING_CREATED ? STATE.BEING_CREATED : undefined;
+        if (next !== STATE.BEING_CREATED) {
+          return newState === STATE.BEING_CREATED ? STATE.BEING_CREATED : undefined;
+        }
+        allowedNewStates = [STATE.BEING_UPDATED, STATE.BEING_DELETED];
+        break;
       // case STATE.REMOVED: // TODO once again not sure if needed anymore
       default: // we don't change anything
         return next;
@@ -235,7 +239,7 @@ export default class Item {
             return STATE.BEING_FETCHED;
         }
       default:
-        return undefined;
+        throw new Error('invalid merge parameters');
     }
   }
 
