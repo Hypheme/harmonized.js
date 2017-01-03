@@ -335,7 +335,12 @@ export default class Item {
               this[target.STATES].next);
             this[target.STATES].inProgress = undefined;
             return this._store[target.PROCESSOR].onceAvailable()
-              .then(() => this._triggerSync(target));
+              .then(() => {
+                if (this[target.STATES].next) { // need that bc create + delete result in undefined
+                  return this._triggerSync(target);
+                }
+                return undefined;
+              });
           }
           if (this[target.STATES].inProgress === STATE.BEING_CREATED) {
             this._store.schema.setPrimaryKey(target.AS_SOURCE, this, result.data);
