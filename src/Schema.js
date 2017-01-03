@@ -57,9 +57,22 @@ class Schema {
     this._isLocked = true;
   }
 
-  setPrimaryKey(item: Object, data: Object) {
-    this._setKeyIfUndefined('', item, data);
-    this._setKeyIfUndefined('_', item, data);
+  setPrimaryKey(source: DataSource, item: Object, data: Object) {
+    let prefix;
+    if (source === SOURCE.CLIENT_STORAGE) {
+      prefix = '_';
+    } else if (source === SOURCE.TRANSPORTER) {
+      prefix = '';
+    } else {
+      throw new Error('unsupported source');
+    }
+
+    const key = this._primaryKey[`${prefix}key`];
+    const dataKey = data[key];
+    const itemKey = item[key];
+    if (dataKey !== undefined && itemKey === undefined) {
+      item[key] = dataKey;
+    }
   }
 
   _setFromState(item: Object, data: Object, options: Object): Promise {
@@ -220,15 +233,6 @@ class Schema {
     Schema._mergeFromSet({ item, filteredData, options }, observables);
     const promises = this._setForeignValues(item, data, keyPrefix, options);
     return Promise.all(promises).then(() => item);
-  }
-
-  _setKeyIfUndefined(prefix: string, item: Object, data: Object) {
-    const key = this._primaryKey[`${prefix}key`];
-    const dataKey = data[key];
-    const itemKey = item[key];
-    if (dataKey !== undefined && itemKey === undefined) {
-      item[key] = dataKey;
-    }
   }
 
   static _mergeFromSet({ item, filteredData, options }, observables) {
