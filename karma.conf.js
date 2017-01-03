@@ -40,7 +40,8 @@ module.exports = function (config) {
     // test results reporter to use
     // possible values: 'dots', 'progress'
     // available reporters: https://npmjs.org/browse/keyword/karma-reporter
-    reporters: ['progress'],
+    // reporters: ['progress'],
+    reporters: ['jasmine-diff', 'progress'],
 
 
     // web server port
@@ -86,7 +87,9 @@ module.exports = function (config) {
     config.browsers = ['Chrome_no_sandbox'];
 
     config.webpack = webpackConfTravis;
-    config.reporters.push('coverage');
+    config.reporters = ['progress', 'coverage'];
+    // config.reporters.push('coverage');
+
     // Configure code coverage reporter
     config.coverageReporter = {
       dir: 'coverage/',
