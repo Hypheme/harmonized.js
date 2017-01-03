@@ -306,20 +306,17 @@ class Schema {
    *
    * initialData is an object with data, that has to be in the result as well
    */
-  // getForTransporter(item, initialData){}
-  /**
-   * same as getForTransporter but for the clientStorage
-   */
-  // getForClientStorage(item, initialData){}
+  // getFor(source: DataSource, item: Object, initialData: Object) {
+  //
+  // }
+
   /**
    * gets the transporter primary key. The function is only called when the key
    * already exists, so this should be sync. returns { <key_name> : <key_value> }
    */
-  // getPrimaryKeyForTransporter(item) {}
-  /**
-   * same as getPrimaryKeyForTransporter but for clientStorage
-   */
-  // getPrimaryKeyForClientStorage(item) {}
+  // getPrimaryKey(source: DataSource, item: Object) {
+  //
+  // }
 }
 
 export default Schema;
