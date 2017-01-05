@@ -1,18 +1,20 @@
 // @flow
 import Transporter from './Transporter';
-import { TransactionItem } from '../BaseTransporter';
+import { TransactionItem } from '../TransactionItem';
 
 export default class HttpTransporter extends Transporter {
   baseUrl: string;
   path: string;
   methodMap: Map;
-  fullPath: string;
 
   constructor(options: Object) {
     super();
-    this.baseUrl = options.baseUrl.replace(/\/$/, '');
+    this.baseUrl = options.baseUrl.replace(/\/$/, '') || this.constructor.baseUrl;
     this.path = options.path;
     this.methodMap = new Map();
+    const constructedUrl = `${this.baseUrl}/${this.path}`;
+    this.offlineChecker = this.constructor.offlineCheckerList
+      .filter((checker) => checker.test(constructedUrl))[0];
   }
 
   createPath(path: string, pathTemplate: string, payload: Object) {
@@ -30,6 +32,10 @@ export default class HttpTransporter extends Transporter {
       .then(({ path, pathTemplate, payload }) => this.createPath(path, pathTemplate, payload));
   }
 
+  onceAvailable() {
+    return this.offlineChecker.onceAvailable();
+  }
+
   _getMethodFromAction(action: string): Object {
     return this.methodMap.get(action) || HttpTransporter.methodMap.get(action) || {};
   }
@@ -39,8 +45,8 @@ export default class HttpTransporter extends Transporter {
     return {
       action,
       payload,
-      baseUrl: (this.baseUrl || this.constructor.baseUrl),
-      path: (this.fullPath || this.path),
+      baseUrl: this.baseUrl,
+      path: this.path,
       pathTemplate: methodOptions.pathTemplate,
       method: methodOptions.method,
       headers: {
@@ -91,6 +97,12 @@ export default class HttpTransporter extends Transporter {
 
       return Promise.reject({ res, req });
     }, error => Promise.reject({ error, req }));
+  }
+
+  static offlineCheckerList = [];
+
+  static addOfflineChecker(offlineChecker: Object) {
+    this.offlineCheckerList.push(offlineChecker);
   }
 
   static methodMap = new Map();

@@ -72,6 +72,7 @@
     "webpack-dev-middleware": "^1.6.1"
   },
   "dependencies": {
+    "glob-to-regexp": "^0.3.0",
     "lodash": "^4.16.2",
     "mobx": "^2.2.2",
     "uuid-v4": "^0.1.0"
