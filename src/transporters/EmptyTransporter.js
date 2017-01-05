@@ -15,4 +15,8 @@ export default class EmptyTransporter {
   _returnEmptyArray() {
     return Promise.resolve([]);
   }
+
+  onceAvailable() {
+    return Promise.resolve();
+  }
 }
