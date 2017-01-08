@@ -1,5 +1,5 @@
 import EmptyTransporter from './EmptyTransporter';
-import { PROMISE_STATE } from './constants';
+import { PROMISE_STATE } from '../constants';
 
 describe('EmptyTransporter', function () {
   beforeEach(function () {

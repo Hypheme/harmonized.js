@@ -1,5 +1,5 @@
 import uuid from 'uuid-v4';
-import { PROMISE_STATE } from './constants';
+import { PROMISE_STATE } from '../constants';
 
 export default class EmptyTransporter {
   constructor(keyName) {
