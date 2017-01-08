@@ -204,6 +204,9 @@ export default class Item {
       origin,
       error: err,
     };
+    if (this._dispose) {
+      this._dispose();
+    }
   }
 
   _mergeNextState(next, newState) {
@@ -274,12 +277,11 @@ export default class Item {
   _stateHandler(call) {
     this._store.schema.getObservables(this); // we need this for mobx
     if (call === 0) {
-      return this._synchronize();
+      this._synchronize();
     }
     if (this.autoSave) {
-      return this._synchronize(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
+      this._synchronize(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
     }
-    return Promise.resolve();
   }
 
   _synchronize(clientStorageState, transporterState) {

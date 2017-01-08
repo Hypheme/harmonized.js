@@ -277,6 +277,34 @@ describe('Item', function () {
       });
     });
 
+    describe('_stateHandler', function () {
+      beforeEach(function () {
+        spyOn(testStore.schema, 'getObservables');
+        this.item._synchronize.calls.reset();
+      });
+
+      it('should always sync on first call', function () {
+        this.item._stateHandler(0);
+        expect(testStore.schema.getObservables).toHaveBeenCalled();
+        expect(this.item._synchronize).toHaveBeenCalledWith();
+      });
+
+      it('should synchronize when autoSave is on', function () {
+        this.item._stateHandler(1);
+        expect(testStore.schema.getObservables).toHaveBeenCalled();
+        expect(this.item._synchronize)
+          .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
+      });
+
+      it('should not synchronize when autoSave is off', function () {
+        this.item.autoSave = false;
+        this.item._stateHandler(1);
+        expect(testStore.schema.getObservables).toHaveBeenCalled();
+        expect(this.item._synchronize)
+          .not.toHaveBeenCalled();
+      });
+    });
+
     describe('_synchronize', function () {
       // const stubs = {
       //   transporter: {},
