@@ -343,7 +343,7 @@ export default class Item {
                 if (this[target.STATES].next) { // need that bc create + delete result in undefined
                   return this._triggerSync(target);
                 }
-                return undefined;
+                return Promise.resolve();
               });
           }
           if (this[target.STATES].inProgress === STATE.BEING_CREATED) {

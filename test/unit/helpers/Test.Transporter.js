@@ -3,4 +3,5 @@ export default class TestTransporter {
   delete() {}
   fetch() {}
   update() {}
+  onceAvailable() {}
 }

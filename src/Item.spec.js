@@ -887,7 +887,104 @@ describe('Item', function () {
         });
       });
 
-      it('should remerge actions and update states if inProgress comes back pending');
+      it('should remerge actions and update states if inProgress comes back pending',
+      function (done) {
+        spyOn(testStore.transporter, 'onceAvailable')
+          .and.returnValue(Promise.resolve());
+        spyOn(testStore.transporter, 'update')
+          .and.returnValues(
+            Promise.resolve({ status: PROMISE_STATE.PENDING, data: {} }),
+            Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
+        spyOn(testStore.clientStorage, 'update')
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
+        this.item._clientStorageStates.current = STATE.EXISTENT;
+        this.item._transporterStates.current = STATE.EXISTENT;
+        let call = 0;
+
+        const dispose = autorun(() => {
+          const result = this.item.synced;
+          if (call++ === 1) {
+            dispose();
+            expect(result).toBe(true);
+            expect(testStore.transporter.update)
+            .toHaveBeenCalledWith({ id: 123, data: 'transporter' });
+            expect(testStore.schema.getFor)
+            .toHaveBeenCalledWith(TARGET.TRANSPORTER, this.item, { id: 123 });
+            expect(testStore.schema.getPrimaryKey)
+            .toHaveBeenCalledWith(TARGET.TRANSPORTER, this.item);
+            expect(testStore.schema.setPrimaryKey)
+            .not.toHaveBeenCalled();
+            expect(testStore.schema.setFrom)
+            .not.toHaveBeenCalled();
+            expect(this.item._transporterStates).toEqual({
+              current: STATE.EXISTENT,
+              inProgress: undefined,
+              next: undefined,
+            });
+            expect(testStore.transporter.onceAvailable).toHaveBeenCalled();
+            // after syncing, we check if the new status is stored in our clientStorage
+            expect(testStore.schema.getPrimaryKey)
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
+            expect(testStore.schema.getFor)
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { _id: 456 });
+            expect(testStore.clientStorage.update)
+            .toHaveBeenCalledWith({ _id: 456, data: 'clientStorage' });
+            done();
+          } else {
+            this.item._synchronize(STATE.EXISTENT, STATE.BEING_UPDATED);
+          }
+        });
+      });
+
+      it('just finish syncing if remerge actions results in no next state',
+      function (done) {
+        spyOn(testStore.transporter, 'onceAvailable')
+          .and.returnValue(Promise.resolve());
+        this.item._clientStorageStates.current = STATE.EXISTENT;
+        this.item._transporterStates.current = undefined;
+        let call = 0;
+
+        const dispose = autorun(() => {
+          const result = this.item.synced;
+          if (call++ === 1) {
+            expect(result).toBe(true);
+            dispose();
+            done();
+          } else {
+            this.item._synchronize(STATE.EXISTENT, STATE.BEING_CREATED);
+            this.item._synchronize(STATE.EXISTENT, STATE.BEING_DELETED);
+          }
+        });
+      });
+
+      it('just finish syncing if remerge actions results in no next state ' +
+      'when inProgress comes back pending', function (done) {
+        spyOn(testStore.transporter, 'onceAvailable')
+          .and.callFake(() => {
+            this.item._synchronize(STATE.EXISTENT, STATE.BEING_DELETED);
+            return Promise.resolve();
+          });
+        spyOn(testStore.transporter, 'create')
+          .and.returnValue(
+            Promise.resolve({ status: PROMISE_STATE.PENDING, data: {} }));
+        spyOn(testStore.clientStorage, 'update')
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
+        this.item._clientStorageStates.current = STATE.EXISTENT;
+        this.item._transporterStates.current = undefined;
+        let call = 0;
+
+        const dispose = autorun(() => {
+          const result = this.item.synced;
+          if (call++ === 1) {
+            expect(result).toBe(true);
+            expect(testStore.transporter.onceAvailable).toHaveBeenCalled();
+            dispose();
+            done();
+          } else {
+            this.item._synchronize(STATE.EXISTENT, STATE.BEING_CREATED);
+          }
+        });
+      });
       it('should work the next action if inProgress comes back resolved');
       it('should update state.current if inProgress comes back resolved and there is no next');
       // it('should wait for all foreign keys before sending'); // this is part of the schema now
