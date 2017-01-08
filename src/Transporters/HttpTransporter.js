@@ -1,6 +1,7 @@
 // @flow
 import Transporter from './Transporter';
 import HttpOfflineChecker from './HttpOfflineChecker';
+import { PROMISE_STATE } from '../constants';
 import { TransactionItem } from '../TransactionItem';
 
 export default class HttpTransporter extends Transporter {
@@ -97,13 +98,23 @@ export default class HttpTransporter extends Transporter {
 
     return fetch(url, req).then((res) => {
       if (res.ok) {
-        return { res, req };
+        return res.json().then((data) => ({
+          res,
+          req,
+          data,
+          status: PROMISE_STATE.RESOLVED,
+        }));
       }
 
       return Promise.reject({ res, req });
     }, error => {
       this.offlineChecker.setOffline();
-      return Promise.reject({ error, req });
+      return Promise.resolve({
+        error,
+        req,
+        data: {},
+        status: PROMISE_STATE.PENDING,
+      });
     });
   }
 

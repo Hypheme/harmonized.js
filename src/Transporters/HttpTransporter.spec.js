@@ -1,5 +1,6 @@
 import fetchMock from 'fetch-mock';
 import HttpTransporter from './HttpTransporter';
+import { PROMISE_STATE } from '../constants';
 
 describe('HttpTransporter', function () {
   beforeEach(function () {
@@ -300,7 +301,11 @@ describe('HttpTransporter', function () {
           'Content-Type': 'application/json',
         },
         mode: 'cors',
-      }).then(({ res, req }) => {
+      }).then(({ res, req, data, status }) => {
+        expect(data).toEqual({
+          hello: 'back',
+        });
+        expect(status).toBe(PROMISE_STATE.RESOLVED);
         expect(req).toEqual({
           method: 'POST',
           body: JSON.stringify({
@@ -312,12 +317,7 @@ describe('HttpTransporter', function () {
         });
         expect(res.ok).toBe(true);
 
-        res.json().then(body => {
-          expect(body).toEqual({
-            hello: 'back',
-          });
-          done();
-        });
+        done();
       });
     });
 
@@ -398,7 +398,9 @@ describe('HttpTransporter', function () {
           'Content-Type': 'application/json',
         },
         mode: 'cors',
-      }).catch(({ error, req }) => {
+      }).then(({ error, req, data, status }) => {
+        expect(data).toEqual({});
+        expect(status).toBe(PROMISE_STATE.PENDING);
         expect(error).toEqual({
           status: 0,
           message: 'timeout!',

@@ -56,8 +56,9 @@ export default class BaseTransporter {
       .catch(({ error, req }) => this.constructor
         .runMiddleware('transmissionError', { action, req, error })
         .then(() => Promise.reject({ error, req })))
-      .then(({ res, req }) => this.constructor.runMiddleware('receive', { action, req, res }))
-      .then(({ res }) => res);
+      .then(({ status, data, res, req }) => this.constructor.runMiddleware('receive',
+        { action, status, data, req, res }))
+      .then(({ status, data }) => ({ status, data }));
   }
 
   static add(mw) {

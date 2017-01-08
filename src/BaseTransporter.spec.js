@@ -194,9 +194,14 @@ describe('BaseTransporter', function () {
           action: 'create',
           res: 'res',
           req: 'req',
+          data: 'data',
+          status: 'status',
         });
 
-        expect(returnedData).toBe('res');
+        expect(returnedData).toEqual({
+          data: 'data',
+          status: 'status',
+        });
 
         done();
       });
@@ -210,6 +215,8 @@ describe('BaseTransporter', function () {
         resolve({
           res: 'res',
           req: 'req',
+          status: 'status',
+          data: 'data',
         });
       });
     });
