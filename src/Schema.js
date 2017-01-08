@@ -1,6 +1,7 @@
 // @flow
 import { extendObservable } from 'mobx';
 import _ from 'lodash';
+import Item from './Item';
 import { SOURCE } from './constants';
 
 type DataSource = SOURCE.STATE|SOURCE.TRANSPORTER|SOURCE.CLIENT_STORAGE;
@@ -296,27 +297,43 @@ class Schema {
     }
   }
 
-  // getForState(item){} // least important one, not even sure if needed
+  getFor(source: DataSource, item: Item, initialData: Object = {}) {
+    if (source === SOURCE.STATE) {
+      throw new Error('this doesn\'t work for state');
+    }
 
-  /**
-   * gets all data for the transporter except for the primary key
-   * (an item can't have a key until its created in the transporter for example )
-   * has to wait until all foreing keys are created. (this is tricky,
-   * pls aks johannes before implementing).
-   *
-   * initialData is an object with data, that has to be in the result as well
-   */
-  // getFor(source: DataSource, item: Object, initialData: Object) {
-  //
-  // }
+    const prefix = source === SOURCE.CLIENT_STORAGE ? '_' : '';
+    const returnData = _.cloneDeep(initialData);
+    return item.onceReadyFor(source).then(() => {
+      const { filteredData, references } = this._getPickedData(item);
+      const convertedReferences = {};
+      this.references.forEach((value, key) => {
+        const ref = _.get(references, key);
+        if (_.isArray(ref)) {
+          const refKeyArray = ref.map((refItem) => refItem[value.items[`${prefix}key`]]);
+          _.set(convertedReferences, key, refKeyArray);
+        } else {
+          _.set(convertedReferences, key, ref[value[`${prefix}key`]]);
+        }
+      });
+      return _.merge({}, filteredData, returnData, convertedReferences);
+    });
+  }
 
-  /**
-   * gets the transporter primary key. The function is only called when the key
-   * already exists, so this should be sync. returns { <key_name> : <key_value> }
-   */
-  // getPrimaryKey(source: DataSource, item: Object) {
-  //
-  // }
+  getPrimaryKey(source: DataSource, item: Item): Object {
+    let key;
+    if (source === SOURCE.TRANSPORTER) {
+      key = this._primaryKey.key;
+    } else if (source === SOURCE.CLIENT_STORAGE) {
+      key = this._primaryKey._key;
+    } else {
+      throw new Error('wrong source');
+    }
+
+    return {
+      [key]: item[key],
+    };
+  }
 }
 
 export default Schema;
