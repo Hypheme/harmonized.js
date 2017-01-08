@@ -3,4 +3,5 @@ export default class TestLocalStorage {
   update() {}
   delete() {}
   fetch() {}
+  onceAvailable() {}
 }

@@ -126,8 +126,8 @@ export default class Item {
         return STATE.EXISTENT;
       case STATE.BEING_DELETED:
         return STATE.DELETED;
-      case STATE.BEING_REMOVED: // TODO: not sure if needed
-        return STATE.REMOVED;
+      // case STATE.BEING_REMOVED: // TODO: not sure if needed
+      //   return STATE.REMOVED;
       default:
         return STATE.LOCKED;
     }
@@ -181,9 +181,9 @@ export default class Item {
       case STATE.LOCKED:
       case STATE.DELETED:
         return current;
-      case STATE.REMOVED:
-        return this._getDesiredFixedState(action) === STATE.DELETED ?
-          STATE.DELETED : STATE.REMOVED;
+      // case STATE.REMOVED:
+      //   return this._getDesiredFixedState(action) === STATE.DELETED ?
+      //     STATE.DELETED : STATE.REMOVED;
       default:
         return this._getDesiredFixedState(action);
     }
@@ -204,6 +204,9 @@ export default class Item {
       origin,
       error: err,
     };
+    if (this._dispose) {
+      this._dispose();
+    }
   }
 
   _mergeNextState(next, newState) {
@@ -274,12 +277,11 @@ export default class Item {
   _stateHandler(call) {
     this._store.schema.getObservables(this); // we need this for mobx
     if (call === 0) {
-      return this._synchronize();
+      this._synchronize();
     }
     if (this.autoSave) {
-      return this._synchronize(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
+      this._synchronize(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
     }
-    return Promise.resolve();
   }
 
   _synchronize(clientStorageState, transporterState) {
@@ -319,6 +321,10 @@ export default class Item {
       Promise.resolve(itemKeys) : // no payload needed for deleting/fetching
       this._store.schema.getFor(target, this, itemKeys))
     .then(itemData => {
+      if (!this[target.STATES].next) {
+        // if next is no longer set due to merging create and delete action together
+        return Promise.resolve();
+      }
       if (workingState !== this[target.STATES].next) {
         // redo everything if sth has changed in the meantime
         return this._triggerSync(target);
@@ -339,7 +345,7 @@ export default class Item {
                 if (this[target.STATES].next) { // need that bc create + delete result in undefined
                   return this._triggerSync(target);
                 }
-                return undefined;
+                return Promise.resolve();
               });
           }
           if (this[target.STATES].inProgress === STATE.BEING_CREATED) {
