@@ -15,6 +15,10 @@ export default class HttpTransporter extends Transporter {
     const constructedUrl = `${this.baseUrl}/${this.path}`;
     this.offlineChecker = this.constructor.offlineCheckerList
       .filter((checker) => checker.test(constructedUrl))[0];
+
+    if (!this.offlineChecker) {
+      throw new Error('missing offline checker');
+    }
   }
 
   createPath(path: string, pathTemplate: string, payload: Object) {
@@ -96,7 +100,10 @@ export default class HttpTransporter extends Transporter {
       }
 
       return Promise.reject({ res, req });
-    }, error => Promise.reject({ error, req }));
+    }, error => {
+      this.offlineChecker.setOffline();
+      return Promise.reject({ error, req });
+    });
   }
 
   static offlineCheckerList = [];

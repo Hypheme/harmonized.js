@@ -1,8 +1,10 @@
 // @flow
+import * as _ from 'lodash';
 import globToRegExp from 'glob-to-regexp';
 
 type ConstructorOptions = {
   pattern: RegExp,
+  checkUrl: string;
 };
 
 const RETRY_BASE_PAUSE = 3000;
@@ -13,14 +15,19 @@ export default class HttpOfflineChecker {
   checkUrl: string;
   _isOffline: boolean;
   _promise: ?Promise;
+  _checkTimeout: number;
+  _resolve: ?Function;
+  _reject: ?Function;
 
   constructor({
     pattern,
+    checkUrl,
   }: ConstructorOptions) {
-    this.isOffline = false;
+    this._isOffline = false;
+    this.checkUrl = checkUrl;
     if (pattern instanceof RegExp) {
       this.urlPattern = pattern;
-    } else {
+    } else if (_.isString(pattern)) {
       this.urlPattern = globToRegExp(pattern);
     }
   }
@@ -35,32 +42,36 @@ export default class HttpOfflineChecker {
 
   setOffline(): void {
     this._isOffline = true;
-    this._promise = this.checkOffline();
+    this._promise = this._promise || new Promise(this._checkOffline.bind(this));
   }
 
-  setOnline(): void {
+  _setOnline(): void {
     this._isOffline = false;
     this._promise = undefined;
-  }
-
-  checkOffline() {
-    this._promise = new Promise(this._checkOffline.bind(this));
-    return this._promise;
+    this._resolve = undefined;
+    this._reject = undefined;
+    clearTimeout(this._checkTimeout);
   }
 
   _checkOffline(resolve: Function, reject: Function, retryCount: number = 0) {
-    const pause = Math.min(retryCount * 2 * RETRY_BASE_PAUSE, RETRY_MAX_PAUSE);
-    setTimeout(() => {
-      fetch(this.checkUrl).then(() => {
-        this.setOnline();
-        resolve();
+    const pause = Math.min(retryCount * RETRY_BASE_PAUSE, RETRY_MAX_PAUSE);
+    this._resolve = resolve;
+    this._reject = reject;
+    this._checkTimeout = setTimeout(() => {
+      fetch(this.checkUrl).then((res) => {
+        if (res.ok) {
+          this._setOnline();
+          resolve();
+        } else {
+          this._checkOffline(resolve, reject, retryCount + 1);
+        }
       }, () => {
         this._checkOffline(resolve, reject, retryCount + 1);
       });
     }, pause);
   }
 
-  onceAvailabe(): Promise {
+  onceAvailable(): Promise {
     return this._promise || Promise.resolve();
   }
 }

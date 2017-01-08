@@ -2,6 +2,11 @@ import fetchMock from 'fetch-mock';
 import HttpTransporter from './HttpTransporter';
 
 describe('HttpTransporter', function () {
+  beforeEach(function () {
+    HttpTransporter.offlineCheckerList = [
+      { name: 'third', test: () => true },
+    ];
+  });
   it('should be constructed', function () {
     const httpTransporter = new HttpTransporter({
       baseUrl: 'https://www.hyphe.me',
@@ -12,6 +17,50 @@ describe('HttpTransporter', function () {
     expect(httpTransporter.path).toBe('login');
     expect(httpTransporter.methodMap instanceof Map).toBe(true);
     expect(httpTransporter.methodMap.size).toBe(0);
+  });
+
+  it('should be constructed with multiple matching offline checkers and use first', function () {
+    HttpTransporter.offlineCheckerList = [
+      { name: 'first', test: () => false },
+      { name: 'second', test: () => false },
+      { name: 'third', test: () => true },
+      { name: 'fourth', test: () => true },
+    ];
+
+    const httpTransporter = new HttpTransporter({
+      baseUrl: 'https://www.hyphe.me',
+      path: 'login',
+    });
+    expect(httpTransporter.offlineChecker.name).toBe('third');
+  });
+
+  it('should be constructed with one matching offline checkers and use first', function () {
+    HttpTransporter.offlineCheckerList = [
+      { name: 'first', test: () => false },
+      { name: 'second', test: () => false },
+      { name: 'third', test: () => false },
+      { name: 'fourth', test: () => true },
+    ];
+
+    const httpTransporter = new HttpTransporter({
+      baseUrl: 'https://www.hyphe.me',
+      path: 'login',
+    });
+    expect(httpTransporter.offlineChecker.name).toBe('fourth');
+  });
+
+  it('should be constructed with no matching offline checkers and throw error', function () {
+    HttpTransporter.offlineCheckerList = [
+      { name: 'first', test: () => false },
+      { name: 'second', test: () => false },
+      { name: 'third', test: () => false },
+      { name: 'fourth', test: () => false },
+    ];
+
+    expect(() => new HttpTransporter({
+      baseUrl: 'https://www.hyphe.me',
+      path: 'login',
+    })).toThrowError('missing offline checker');
   });
 
   describe('prepare requests', function () {
@@ -325,7 +374,11 @@ describe('HttpTransporter', function () {
         baseUrl: 'https://www.hyphe.me',
         path: 'login',
       });
+      httpTransporter.offlineChecker = {
+        setOffline: jasmine.createSpy('set offline'),
+      };
 
+      expect(httpTransporter.offlineChecker.setOffline).toHaveBeenCalledTimes(0);
       httpTransporter._request({
         baseUrl: 'https://www.hyphe.me',
         path: 'users',
@@ -354,6 +407,7 @@ describe('HttpTransporter', function () {
           mode: 'cors',
           headers: jasmine.any(Headers),
         });
+        expect(httpTransporter.offlineChecker.setOffline).toHaveBeenCalledTimes(1);
 
         done();
       });
@@ -383,6 +437,7 @@ describe('HttpTransporter', function () {
   });
 
   it('should add a offline checker', function () {
+    HttpTransporter.offlineCheckerList = [];
     expect(HttpTransporter.offlineCheckerList).toEqual([]);
     HttpTransporter.addOfflineChecker('checker 1');
     expect(HttpTransporter.offlineCheckerList).toEqual([
