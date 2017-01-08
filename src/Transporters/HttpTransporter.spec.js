@@ -484,5 +484,19 @@ describe('HttpTransporter', function () {
       jasmine.any(this.HttpOfflineCheckerMock),
       jasmine.any(this.HttpOfflineCheckerMock),
     ]);
+    HttpTransporter.offlineCheckerList = [];
+  });
+
+  it('should get onceAvailable', function () {
+    const httpTransporter = new HttpTransporter({
+      baseUrl: 'https://www.hyphe.me',
+      path: 'login',
+    });
+    httpTransporter.offlineChecker = {
+      onceAvailable: jasmine.createSpy('once available').and.returnValue('1'),
+    };
+
+    expect(httpTransporter.onceAvailable()).toBe('1');
+    expect(httpTransporter.offlineChecker.onceAvailable).toHaveBeenCalledTimes(1);
   });
 });

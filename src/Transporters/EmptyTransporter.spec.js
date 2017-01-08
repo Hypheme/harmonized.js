@@ -60,4 +60,10 @@ describe('EmptyTransporter', function () {
       done();
     });
   });
+
+  it('should get onceAvailable', function (done) {
+    this.emptyTransporter.onceAvailable().then(() => {
+      done();
+    });
+  });
 });
