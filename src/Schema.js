@@ -2,7 +2,7 @@
 import { extendObservable } from 'mobx';
 import _ from 'lodash';
 import Item from './Item';
-import { SOURCE } from './constants';
+import { SOURCE, TARGET } from './constants';
 
 type DataSource = SOURCE.STATE|SOURCE.TRANSPORTER|SOURCE.CLIENT_STORAGE;
 
@@ -298,11 +298,7 @@ class Schema {
   }
 
   getFor(source: DataSource, item: Item, initialData: Object = {}) {
-    if (source === SOURCE.STATE) {
-      throw new Error('this doesn\'t work for state');
-    }
-
-    const prefix = source === SOURCE.CLIENT_STORAGE ? '_' : '';
+    const prefix = source === TARGET.CLIENT_STORAGE ? '_' : '';
     const returnData = _.cloneDeep(initialData);
     return item.onceReadyFor(source).then(() => {
       const { filteredData, references } = this._getPickedData(item);
@@ -322,12 +318,10 @@ class Schema {
 
   getPrimaryKey(source: DataSource, item: Item): Object {
     let key;
-    if (source === SOURCE.TRANSPORTER) {
-      key = this._primaryKey.key;
-    } else if (source === SOURCE.CLIENT_STORAGE) {
+    if (source === TARGET.CLIENT_STORAGE) {
       key = this._primaryKey._key;
     } else {
-      throw new Error('wrong source');
+      key = this._primaryKey.key;
     }
 
     return {

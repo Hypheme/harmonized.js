@@ -4,7 +4,7 @@ import {
 } from 'mobx';
 
 import Schema, { Key, NumberKey } from './Schema';
-import { SOURCE } from './constants';
+import { SOURCE, TARGET } from './constants';
 
 describe('Schema', function () {
   function detach(cb) {
@@ -1298,7 +1298,7 @@ describe('Schema', function () {
       key: '__id',
       _key: '___id',
     };
-    expect(schema.getPrimaryKey(SOURCE.TRANSPORTER, {
+    expect(schema.getPrimaryKey(TARGET.TRANSPORTER, {
       __id: 123,
       ___id: 321,
     })).toEqual({
@@ -1321,35 +1321,12 @@ describe('Schema', function () {
       key: '__id',
       _key: '___id',
     };
-    expect(schema.getPrimaryKey(SOURCE.CLIENT_STORAGE, {
+    expect(schema.getPrimaryKey(TARGET.CLIENT_STORAGE, {
       __id: 123,
       ___id: 321,
     })).toEqual({
       ___id: 321,
     });
-  });
-
-  it('should throw error when getting the primary key for state', function () {
-    const schema = new Schema({
-      properties: {
-        __id: {
-          type: Key,
-          key: '__id',
-          _key: '___id',
-          primary: true,
-        },
-      },
-    });
-    schema._primaryKey = {
-      key: '__id',
-      _key: '___id',
-    };
-    expect(() => {
-      schema.getPrimaryKey(SOURCE.STATE, {
-        __id: 123,
-        ___id: 321,
-      });
-    }).toThrowError('wrong source');
   });
 
   describe('getFor', function () {
@@ -1473,7 +1450,7 @@ describe('Schema', function () {
 
     it('should get for client storage', function (done) {
       const schema = new Schema(this.inputDefinition);
-      schema.getFor(SOURCE.CLIENT_STORAGE, this.item, this.initialData).then(returnedData => {
+      schema.getFor(TARGET.CLIENT_STORAGE, this.item, this.initialData).then(returnedData => {
         expect(returnedData).toEqual({
           brand: 'VW',
           price: '10000€',
@@ -1495,7 +1472,7 @@ describe('Schema', function () {
 
     it('should get for client storage without initial data', function (done) {
       const schema = new Schema(this.inputDefinition);
-      schema.getFor(SOURCE.CLIENT_STORAGE, this.item).then(returnedData => {
+      schema.getFor(TARGET.CLIENT_STORAGE, this.item).then(returnedData => {
         expect(returnedData).toEqual({
           brand: 'VW',
           price: '10000€',
@@ -1511,7 +1488,7 @@ describe('Schema', function () {
 
     it('should get for transporter', function (done) {
       const schema = new Schema(this.inputDefinition);
-      schema.getFor(SOURCE.TRANSPORTER, this.item, this.initialData).then(returnedData => {
+      schema.getFor(TARGET.TRANSPORTER, this.item, this.initialData).then(returnedData => {
         expect(returnedData).toEqual({
           brand: 'VW',
           price: '10000€',
@@ -1533,7 +1510,7 @@ describe('Schema', function () {
 
     it('should get for transporter without initial data', function (done) {
       const schema = new Schema(this.inputDefinition);
-      schema.getFor(SOURCE.TRANSPORTER, this.item).then(returnedData => {
+      schema.getFor(TARGET.TRANSPORTER, this.item).then(returnedData => {
         expect(returnedData).toEqual({
           brand: 'VW',
           price: '10000€',
