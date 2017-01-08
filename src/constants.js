@@ -18,9 +18,17 @@ const STATE = {
 };
 
 const SOURCE = {
-  STATE: { SOURCE: 'STATE' },
-  TRANSPORTER: { SOURCE: 'TRANSPORTER' },
-  CLIENT_STORAGE: { SOURCE: 'CLIENT_STORAGE' },
+  STATE: {
+    SOURCE: 'STATE',
+  },
+  TRANSPORTER: {
+    SOURCE: 'TRANSPORTER',
+    NAME: 'transporter',
+  },
+  CLIENT_STORAGE: {
+    SOURCE: 'CLIENT_STORAGE',
+    NAME: 'clientStorage',
+  },
 };
 SOURCE.USER = SOURCE.STATE;
 
