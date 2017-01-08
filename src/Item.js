@@ -44,7 +44,7 @@ export default class Item {
   // //////////////////
 
   onceReadyFor(source) {
-    return this._isReady[source.IS_READY].promise;
+    return this._isReady[source.NAME].promise;
   }
 
   // ///////////////////
@@ -296,9 +296,9 @@ export default class Item {
 
   _setPrimaryKey(source, data) {
     this._store.schema.setPrimaryKey(source, this, data);
-    this._isReady[source.IS_READY].resolve();
-    this._isReady[source.IS_READY].resolve = undefined;
-    this._isReady[source.IS_READY].reject = undefined;
+    this._isReady[source.NAME].resolve();
+    this._isReady[source.NAME].resolve = undefined;
+    this._isReady[source.NAME].reject = undefined;
   }
 
   _stateHandler(call) {

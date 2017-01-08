@@ -23,11 +23,11 @@ const SOURCE = {
   },
   TRANSPORTER: {
     SOURCE: 'TRANSPORTER',
-    IS_READY: 'transporter',
+    NAME: 'transporter',
   },
   CLIENT_STORAGE: {
     SOURCE: 'CLIENT_STORAGE',
-    IS_READY: 'clientStorage',
+    NAME: 'clientStorage',
   },
 };
 SOURCE.USER = SOURCE.STATE;
