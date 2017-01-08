@@ -8,6 +8,7 @@ export default class Item {
     this.autoSave = !(autoSave === false);
     this._store = store;
     this._createRunTimeId();
+    this._establishIsReadyPromises();
   }
   construct(values = {}, { source }) {
     let p;
@@ -41,6 +42,10 @@ export default class Item {
   // //////////////////
   // PUBLIC METHODS //
   // //////////////////
+
+  onceReadyFor(source) {
+    return this._isReady[source.IS_READY].promise;
+  }
 
   // ///////////////////
   // PRIVATE METHODS //
@@ -90,7 +95,7 @@ export default class Item {
     this.removed = (this._clientStorageStates.current === STATE.REMOVED);
     this.stored = true;
     this.synced = (this._transporterStates.next === undefined);
-    this._store.schema.setPrimaryKey(this, values);
+    this._setPrimaryKey(SOURCE.CLIENT_STORAGE, values);
     return this._store.schema.setFrom(SOURCE.CLIENT_STORAGE, this, values,
       { establishObservables: true });
   }
@@ -113,9 +118,24 @@ export default class Item {
     this.removed = false;
     this.stored = false;
     this.synced = true;
-    this._store.schema.setPrimaryKey(this, values);
+    this._setPrimaryKey(SOURCE.TRANSPORTER, values);
     return this._store.schema.setFrom(SOURCE.TRANSPORTER, this, values,
       { establishObservables: true });
+  }
+
+  _establishIsReadyPromises() {
+    function genPromise() {
+      const result = {};
+      result.promise = new Promise((resolve, reject) => {
+        result.resolve = resolve;
+        result.reject = reject;
+      });
+      return result;
+    }
+    this._isReady = {
+      transporter: genPromise(),
+      clientStorage: genPromise(),
+    };
   }
 
   _getDesiredFixedState(action) {
@@ -274,6 +294,13 @@ export default class Item {
       state);
   }
 
+  _setPrimaryKey(source, data) {
+    this._store.schema.setPrimaryKey(source, this, data);
+    this._isReady[source.IS_READY].resolve();
+    this._isReady[source.IS_READY].resolve = undefined;
+    this._isReady[source.IS_READY].reject = undefined;
+  }
+
   _stateHandler(call) {
     this._store.schema.getObservables(this); // we need this for mobx
     if (call === 0) {
@@ -349,7 +376,7 @@ export default class Item {
               });
           }
           if (this[target.STATES].inProgress === STATE.BEING_CREATED) {
-            this._store.schema.setPrimaryKey(target.AS_SOURCE, this, result.data);
+            this._setPrimaryKey(target.AS_SOURCE, result.data);
           }
           this[target.STATES].current = this._getNextFixedState(
             this[target.STATES].current,
