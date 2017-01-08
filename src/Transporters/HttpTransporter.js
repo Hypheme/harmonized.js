@@ -1,5 +1,6 @@
 // @flow
 import Transporter from './Transporter';
+import HttpOfflineChecker from './HttpOfflineChecker';
 import { TransactionItem } from '../TransactionItem';
 
 export default class HttpTransporter extends Transporter {
@@ -108,8 +109,15 @@ export default class HttpTransporter extends Transporter {
 
   static offlineCheckerList = [];
 
-  static addOfflineChecker(offlineChecker: Object) {
-    this.offlineCheckerList.push(offlineChecker);
+  static addOfflineChecker(offlineChecker: HttpOfflineChecker | Object) {
+    let offlineCheckerInstance;
+    if (offlineChecker instanceof HttpOfflineChecker) {
+      offlineCheckerInstance = offlineChecker;
+    } else {
+      offlineCheckerInstance = new HttpOfflineChecker(offlineChecker);
+    }
+
+    this.offlineCheckerList.push(offlineCheckerInstance);
   }
 
   static methodMap = new Map();

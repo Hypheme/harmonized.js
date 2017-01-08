@@ -3,6 +3,12 @@ import HttpTransporter from './HttpTransporter';
 
 describe('HttpTransporter', function () {
   beforeEach(function () {
+    this.HttpOfflineCheckerMock = jasmine.createSpy('offline checker').and.callFake(function () {
+      this.test = jasmine.createSpy('offline checker test');
+    });
+
+    HttpTransporter.__Rewire__('HttpOfflineChecker', this.HttpOfflineCheckerMock);
+
     HttpTransporter.offlineCheckerList = [
       { name: 'third', test: () => true },
     ];
@@ -436,19 +442,47 @@ describe('HttpTransporter', function () {
     });
   });
 
-  it('should add a offline checker', function () {
+  it('should add a offline checker as HttpOfflineChecker', function () {
     HttpTransporter.offlineCheckerList = [];
     expect(HttpTransporter.offlineCheckerList).toEqual([]);
-    HttpTransporter.addOfflineChecker('checker 1');
+    const offlineChecker1 = new this.HttpOfflineCheckerMock();
+    const offlineChecker2 = new this.HttpOfflineCheckerMock();
+    const offlineChecker3 = new this.HttpOfflineCheckerMock();
+    HttpTransporter.addOfflineChecker(offlineChecker1);
     expect(HttpTransporter.offlineCheckerList).toEqual([
-      'checker 1',
+      offlineChecker1,
     ]);
-    HttpTransporter.addOfflineChecker('checker 2');
-    HttpTransporter.addOfflineChecker('checker 3');
+    HttpTransporter.addOfflineChecker(offlineChecker2);
+    HttpTransporter.addOfflineChecker(offlineChecker3);
     expect(HttpTransporter.offlineCheckerList).toEqual([
-      'checker 1',
-      'checker 2',
-      'checker 3',
+      offlineChecker1,
+      offlineChecker2,
+      offlineChecker3,
+    ]);
+  });
+
+  it('should add a offline checker as Object', function () {
+    HttpTransporter.offlineCheckerList = [];
+    expect(HttpTransporter.offlineCheckerList).toEqual([]);
+    const offlineCheckerOptions1 = { name: 'o1' };
+    const offlineCheckerOptions2 = { name: 'o2' };
+    const offlineCheckerOptions3 = { name: 'o3' };
+    HttpTransporter.addOfflineChecker(offlineCheckerOptions1);
+    expect(this.HttpOfflineCheckerMock).toHaveBeenCalledTimes(1);
+    expect(this.HttpOfflineCheckerMock).toHaveBeenCalledWith(offlineCheckerOptions1);
+    expect(HttpTransporter.offlineCheckerList).toEqual([
+      jasmine.any(this.HttpOfflineCheckerMock),
+    ]);
+
+    HttpTransporter.addOfflineChecker(offlineCheckerOptions2);
+    HttpTransporter.addOfflineChecker(offlineCheckerOptions3);
+    expect(this.HttpOfflineCheckerMock).toHaveBeenCalledTimes(3);
+    expect(this.HttpOfflineCheckerMock).toHaveBeenCalledWith(offlineCheckerOptions2);
+    expect(this.HttpOfflineCheckerMock).toHaveBeenCalledWith(offlineCheckerOptions3);
+    expect(HttpTransporter.offlineCheckerList).toEqual([
+      jasmine.any(this.HttpOfflineCheckerMock),
+      jasmine.any(this.HttpOfflineCheckerMock),
+      jasmine.any(this.HttpOfflineCheckerMock),
     ]);
   });
 });
