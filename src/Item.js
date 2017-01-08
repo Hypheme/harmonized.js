@@ -126,8 +126,8 @@ export default class Item {
         return STATE.EXISTENT;
       case STATE.BEING_DELETED:
         return STATE.DELETED;
-      case STATE.BEING_REMOVED: // TODO: not sure if needed
-        return STATE.REMOVED;
+      // case STATE.BEING_REMOVED: // TODO: not sure if needed
+      //   return STATE.REMOVED;
       default:
         return STATE.LOCKED;
     }
@@ -181,9 +181,9 @@ export default class Item {
       case STATE.LOCKED:
       case STATE.DELETED:
         return current;
-      case STATE.REMOVED:
-        return this._getDesiredFixedState(action) === STATE.DELETED ?
-          STATE.DELETED : STATE.REMOVED;
+      // case STATE.REMOVED:
+      //   return this._getDesiredFixedState(action) === STATE.DELETED ?
+      //     STATE.DELETED : STATE.REMOVED;
       default:
         return this._getDesiredFixedState(action);
     }

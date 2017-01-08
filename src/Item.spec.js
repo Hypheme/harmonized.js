@@ -305,7 +305,7 @@ describe('Item', function () {
             const result = Object.assign({}, data);
             result.data = target === TARGET.TRANSPORTER ?
               'transporter' : 'clientStorage';
-            return Promise.resolve(result);
+            return new Promise(resolve => setTimeout(() => resolve(result), 0));
           });
         spyOn(testStore.schema, 'setPrimaryKey').and.returnValue(Promise.resolve());
       });
@@ -936,6 +936,55 @@ describe('Item', function () {
         });
       });
 
+      it('should work the next action if inProgress comes back resolved',
+      function (done) {
+        let syncs = 0;
+        spyOn(testStore.clientStorage, 'update')
+          .and.callFake(() => {
+            if (syncs++ === 0) {
+              this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+            }
+            return Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} });
+          });
+        this.item._transporterStates.current = STATE.EXISTENT;
+        this.item._clientStorageStates.current = STATE.EXISTENT;
+        let call = 0;
+        const dispose = autorun(() => {
+          const result = this.item.stored;
+          if (call++ === 1) {
+            dispose();
+            expect(result).toBe(true);
+            expect(testStore.clientStorage.update.calls.count()).toBe(2);
+            done();
+          } else {
+            this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+          }
+        });
+      });
+
+      it('should redo the sync process if next action has changed in the preparation process',
+      function (done) {
+        spyOn(testStore.transporter, 'onceAvailable')
+          .and.returnValue(Promise.resolve());
+        spyOn(testStore.clientStorage, 'delete')
+            .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
+        this.item._clientStorageStates.current = STATE.EXISTENT;
+        this.item._transporterStates.current = STATE.EXISTENT;
+        let call = 0;
+
+        const dispose = autorun(() => {
+          const result = this.item.stored;
+          if (call++ === 1) {
+            expect(result).toBe(true);
+            dispose();
+            done();
+          } else {
+            this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+            this.item._synchronize(STATE.BEING_DELETED, STATE.EXISTENT);
+          }
+        });
+      });
+
       it('just finish syncing if remerge actions results in no next state',
       function (done) {
         spyOn(testStore.transporter, 'onceAvailable')
@@ -958,17 +1007,17 @@ describe('Item', function () {
       });
 
       it('just finish syncing if remerge actions results in no next state ' +
-      'when inProgress comes back pending', function (done) {
+            'when inProgress comes back pending', function (done) {
         spyOn(testStore.transporter, 'onceAvailable')
-          .and.callFake(() => {
-            this.item._synchronize(STATE.EXISTENT, STATE.BEING_DELETED);
-            return Promise.resolve();
-          });
+        .and.callFake(() => {
+          this.item._synchronize(STATE.EXISTENT, STATE.BEING_DELETED);
+          return Promise.resolve();
+        });
         spyOn(testStore.transporter, 'create')
-          .and.returnValue(
-            Promise.resolve({ status: PROMISE_STATE.PENDING, data: {} }));
+        .and.returnValue(
+          Promise.resolve({ status: PROMISE_STATE.PENDING, data: {} }));
         spyOn(testStore.clientStorage, 'update')
-          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
+        .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
         this.item._clientStorageStates.current = STATE.EXISTENT;
         this.item._transporterStates.current = undefined;
         let call = 0;
@@ -985,10 +1034,6 @@ describe('Item', function () {
           }
         });
       });
-      it('should work the next action if inProgress comes back resolved');
-      it('should update state.current if inProgress comes back resolved and there is no next');
-      // it('should wait for all foreign keys before sending'); // this is part of the schema now
-      it('should redo the sync process if next action has changed in the preparation process');
     });
   });
 });
