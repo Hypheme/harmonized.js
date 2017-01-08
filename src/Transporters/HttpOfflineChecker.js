@@ -40,28 +40,40 @@ export default class HttpOfflineChecker {
     return this._isOffline;
   }
 
-  setOffline(): void {
+  setOffline(): Promise {
     this._isOffline = true;
     this._promise = this._promise || new Promise(this._checkOffline.bind(this));
+    return this._promise;
   }
 
-  _setOnline(): void {
+  setOnline(): void {
+    if (!this._isOffline) return;
+
+    if (this._resolve) this._resolve();
     this._isOffline = false;
     this._promise = undefined;
     this._resolve = undefined;
     this._reject = undefined;
     clearTimeout(this._checkTimeout);
+    this._checkTimeout = undefined;
   }
 
   _checkOffline(resolve: Function, reject: Function, retryCount: number = 0) {
+    if (!this._isOffline) return;
+
     const pause = Math.min(retryCount * RETRY_BASE_PAUSE, RETRY_MAX_PAUSE);
     this._resolve = resolve;
     this._reject = reject;
     this._checkTimeout = setTimeout(() => {
-      fetch(this.checkUrl).then((res) => {
+      const req = {
+        method: 'GET',
+        headers: new Headers({}),
+        mode: 'cors',
+      };
+
+      fetch(this.checkUrl, req).then((res) => {
         if (res.ok) {
-          this._setOnline();
-          resolve();
+          this.setOnline();
         } else {
           this._checkOffline(resolve, reject, retryCount + 1);
         }
