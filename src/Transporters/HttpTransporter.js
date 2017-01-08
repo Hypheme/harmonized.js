@@ -1,18 +1,26 @@
 // @flow
 import Transporter from './Transporter';
-import { TransactionItem } from '../BaseTransporter';
+import HttpOfflineChecker from './HttpOfflineChecker';
+import { PROMISE_STATE } from '../constants';
+import { TransactionItem } from '../TransactionItem';
 
 export default class HttpTransporter extends Transporter {
   baseUrl: string;
   path: string;
   methodMap: Map;
-  fullPath: string;
 
   constructor(options: Object) {
     super();
-    this.baseUrl = options.baseUrl.replace(/\/$/, '');
+    this.baseUrl = options.baseUrl.replace(/\/$/, '') || this.constructor.baseUrl;
     this.path = options.path;
     this.methodMap = new Map();
+    const constructedUrl = `${this.baseUrl}/${this.path}`;
+    this.offlineChecker = this.constructor.offlineCheckerList
+      .filter((checker) => checker.test(constructedUrl))[0];
+
+    if (!this.offlineChecker) {
+      throw new Error('missing offline checker');
+    }
   }
 
   createPath(path: string, pathTemplate: string, payload: Object) {
@@ -30,6 +38,10 @@ export default class HttpTransporter extends Transporter {
       .then(({ path, pathTemplate, payload }) => this.createPath(path, pathTemplate, payload));
   }
 
+  onceAvailable() {
+    return this.offlineChecker.onceAvailable();
+  }
+
   _getMethodFromAction(action: string): Object {
     return this.methodMap.get(action) || HttpTransporter.methodMap.get(action) || {};
   }
@@ -39,8 +51,8 @@ export default class HttpTransporter extends Transporter {
     return {
       action,
       payload,
-      baseUrl: (this.baseUrl || this.constructor.baseUrl),
-      path: (this.fullPath || this.path),
+      baseUrl: this.baseUrl,
+      path: this.path,
       pathTemplate: methodOptions.pathTemplate,
       method: methodOptions.method,
       headers: {
@@ -86,11 +98,37 @@ export default class HttpTransporter extends Transporter {
 
     return fetch(url, req).then((res) => {
       if (res.ok) {
-        return { res, req };
+        return res.json().then((data) => ({
+          res,
+          req,
+          data,
+          status: PROMISE_STATE.RESOLVED,
+        }));
       }
 
       return Promise.reject({ res, req });
-    }, error => Promise.reject({ error, req }));
+    }, error => {
+      this.offlineChecker.setOffline();
+      return Promise.resolve({
+        error,
+        req,
+        data: {},
+        status: PROMISE_STATE.PENDING,
+      });
+    });
+  }
+
+  static offlineCheckerList = [];
+
+  static addOfflineChecker(offlineChecker: HttpOfflineChecker | Object) {
+    let offlineCheckerInstance;
+    if (offlineChecker instanceof HttpOfflineChecker) {
+      offlineCheckerInstance = offlineChecker;
+    } else {
+      offlineCheckerInstance = new HttpOfflineChecker(offlineChecker);
+    }
+
+    this.offlineCheckerList.push(offlineCheckerInstance);
   }
 
   static methodMap = new Map();

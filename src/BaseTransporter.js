@@ -6,7 +6,6 @@ export default class BaseTransporter {
   static middleware: TransporterMiddleware[] = [];
 
   _shouldBeImplemented() {
-    // istanbul ignore next
     throw new Error('should be implemented by the transporter');
   }
 
@@ -34,13 +33,15 @@ export default class BaseTransporter {
     return this._sendRequest(new TransactionItem('initialFetch', {}));
   }
 
+  onceAvailable() {
+    this._shouldBeImplemented();
+  }
+
   _prepareRequest(/* item: TransactionItem */) {
-    // istanbul ignore next
     this._shouldBeImplemented();
   }
 
   _request(/* data: Object */) {
-    // istanbul ignore next
     this._shouldBeImplemented();
   }
 
@@ -55,8 +56,9 @@ export default class BaseTransporter {
       .catch(({ error, req }) => this.constructor
         .runMiddleware('transmissionError', { action, req, error })
         .then(() => Promise.reject({ error, req })))
-      .then(({ res, req }) => this.constructor.runMiddleware('receive', { action, req, res }))
-      .then(({ res }) => res);
+      .then(({ status, data, res, req }) => this.constructor.runMiddleware('receive',
+        { action, status, data, req, res }))
+      .then(({ status, data }) => ({ status, data }));
   }
 
   static add(mw) {

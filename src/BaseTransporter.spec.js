@@ -194,9 +194,14 @@ describe('BaseTransporter', function () {
           action: 'create',
           res: 'res',
           req: 'req',
+          data: 'data',
+          status: 'status',
         });
 
-        expect(returnedData).toBe('res');
+        expect(returnedData).toEqual({
+          data: 'data',
+          status: 'status',
+        });
 
         done();
       });
@@ -210,6 +215,8 @@ describe('BaseTransporter', function () {
         resolve({
           res: 'res',
           req: 'req',
+          status: 'status',
+          data: 'data',
         });
       });
     });
@@ -352,5 +359,22 @@ describe('BaseTransporter', function () {
     expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(
       jasmine.any(this.TransactionItemMock));
     expect(this.testTransporter._sendRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('should throw an error when interface methods are not implemented', function () {
+    class NotImplementedTransporter extends BaseTransporter {}
+
+    const transporter = new NotImplementedTransporter();
+    expect(() => {
+      transporter.onceAvailable();
+    }).toThrowError('should be implemented by the transporter');
+
+    expect(() => {
+      transporter._prepareRequest();
+    }).toThrowError('should be implemented by the transporter');
+
+    expect(() => {
+      transporter._request();
+    }).toThrowError('should be implemented by the transporter');
   });
 });

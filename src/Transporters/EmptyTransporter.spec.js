@@ -1,4 +1,5 @@
 import EmptyTransporter from './EmptyTransporter';
+import { PROMISE_STATE } from '../constants';
 
 describe('EmptyTransporter', function () {
   beforeEach(function () {
@@ -9,14 +10,29 @@ describe('EmptyTransporter', function () {
         input: 'data',
       };
       this.emptyTransporter[action](inputData).then((outputData) => {
-        expect(outputData).toBe(inputData);
+        expect(outputData.status).toBe(PROMISE_STATE.RESOLVED);
+        expect(outputData.data).toBe(inputData);
         done();
       });
     };
   });
 
   it('should do fake "create" request', function (done) {
-    this.doFakeRequest('create', done);
+    const inputData = {
+      input: 'data',
+    };
+
+    const emptyTransporter = new EmptyTransporter('____id');
+
+    emptyTransporter.create(inputData).then((outputData) => {
+      expect(outputData).toEqual({
+        status: PROMISE_STATE.RESOLVED,
+        data: {
+          ____id: jasmine.any(String),
+        },
+      });
+      done();
+    });
   });
 
   it('should do fake "update" request', function (done) {
@@ -41,6 +57,12 @@ describe('EmptyTransporter', function () {
   it('should do fake "initialFetch" request', function (done) {
     this.emptyTransporter.initialFetch().then((outputData) => {
       expect(outputData).toEqual([]);
+      done();
+    });
+  });
+
+  it('should get onceAvailable', function (done) {
+    this.emptyTransporter.onceAvailable().then(() => {
       done();
     });
   });
