@@ -57,9 +57,22 @@ class Schema {
     this._isLocked = true;
   }
 
-  setPrimaryKey(item: Object, data: Object) {
-    this._setKeyIfUndefined('', item, data);
-    this._setKeyIfUndefined('_', item, data);
+  setPrimaryKey(source: DataSource, item: Object, data: Object) {
+    let prefix;
+    if (source === SOURCE.CLIENT_STORAGE) {
+      prefix = '_';
+    } else if (source === SOURCE.TRANSPORTER) {
+      prefix = '';
+    } else {
+      throw new Error('unsupported source');
+    }
+
+    const key = this._primaryKey[`${prefix}key`];
+    const dataKey = data[key];
+    const itemKey = item[key];
+    if (dataKey !== undefined && itemKey === undefined) {
+      item[key] = dataKey;
+    }
   }
 
   _setFromState(item: Object, data: Object, options: Object): Promise {
@@ -222,15 +235,6 @@ class Schema {
     return Promise.all(promises).then(() => item);
   }
 
-  _setKeyIfUndefined(prefix: string, item: Object, data: Object) {
-    const key = this._primaryKey[`${prefix}key`];
-    const dataKey = data[key];
-    const itemKey = item[key];
-    if (dataKey !== undefined && itemKey === undefined) {
-      item[key] = dataKey;
-    }
-  }
-
   static _mergeFromSet({ item, filteredData, options }, observables) {
     const { establishObservables } = options;
     _.merge(item, filteredData);
@@ -302,20 +306,17 @@ class Schema {
    *
    * initialData is an object with data, that has to be in the result as well
    */
-  // getForTransporter(item, initialData){}
-  /**
-   * same as getForTransporter but for the clientStorage
-   */
-  // getForClientStorage(item, initialData){}
+  // getFor(source: DataSource, item: Object, initialData: Object) {
+  //
+  // }
+
   /**
    * gets the transporter primary key. The function is only called when the key
    * already exists, so this should be sync. returns { <key_name> : <key_value> }
    */
-  // getPrimaryKeyForTransporter(item) {}
-  /**
-   * same as getPrimaryKeyForTransporter but for clientStorage
-   */
-  // getPrimaryKeyForClientStorage(item) {}
+  // getPrimaryKey(source: DataSource, item: Object) {
+  //
+  // }
 }
 
 export default Schema;

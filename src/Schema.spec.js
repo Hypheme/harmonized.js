@@ -192,7 +192,7 @@ describe('Schema', function () {
       _id: 567,
     };
 
-    schema.setPrimaryKey(item, { id: 123 });
+    schema.setPrimaryKey(SOURCE.TRANSPORTER, item, { _id: 120, id: 123 });
     expect(item).toEqual({
       brand: 'Volkswagen',
       id: 123,
@@ -215,7 +215,7 @@ describe('Schema', function () {
       _id: 567,
     };
 
-    schema.setPrimaryKey(item, { id: 123 });
+    schema.setPrimaryKey(SOURCE.TRANSPORTER, item, { id: 123 });
     expect(item).toEqual({
       brand: 'Volkswagen',
       id: 9001,
@@ -237,7 +237,7 @@ describe('Schema', function () {
       id: 456,
     };
 
-    schema.setPrimaryKey(item, { _id: 123 });
+    schema.setPrimaryKey(SOURCE.CLIENT_STORAGE, item, { id: 123, _id: 123 });
     expect(item).toEqual({
       brand: 'Volkswagen',
       id: 456,
@@ -260,12 +260,32 @@ describe('Schema', function () {
       _id: 9001,
     };
 
-    schema.setPrimaryKey(item, { _id: 123 });
+    schema.setPrimaryKey(SOURCE.CLIENT_STORAGE, item, { _id: 123 });
     expect(item).toEqual({
       brand: 'Volkswagen',
       id: 456,
       _id: 9001,
     });
+  });
+
+  it('should throw error when primary key for unknown source should be set', function () {
+    const inputDefinition = {
+      properties: {
+        brand: String,
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+
+    const item = {
+      brand: 'Volkswagen',
+      id: 456,
+      _id: 9001,
+    };
+
+    expect(() => {
+      schema.setPrimaryKey(SOURCE.STATE, item, { _id: 123 });
+    }).toThrow(new Error('unsupported source'));
   });
 
   it('should get observables', function (done) {
