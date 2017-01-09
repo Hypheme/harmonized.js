@@ -102,10 +102,10 @@ describe('Item', function () {
         expect(myItem._synchronize).toHaveBeenCalledWith();
       }).then(() => {
         myItem._isReady.transporter.resolve();
-        return myItem.onceReadyFor(SOURCE.TRANSPORTER);
+        return myItem.onceReadyFor(TARGET.TRANSPORTER);
       }).then(() => {
         myItem._isReady.clientStorage.resolve();
-        return myItem.onceReadyFor(SOURCE.CLIENT_STORAGE);
+        return myItem.onceReadyFor(TARGET.CLIENT_STORAGE);
       });
     });
 
@@ -146,8 +146,8 @@ describe('Item', function () {
         expect(myItem._synchronize).toHaveBeenCalledWith();
       }).then(() => {
         myItem._isReady.transporter.resolve();
-        return myItem.onceReadyFor(SOURCE.TRANSPORTER);
-      }).then(() => myItem.onceReadyFor(SOURCE.CLIENT_STORAGE));
+        return myItem.onceReadyFor(TARGET.TRANSPORTER);
+      }).then(() => myItem.onceReadyFor(TARGET.CLIENT_STORAGE));
     });
 
     it('should create item from client storage thats marked as removed', function () {
@@ -223,10 +223,10 @@ describe('Item', function () {
           .toHaveBeenCalledWith(SOURCE.TRANSPORTER, myItem, input, { establishObservables: true });
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
         expect(myItem._synchronize).toHaveBeenCalledWith();
-      }).then(() => myItem.onceReadyFor(SOURCE.TRANSPORTER))
+      }).then(() => myItem.onceReadyFor(TARGET.TRANSPORTER))
       .then(() => {
         myItem._isReady.clientStorage.resolve();
-        return myItem.onceReadyFor(SOURCE.CLIENT_STORAGE);
+        return myItem.onceReadyFor(TARGET.CLIENT_STORAGE);
       });
     });
 
@@ -295,12 +295,24 @@ describe('Item', function () {
 
     describe('onceReadyFor', function () {
       it('should return the clientStorage promise', function () {
-        expect(this.item.onceReadyFor(SOURCE.CLIENT_STORAGE))
+        expect(this.item.onceReadyFor(TARGET.CLIENT_STORAGE))
           .toEqual(this.item._isReady.clientStorage.promise);
       });
       it('should return the transporter promise', function () {
-        expect(this.item.onceReadyFor(SOURCE.TRANSPORTER))
+        expect(this.item.onceReadyFor(TARGET.TRANSPORTER))
           .toEqual(this.item._isReady.transporter.promise);
+      });
+    });
+
+    describe('isReady', function () {
+      it('should return true if item is ready', function () {
+        expect(this.item.isReadyFor(TARGET.CLIENT_STORAGE))
+          .toEqual(false);
+      });
+      it('should return true if item is ready', function () {
+        this.item._setPrimaryKey(SOURCE.CLIENT_STORAGE, {});
+        expect(this.item.isReadyFor(TARGET.CLIENT_STORAGE))
+          .toEqual(true);
       });
     });
 
@@ -390,7 +402,7 @@ describe('Item', function () {
               inProgress: undefined,
               next: undefined,
             });
-            this.item.onceReadyFor(SOURCE.CLIENT_STORAGE)
+            this.item.onceReadyFor(TARGET.CLIENT_STORAGE)
             .then(() => done());
           } else {
             this.item._synchronize(STATE.BEING_CREATED, STATE.EXISTENT);
@@ -529,7 +541,7 @@ describe('Item', function () {
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { _id: 456 });
             expect(testStore.clientStorage.update)
             .toHaveBeenCalledWith({ _id: 456, data: 'clientStorage' });
-            this.item.onceReadyFor(SOURCE.TRANSPORTER)
+            this.item.onceReadyFor(TARGET.TRANSPORTER)
               .then(() => done());
           } else {
             this.item._synchronize(STATE.EXISTENT, STATE.BEING_CREATED);

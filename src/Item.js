@@ -43,8 +43,12 @@ export default class Item {
   // PUBLIC METHODS //
   // //////////////////
 
-  onceReadyFor(source) {
-    return this._isReady[source.NAME].promise;
+  onceReadyFor(target) {
+    return this._isReady[target.NAME].promise;
+  }
+
+  isReadyFor(target) {
+    return !this._isReady[target.NAME].resolve;
   }
 
   // ///////////////////

@@ -36,6 +36,7 @@ const TARGET = {
   TRANSPORTER: {
     TARGET: 'TRANSPORTER',
     AS_SOURCE: SOURCE.TRANSPORTER,
+    NAME: 'transporter',
     STATES: '_transporterStates',
     PROCESSOR: 'transporter',
     POST_SYNC_PROCESSOR: '_postSyncTransporter',
@@ -43,6 +44,7 @@ const TARGET = {
   CLIENT_STORAGE: {
     TARGET: 'CLIENT_STORAGE',
     AS_SOURCE: SOURCE.CLIENT_STORAGE,
+    NAME: 'clientStorage',
     STATES: '_clientStorageStates',
     PROCESSOR: 'clientStorage',
     POST_SYNC_PROCESSOR: '_postSyncClientStorage',
