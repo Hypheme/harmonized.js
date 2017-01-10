@@ -5,6 +5,7 @@ import Item from './Item';
 import { SOURCE, TARGET } from './constants';
 
 type DataSource = SOURCE.STATE|SOURCE.TRANSPORTER|SOURCE.CLIENT_STORAGE;
+type DataTarget = TARGET.TRANSPORTER|TARGET.CLIENT_STORAGE;
 
 // doesn't need any logic for now. Is used to determine keys in schema setup
 class Key {}
@@ -297,11 +298,34 @@ class Schema {
     }
   }
 
-  getFor(source: DataSource, item: Item, initialData: Object = {}) {
-    const prefix = source === TARGET.CLIENT_STORAGE ? '_' : '';
-    const returnData = _.cloneDeep(initialData);
-    return item.onceReadyFor(source).then(() => {
-      const { filteredData, references } = this._getPickedData(item);
+  _resolveFor(target: DataTarget, item: Item): Promise {
+    const { references } = this._getPickedData(item);
+    let unresolvedReferences = [];
+    this.references.forEach((value, key) => {
+      const ref = _.get(references, key);
+      if (_.isArray(ref)) {
+        unresolvedReferences = unresolvedReferences.concat(ref
+          .filter(refItem => !refItem.isReadyFor(target))
+          .map(refItem => refItem.onceReadyFor(target))
+        );
+      } else if (!ref.isReadyFor(target)) {
+        unresolvedReferences.push(ref.onceReadyFor(target));
+      }
+    });
+
+    if (unresolvedReferences.length > 0) {
+      return Promise.all(unresolvedReferences)
+        .then(() => this._resolveFor(target, references));
+    }
+
+    return Promise.resolve();
+  }
+
+  getFor(target: DataTarget, item: Item, initialData: Object = {}): Promise {
+    const prefix = target === TARGET.CLIENT_STORAGE ? '_' : '';
+
+    return this._resolveFor(target, item).then(() => {
+      const { references, filteredData } = this._getPickedData(item);
       const convertedReferences = {};
       this.references.forEach((value, key) => {
         const ref = _.get(references, key);
@@ -312,7 +336,8 @@ class Schema {
           _.set(convertedReferences, key, ref[value[`${prefix}key`]]);
         }
       });
-      return _.merge({}, filteredData, returnData, convertedReferences);
+
+      return _.merge({}, filteredData, initialData, convertedReferences);
     });
   }
 
