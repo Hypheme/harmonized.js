@@ -70,6 +70,18 @@ describe('Item', function () {
       spyOn(testStore.schema, 'getObservables').and.returnValue('something');
     });
 
+    it('should create basic item structure', function () {
+      const myItem = new TestItem({
+        autoSave: true,
+        store: testStore,
+      });
+      expect(myItem._syncPromises).toEqual({});
+      expect(myItem.__id).toBeDefined();
+      expect(myItem._store).toEqual(testStore);
+      expect(myItem._isReady.transporter).toBeDefined();
+      expect(myItem._isReady.clientStorage).toBeDefined();
+    });
+
     it('should create item from state', function () {
       spyOn(testStore.schema, 'setFrom').and
         .returnValue(Promise.resolve('setFromStateResponse'));
@@ -77,6 +89,9 @@ describe('Item', function () {
         autoSave: true,
         store: testStore,
       });
+      expect(myItem._syncPromises).toEqual({});
+      expect(myItem.__id).toBeDefined();
+      expect(myItem._store).toEqual(testStore);
       const construction = myItem.construct(input, { source: SOURCE.STATE });
       expect(myItem._transporterStates).toEqual({
         current: undefined,
@@ -92,9 +107,6 @@ describe('Item', function () {
       expect(myItem.synced).toBe(false);
       expect(myItem.removed).toBe(false);
       expect(myItem.autoSave).toEqual(true);
-
-      expect(myItem.__id).toBeDefined();
-      expect(myItem._store).toEqual(testStore);
       return construction.then(() => {
         expect(testStore.schema.setFrom)
           .toHaveBeenCalledWith(SOURCE.STATE, myItem, input, { establishObservables: true });
@@ -134,8 +146,6 @@ describe('Item', function () {
       expect(myItem.removed).toBe(false);
       expect(myItem.autoSave).toEqual(true);
 
-      expect(myItem.__id).toBeDefined();
-      expect(myItem._store).toEqual(testStore);
       return construction.then(() => {
         expect(testStore.schema.setPrimaryKey)
           .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, myItem, input);
@@ -176,8 +186,6 @@ describe('Item', function () {
       expect(myItem.removed).toBe(true);
       expect(myItem.autoSave).toEqual(true);
 
-      expect(myItem.__id).toBeDefined();
-      expect(myItem._store).toEqual(testStore);
       return construction.then(() => {
         expect(testStore.schema.setPrimaryKey)
           .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, myItem, input);
@@ -214,8 +222,6 @@ describe('Item', function () {
       expect(myItem.removed).toBe(false);
       expect(myItem.autoSave).toEqual(true);
 
-      expect(myItem.__id).toBeDefined();
-      expect(myItem._store).toEqual(testStore);
       return construction.then(() => {
         expect(testStore.schema.setPrimaryKey)
           .toHaveBeenCalledWith(SOURCE.TRANSPORTER, myItem, input);
@@ -1103,6 +1109,9 @@ describe('Item', function () {
           }
         });
       });
+
+      it('should resolve as promise when done');
+      it('should resolve all promises when multilpe synchronize run in parallel');
     });
   });
 });

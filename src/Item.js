@@ -9,6 +9,7 @@ export default class Item {
     this._store = store;
     this._createRunTimeId();
     this._establishIsReadyPromises();
+    this._syncPromises = {};
   }
   construct(values = {}, { source }) {
     let p;
@@ -51,6 +52,11 @@ export default class Item {
     return !this._isReady[target.NAME].resolve;
   }
 
+  // update(values, source = SOURCE.STATE) {}
+  // delete(source = SOURCE.STATE) {} // same as remove
+  // remove(source = SOURCE.STATE) {}
+  // fetch(source = SOURCE.TRANSPORTER) {}
+
   // ///////////////////
   // PRIVATE METHODS //
   // ///////////////////
@@ -82,7 +88,7 @@ export default class Item {
           next: undefined,
         };
       default:
-        throw new Error('inkown initial state');
+        throw new Error('unkown initial state');
     }
   }
 
@@ -275,26 +281,16 @@ export default class Item {
   }
 
   _postSyncTransporter(workingState) {
-    const itemKeys = this._store.schema.getPrimaryKey(TARGET.CLIENT_STORAGE, this);
-    if (workingState === STATE.BEING_DELETED) {
-      return this._store.clientStorage.delete(itemKeys);
-    }
-    return this._store.schema.getFor(TARGET.CLIENT_STORAGE, this, itemKeys)
-      .then(data => this._store.clientStorage.update(data));
+    return this._synchronizeFor(TARGET.CLIENT_STORAGE,
+      workingState === STATE.BEING_DELETED ? STATE.BEING_DELETED : STATE.BEING_UPDATED);
   }
 
   // TODO get _transporterState we will compute _transporterState out of _transporterStates
 
-  _setNextStoreState(state) {
-    this._clientStorageStates.next = this._getNextActionState(
-      this._clientStorageStates.inProgress || this._clientStorageStates.current,
-      this._clientStorageStates.next,
-      state);
-  }
-  _setNextTransporterState(state) {
-    this._transporterStates.next = this._getNextActionState(
-      this._transporterStates.inProgress || this._transporterStates.current,
-      this._transporterStates.next,
+  _setNextStateFor(target, state) {
+    this[target.STATES].next = this._getNextActionState(
+      this[target.STATES].inProgress || this[target.STATES].current,
+      this[target.STATES].next,
       state);
   }
 
@@ -316,31 +312,25 @@ export default class Item {
   }
 
   _synchronize(clientStorageState, transporterState) {
-    // first determine if a sync process is already happening
-    const clientStorageSyncInProgress = this._clientStorageStates.inProgress
-      || this._clientStorageStates.next;
-    const transporterSyncInProgress = this._transporterStates.inProgress
-      || this._transporterStates.next;
-    // merge the new state with the exiting ones
-    this._setNextStoreState(clientStorageState);
-    this._setNextTransporterState(transporterState);
-    // trigger sync processes if it's not already happening
-    if (!clientStorageSyncInProgress && this._clientStorageStates.next) {
-      this.stored = false;
-      this._triggerSync(TARGET.CLIENT_STORAGE)
+    return Promise.all([
+      this._synchronizeFor(TARGET.CLIENT_STORAGE, clientStorageState),
+      this._synchronizeFor(TARGET.TRANSPORTER, transporterState),
+    ]);
+  }
+
+  _synchronizeFor(target, state) {
+    const syncInProgress = this[target.STATES].inProgress
+      || this[target.STATES].next;
+    this._setNextStateFor(target, state);
+    if (!syncInProgress && this[target.STATES].next) {
+      this[target.STATUS_KEY] = false;
+      this._syncPromises[target.NAME] = this._triggerSync(target)
         .then(() => {
-          this.stored = true;
+          this[target.STATUS_KEY] = true;
         })
-        .catch(err => this._lock(TARGET.CLIENT_STORAGE, err));
+        .catch(err => this._lock(target, err));
     }
-    if (!transporterSyncInProgress && this._transporterStates.next) {
-      this.synced = false;
-      this._triggerSync(TARGET.TRANSPORTER)
-        .then(() => {
-          this.synced = true;
-        })
-        .catch(err => this._lock(TARGET.TRANSPORTER, err));
-    }
+    return this._syncPromises[target.NAME];
   }
 
   _triggerSync(target) {
@@ -378,7 +368,7 @@ export default class Item {
                 }
                 return Promise.resolve();
               });
-          }
+          } // TODO check if returned result.status === PROMISE_STATE.NOT_FOUND => remove item
           if (this[target.STATES].inProgress === STATE.BEING_CREATED) {
             this._setPrimaryKey(target.AS_SOURCE, result.data);
           }
