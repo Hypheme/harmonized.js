@@ -52,10 +52,65 @@ export default class Item {
     return !this._isReady[target.NAME].resolve;
   }
 
-  // update(values, source = SOURCE.STATE) {}
-  // delete(source = SOURCE.STATE) {} // same as remove
-  // remove(source = SOURCE.STATE) {}
-  // fetch(source = SOURCE.TRANSPORTER) {}
+  update(values, source = SOURCE.STATE) {
+    return this._store.schema.setFrom(source, values)
+      .then(() => this._synchronize(
+        source === SOURCE.CLIENT_STORAGE ? STATE.EXISTENT : STATE.BEING_UPDATED,
+        source === SOURCE.TRANSPORTER ? STATE.EXISTENT : STATE.BEING_UPDATED
+      )
+    );
+  }
+
+  delete(source = SOURCE.STATE) {
+    return this.remove(source);
+  }
+
+  remove(source = SOURCE.STATE) {
+    this._store.remove(this);
+    let p;
+    switch (source) {
+      case SOURCE.STATE:
+        p = this._synchronize(
+          // we mark it in clientStorage as existent as it gets deleted after the
+          // transporter deleted it. We need this to save our current wish (to delete)
+          // in our clientStorage in case the app closes before the transporter is done
+          // see this._postSyncTransporter
+          STATE.EXISTENT,
+          STATE.BEING_DELETED
+        );
+        break;
+      case SOURCE.TRANSPORTER:
+        this._transporterStates.current = STATE.DELETED;
+        p = this._synchronize(
+          STATE.BEING_DELETED,
+          undefined,
+        );
+        break;
+      case SOURCE.CLIENT_STORAGE:
+        this._clientStorageStates.current = STATE.DELETED;
+        p = this._synchronize(
+          undefined,
+          STATE.BEING_DELETED,
+        );
+        break;
+      default:
+        this._lock(undefined, new Error('unkown source in item.remove'));
+        return Promise.reject(this.error.error);
+    }
+    return p.then(() => {
+      this.removed = true;
+      this._dispose();
+      // TODO (maybe): this._store.delete(this);
+      // TODO (planned for version 0.3): this._onDeleteTrigger()
+    });
+  }
+
+  fetch(source = SOURCE.TRANSPORTER) {
+    return this._synchronize(
+      source === SOURCE.CLIENT_STORAGE ? STATE.BEING_FETCHED : STATE.EXISTENT,
+      source === SOURCE.TRANSPORTER ? STATE.BEING_FETCHED : STATE.EXISTENT,
+    );
+  }
 
   // ///////////////////
   // PRIVATE METHODS //
@@ -101,7 +156,7 @@ export default class Item {
       this._computeInitialStates(values._transporterState || STATE.BEING_CREATED);
     this._clientStorageStates =
       this._computeInitialStates(this._transporterStates.next === STATE.BEING_DELETED ?
-        STATE.REMOVED : STATE.EXISTENT);
+        STATE.REMOVED : STATE.EXISTENT); // TODO (maybe): change REMOVED to EXISTENT
     this.removed = (this._clientStorageStates.current === STATE.REMOVED);
     this.stored = true;
     this.synced = (this._transporterStates.next === undefined);
@@ -313,8 +368,10 @@ export default class Item {
 
   _synchronize(clientStorageState, transporterState) {
     return Promise.all([
-      this._synchronizeFor(TARGET.CLIENT_STORAGE, clientStorageState),
+      // the order matters as we need to make sure the transporterState is set before
+      // getFor(clientStorage) is called.
       this._synchronizeFor(TARGET.TRANSPORTER, transporterState),
+      this._synchronizeFor(TARGET.CLIENT_STORAGE, clientStorageState),
     ]);
   }
 
@@ -368,7 +425,11 @@ export default class Item {
                 }
                 return Promise.resolve();
               });
-          } // TODO check if returned result.status === PROMISE_STATE.NOT_FOUND => remove item
+          }
+          // the item was deleted by another client
+          if (result.status === PROMISE_STATE.NOT_FOUND) {
+            return this.remove(target.AS_SOURCE);
+          }
           if (this[target.STATES].inProgress === STATE.BEING_CREATED) {
             this._setPrimaryKey(target.AS_SOURCE, result.data);
           }
