@@ -6,7 +6,20 @@ import {
 import Schema, { Key, NumberKey } from './Schema';
 import { SOURCE, TARGET } from './constants';
 
+
 describe('Schema', function () {
+  class TestItemClass {
+    autosaveSetHistory = [];
+
+    set autoSave(value) {
+      this.autosaveSetHistory.push(value);
+    }
+
+    get autoSave() {
+      return 'old autosave value';
+    }
+  }
+
   function detach(cb) {
     setTimeout(cb, 0);
   }
@@ -446,7 +459,6 @@ describe('Schema', function () {
 
     const schema = new Schema(inputDefinition);
 
-    class TestItemClass {}
     const item = new TestItemClass();
     const data = {
       brand: 'testbrand',
@@ -476,6 +488,7 @@ describe('Schema', function () {
         },
       },
     });
+    expect(item.autosaveSetHistory).toEqual([false, 'old autosave value']);
 
     schema.setFrom(SOURCE.STATE, item, {
       brand: 'newname',
@@ -500,6 +513,12 @@ describe('Schema', function () {
         },
       },
     });
+    expect(item.autosaveSetHistory).toEqual([
+      false,
+      'old autosave value',
+      false,
+      'old autosave value',
+    ]);
   });
 
   it('should set item from state with establishing observables', function (done) {
@@ -544,7 +563,6 @@ describe('Schema', function () {
 
     const schema = new Schema(inputDefinition);
 
-    class TestItemClass {}
     const item = new TestItemClass();
     const data = {
       brand: 'testbrand',
@@ -570,6 +588,10 @@ describe('Schema', function () {
     expect(item.seats.deeper.test).toBe(123);
     expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
     expect(item.seats.deeper.evenDeeper.property2).toBe(true);
+    expect(item.autosaveSetHistory).toEqual([
+      false,
+      'old autosave value',
+    ]);
 
     let autorunCount = 0;
     const dispose = autorun(() => {
@@ -601,6 +623,12 @@ describe('Schema', function () {
       expect(item.seats.deeper.test).toBe(123);
       expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
       expect(item.seats.deeper.evenDeeper.property2).toBe(false);
+      expect(item.autosaveSetHistory).toEqual([
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+      ]);
 
       expect(autorunCount).toBe(3);
 
@@ -624,6 +652,15 @@ describe('Schema', function () {
       expect(item.seats.newProp).toBe(undefined);
       expect(item.seats.front).toBe(3);
       expect(item.seats.deeper.evenDeeper.property1).toBe('hahaha');
+      expect(item.autosaveSetHistory).toEqual([
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+      ]);
+
       detach(dispose);
       detach(done);
     });
@@ -708,7 +745,6 @@ describe('Schema', function () {
 
     const schema = new Schema(inputDefinition);
 
-    class TestItemClass {}
     const item = new TestItemClass();
     const data = {
       brand: 'testbrand',
@@ -758,6 +794,24 @@ describe('Schema', function () {
         pid: 200,
       });
 
+      expect(item.autosaveSetHistory).toEqual([
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+      ]);
+      item.autosaveSetHistory = [];
+
       data.passengers = [1];
       schema.setFrom(SOURCE.TRANSPORTER, item, data, {
         establishObservables: false,
@@ -769,9 +823,19 @@ describe('Schema', function () {
         expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
           pid: 1,
         });
-      });
+        expect(item.autosaveSetHistory).toEqual([
+          false,
+          'old autosave value',
+          false,
+          'old autosave value',
+          false,
+          'old autosave value',
+          false,
+          'old autosave value',
+        ]);
 
-      done();
+        done();
+      });
     });
   });
 
@@ -859,7 +923,6 @@ describe('Schema', function () {
 
     const schema = new Schema(inputDefinition);
 
-    class TestItemClass {}
     const item = new TestItemClass();
     const data = {
       brand: 'testbrand',
@@ -917,6 +980,29 @@ describe('Schema', function () {
         pid: 200,
       });
 
+      // Following leads to this amount of autosave sets:
+      // * 1x synchronous set of all non foreign values
+      // * 1x setting array of foreign values before it's values are resolvedItem
+      // * 4x setting of values of this array
+      // * 1x setting of foreign value in onlyOneChild.oneToOne
+      expect(item.autosaveSetHistory).toEqual([
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+      ]);
+      item.autosaveSetHistory = [];
+
       let autorunCount = 0;
       const dispose = autorun(() => {
         let blub = '';
@@ -949,6 +1035,12 @@ describe('Schema', function () {
 
         expect(autorunCount).toBe(3);
 
+        expect(item.autosaveSetHistory).toEqual([
+          false,
+          'old autosave value',
+        ]);
+        item.autosaveSetHistory = [];
+
         schema.setFrom(SOURCE.TRANSPORTER, item, {
           brand: 'supernewname',
           passengers: [1],
@@ -978,6 +1070,16 @@ describe('Schema', function () {
           });
           expect(item.passengers.length).toBe(1);
           expect(item.passengers[0]).toBe('item one');
+
+          expect(item.autosaveSetHistory).toEqual([
+            false,
+            'old autosave value',
+            false,
+            'old autosave value',
+            false,
+            'old autosave value',
+          ]);
+
           detach(dispose);
           detach(done);
         });
@@ -1064,7 +1166,6 @@ describe('Schema', function () {
 
     const schema = new Schema(inputDefinition);
 
-    class TestItemClass {}
     const item = new TestItemClass();
     const data = {
       brand: 'testbrand',
@@ -1112,6 +1213,29 @@ describe('Schema', function () {
         _pid: 200,
       });
 
+      // Following leads to this amount of autosave sets:
+      // * 1x synchronous set of all non foreign values
+      // * 1x setting array of foreign values before it's values are resolvedItem
+      // * 4x setting of values of this array
+      // * 1x setting of foreign value in onlyOneChild.oneToOne
+      expect(item.autosaveSetHistory).toEqual([
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+      ]);
+      item.autosaveSetHistory = [];
+
       data.passengers = [1];
       schema.setFrom(SOURCE.CLIENT_STORAGE, item, data).then(() => {
         expect(item.passengers).toEqual(['item one']);
@@ -1119,6 +1243,17 @@ describe('Schema', function () {
         expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
           _pid: 1,
         });
+
+        expect(item.autosaveSetHistory).toEqual([
+          false,
+          'old autosave value',
+          false,
+          'old autosave value',
+          false,
+          'old autosave value',
+          false,
+          'old autosave value',
+        ]);
 
         done();
       });
@@ -1209,7 +1344,6 @@ describe('Schema', function () {
 
     const schema = new Schema(inputDefinition);
 
-    class TestItemClass {}
     const item = new TestItemClass();
     const data = {
       brand: 'testbrand',
@@ -1266,6 +1400,23 @@ describe('Schema', function () {
       expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
         _pid: 200,
       });
+
+      expect(item.autosaveSetHistory).toEqual([
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+        false,
+        'old autosave value',
+      ]);
 
       let autorunCount = 0;
       const dispose = autorun(() => { // what does this even do??

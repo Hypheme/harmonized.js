@@ -84,7 +84,7 @@ class Schema {
     return Promise.resolve(item);
   }
 
-  setFrom(source: DataSource, item: Object, data: Object, options = {}): Promise {
+  setFrom(source: DataSource, item: Item, data: Object, options = {}): Promise {
     switch (source) {
       case SOURCE.TRANSPORTER:
         return this._setFromOutside('', item, data, options);
@@ -193,7 +193,7 @@ class Schema {
     return refOptions;
   }
 
-  _setForeignValues(item: Object, data: Object, prefix: string, options: Object) {
+  _setForeignValues(item: Item, data: Object, prefix: string, options: Object) {
     let promises:Array<Promise> = [];
     this.references.forEach((definition, path) => {
       const thisValue = _.get(data, path);
@@ -208,17 +208,21 @@ class Schema {
       );
 
       if (definition.type === Array) {
+        const oldAutosaveValue = item.autoSave;
+        item.autoSave = false;
+
         if (options.establishObservables) {
           Schema.extendObservable(item, refOptions.propertyKey, []);
         } else {
           refOptions.parentObj[refOptions.propertyKey] = [];
         }
 
+        item.autoSave = oldAutosaveValue;
         promises = promises.concat(thisValue.map(
-          (foreignKey, index) => Schema._resolveForeignValues(refOptions, foreignKey, index))
+          (foreignKey, index) => Schema._resolveForeignValues(refOptions, foreignKey, item, index))
         );
       } else {
-        promises.push(Schema._resolveForeignValues(refOptions, thisValue));
+        promises.push(Schema._resolveForeignValues(refOptions, thisValue, item));
       }
     });
 
@@ -227,7 +231,7 @@ class Schema {
 
   _setFromOutside(
     keyPrefix: string,
-    item: Object,
+    item: Item,
     data: Object,
     options: Object
   ): Promise {
@@ -239,15 +243,20 @@ class Schema {
 
   static _mergeFromSet({ item, filteredData, options }, observables) {
     const { establishObservables } = options;
+    const oldAutosaveValue = item.autoSave;
+    item.autoSave = false;
     _.merge(item, filteredData);
     if (establishObservables) {
       Schema.setAsObservables(item, observables);
     }
+
+    item.autoSave = oldAutosaveValue;
   }
 
   static _resolveForeignValues(
     { definition, key, propertyKey, parentObj, options },
     foreignKey: string|Number,
+    item: Item,
     index: ?Number
   ): Promise {
     const ref = (definition.items) ? definition.items.ref : definition.ref;
@@ -255,6 +264,9 @@ class Schema {
       const resolver = {};
       resolver[key] = foreignKey;
       const newValue = ref.findOne(resolver);
+
+      const oldAutosaveValue = item.autoSave;
+      item.autoSave = false;
       if (options.establishObservables && index === undefined) {
         Schema.extendObservable(parentObj, propertyKey, newValue);
       } else if (index === undefined) {
@@ -262,6 +274,8 @@ class Schema {
       } else {
         parentObj[propertyKey][index] = newValue;
       }
+
+      item.autoSave = oldAutosaveValue;
     });
   }
 
