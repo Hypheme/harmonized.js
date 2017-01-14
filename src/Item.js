@@ -144,6 +144,12 @@ export default class Item {
     }
   }
 
+  _computeTransporterStateForClientStorage() {
+    return (this._transporterStates.next ||
+      this._transporterStates.inProgress ||
+      this._transporterStates.current).STATE;
+  }
+
   _createRunTimeId() {
     this.__id = uuid();
   }
@@ -213,6 +219,15 @@ export default class Item {
       default:
         return STATE.LOCKED;
     }
+  }
+
+  _getForClientStorage(target, itemKeys) {
+    itemKeys._transporterState = this._computeTransporterStateForClientStorage();
+    return this._store.schema.getFor(target, this, itemKeys);
+  }
+
+  _getForTransporter(target, itemKeys) {
+    return this._store.schema.getFor(target, this, itemKeys);
   }
 
   _getNextActionState(current, next, newState) {
@@ -339,8 +354,6 @@ export default class Item {
     return this._synchronizeFor(TARGET.CLIENT_STORAGE, STATE.BEING_UPDATED);
   }
 
-  // TODO get _transporterState we will compute _transporterState out of _transporterStates
-
   /**
    * this does basically the same as remove, but for only one state and by circumventing
    * _synchronize.
@@ -453,7 +466,7 @@ export default class Item {
       this._store.schema.getPrimaryKey(target, this);
     return ((workingState === STATE.BEING_DELETED || workingState === STATE.BEING_FETCHED) ?
       Promise.resolve(itemKeys) : // no payload needed for deleting/fetching
-      this._store.schema.getFor(target, this, itemKeys))
+      this[target.GET_FOR](target, itemKeys))
     .then(itemData => {
       if (!this[target.STATES].next) {
         // if next is no longer set due to merging create and delete action together

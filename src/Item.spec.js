@@ -494,11 +494,15 @@ describe('Item', function () {
             dispose();
             expect(result).toBe(true);
             expect(testStore.clientStorage.create)
-            .toHaveBeenCalledWith({ data: 'clientStorage' });
+            .toHaveBeenCalledWith({
+              data: 'clientStorage',
+              _transporterState: STATE.EXISTENT.STATE,
+            });
             expect(testStore.schema.getPrimaryKey)
             .not.toHaveBeenCalled();
             expect(testStore.schema.getFor)
-            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, {});
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item,
+              { _transporterState: STATE.EXISTENT.STATE });
             expect(testStore.schema.setPrimaryKey)
             .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, this.item, { _id: 456 });
             expect(testStore.schema.setFrom)
@@ -527,11 +531,16 @@ describe('Item', function () {
             dispose();
             expect(result).toBe(true);
             expect(testStore.clientStorage.update)
-            .toHaveBeenCalledWith({ _id: 456, data: 'clientStorage' });
+            .toHaveBeenCalledWith({
+              _id: 456,
+              _transporterState: STATE.EXISTENT.STATE,
+              data: 'clientStorage',
+            });
             expect(testStore.schema.getPrimaryKey)
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
             expect(testStore.schema.getFor)
-            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { _id: 456 });
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item,
+              { _id: 456, _transporterState: STATE.EXISTENT.STATE });
             expect(testStore.schema.setPrimaryKey)
             .not.toHaveBeenCalled();
             expect(testStore.schema.setFrom)
@@ -644,9 +653,13 @@ describe('Item', function () {
             expect(testStore.schema.getPrimaryKey)
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
             expect(testStore.schema.getFor)
-            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { _id: 456 });
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, {
+              _id: 456, _transporterState: STATE.EXISTENT.STATE });
             expect(testStore.clientStorage.update)
-            .toHaveBeenCalledWith({ _id: 456, data: 'clientStorage' });
+            .toHaveBeenCalledWith({
+              _id: 456,
+              _transporterState: STATE.EXISTENT.STATE,
+              data: 'clientStorage' });
             this.item.onceReadyFor(TARGET.TRANSPORTER)
               .then(() => done());
           } else {
@@ -688,9 +701,14 @@ describe('Item', function () {
             expect(testStore.schema.getPrimaryKey)
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
             expect(testStore.schema.getFor)
-            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { _id: 456 });
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item,
+              { _id: 456, _transporterState: STATE.EXISTENT.STATE });
             expect(testStore.clientStorage.update)
-            .toHaveBeenCalledWith({ _id: 456, data: 'clientStorage' });
+            .toHaveBeenCalledWith({
+              _id: 456,
+              _transporterState: STATE.EXISTENT.STATE,
+              data: 'clientStorage',
+            });
             done();
           } else {
             this.item._synchronize(STATE.EXISTENT, STATE.BEING_UPDATED);
@@ -773,9 +791,14 @@ describe('Item', function () {
             expect(testStore.schema.getPrimaryKey)
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
             expect(testStore.schema.getFor)
-            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { _id: 456 });
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item,
+              { _id: 456, _transporterState: STATE.EXISTENT.STATE });
             expect(testStore.clientStorage.update)
-            .toHaveBeenCalledWith({ _id: 456, data: 'clientStorage' });
+            .toHaveBeenCalledWith({
+              _id: 456,
+              _transporterState: STATE.EXISTENT.STATE,
+              data: 'clientStorage',
+            });
             done();
           } else {
             this.item._synchronize(STATE.EXISTENT, STATE.BEING_FETCHED);
@@ -1101,9 +1124,14 @@ describe('Item', function () {
             expect(testStore.schema.getPrimaryKey)
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
             expect(testStore.schema.getFor)
-            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item, { _id: 456 });
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item,
+              { _id: 456, _transporterState: STATE.EXISTENT.STATE });
             expect(testStore.clientStorage.update)
-            .toHaveBeenCalledWith({ _id: 456, data: 'clientStorage' });
+            .toHaveBeenCalledWith({
+              _id: 456,
+              _transporterState: STATE.EXISTENT.STATE,
+              data: 'clientStorage',
+            });
             done();
           } else {
             this.item._synchronize(STATE.EXISTENT, STATE.BEING_UPDATED);
