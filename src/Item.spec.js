@@ -1210,9 +1210,51 @@ describe('Item', function () {
         });
       });
 
-      it('should resolve as promise when done');
-      it('should resolve all promises when multilpe synchronize run in parallel');
-      it('should remove item if was not found in target');
+      it('should resolve as promise when done', function (done) {
+        spyOn(testStore.clientStorage, 'update')
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
+        this.item._transporterStates.current = STATE.EXISTENT;
+        this.item._clientStorageStates.current = STATE.EXISTENT;
+        this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT)
+          .then(() => {
+            expect(testStore.clientStorage.update)
+            .toHaveBeenCalled();
+            done();
+          });
+      });
+
+      it('should resolve all promises when multilpe synchronize run in parallel', function (done) {
+        spyOn(testStore.clientStorage, 'update')
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
+        this.item._transporterStates.current = STATE.EXISTENT;
+        this.item._clientStorageStates.current = STATE.EXISTENT;
+        let endCount = 0;
+        function end() {
+          if (endCount++ === 1) {
+            expect(testStore.clientStorage.update)
+            .toHaveBeenCalledTimes(1);
+            done();
+          }
+        }
+        this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT)
+          .then(end);
+        this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT)
+          .then(end);
+      });
+
+      it('should remove item if was not found in target', function () {
+        spyOn(testStore.clientStorage, 'update')
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.NOT_FOUND, data: {} }));
+        spyOn(testStore.transporter, 'delete')
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
+        spyOn(testStore, 'remove');
+        this.item._transporterStates.current = STATE.EXISTENT;
+        this.item._clientStorageStates.current = STATE.EXISTENT;
+        return this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT)
+          .then(() => {
+            expect(this.item.removed).toBe(true);
+          });
+      });
     });
   });
 });

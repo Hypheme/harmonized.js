@@ -333,11 +333,70 @@ export default class Item {
   }
 
   _postSyncTransporter(workingState) {
-    return this._synchronizeFor(TARGET.CLIENT_STORAGE,
-      workingState === STATE.BEING_DELETED ? STATE.BEING_DELETED : STATE.BEING_UPDATED);
+    if (workingState === STATE.BEING_DELETED) {
+      return this._removeSingle(SOURCE.TRANSPORTER);
+    }
+    return this._synchronizeFor(TARGET.CLIENT_STORAGE, STATE.BEING_UPDATED);
   }
 
   // TODO get _transporterState we will compute _transporterState out of _transporterStates
+
+  /**
+   * this does basically the same as remove, but for only one state and by circumventing
+   * _synchronize.
+   * We need this, because we would otherwise create promise loops, eg a promise waits
+   * for itself to get resolved. This happens because the tarted/source switching
+   * in the process.
+   *
+   * An example: _synchronize(STATE.BEING_UPDATED, STATE.EXISTENT)
+   * -> results in an update operation in the clientStorage branch.
+   * <- the clientStorage returns PROMISE_STATE.NOT_FOUND
+   * -> we now delete the item in the transporter
+   * <- the transporter returns ok
+   * now (as usual, when sth gets removed in the transporter,
+   *   we want to delete it in clientStorage as well)
+   * BUT: if we would use our public remove function, _synchronize would get triggered
+   * and as nothing would have changed in the clientStorage branch (remember,
+   * we are already deleted in here, thats what started this whole thing),
+   * _synchronize would not create a new promise but return the last one...
+   * which is the promise from the first _synchronize
+   *
+   * => we would wait on our owm promise to be resolved to resolve
+   * => never resolved
+   */
+  _removeSingle(source) {
+    this.removed = true;
+    this._store.remove(this);
+    let p;
+    switch (source) {
+      default:
+      case SOURCE.TRANSPORTER:
+        this._transporterStates.current = STATE.DELETED;
+        if (this._clientStorageStates.current === STATE.DELETED) {
+          return Promise.resolve();
+        }
+        p = this._synchronizeFor(
+          TARGET.CLIENT_STORAGE,
+          STATE.BEING_DELETED,
+        );
+        break;
+      case SOURCE.CLIENT_STORAGE:
+        this._clientStorageStates.current = STATE.DELETED;
+        if (this._transporterStates.current === STATE.DELETED) {
+          return Promise.resolve();
+        }
+        p = this._synchronizeFor(
+          TARGET.TRANSPORTER,
+          STATE.BEING_DELETED,
+        );
+        break;
+    }
+    return p.then(() => {
+      this._dispose();
+      // TODO (maybe): this._store.delete(this);
+      // TODO (planned for version 0.3): this._onDeleteTrigger()
+    });
+  }
 
   _setNextStateFor(target, state) {
     this[target.STATES].next = this._getNextActionState(
@@ -409,12 +468,14 @@ export default class Item {
       // this is the actual call to the outside world
       return this._store[target.PROCESSOR][workingState.ACTION](itemData)
         .then(result => {
-          if (result.status === PROMISE_STATE.PENDING) {
+          if (result.status !== PROMISE_STATE.RESOLVED) {
             this[target.STATES].next = this._getNextActionState(
               this[target.STATES].current,
               this[target.STATES].inProgress,
               this[target.STATES].next);
             this[target.STATES].inProgress = undefined;
+          }
+          if (result.status === PROMISE_STATE.PENDING) {
             return this._store[target.PROCESSOR].onceAvailable()
               .then(() => {
                 if (this[target.STATES].next) { // need that bc create + delete result in undefined
@@ -425,7 +486,7 @@ export default class Item {
           }
           // the item was deleted by another client
           if (result.status === PROMISE_STATE.NOT_FOUND) {
-            return this.remove(target.AS_SOURCE);
+            return this._removeSingle(target.AS_SOURCE);
           }
           if (this[target.STATES].inProgress === STATE.BEING_CREATED) {
             this._setPrimaryKey(target.AS_SOURCE, result.data);
