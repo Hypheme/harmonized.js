@@ -405,6 +405,14 @@ describe('Item', function () {
       });
     });
 
+    describe('delete', function () {
+      it('should call remove', function () {
+        spyOn(this.item, 'remove');
+        this.item.delete();
+        expect(this.item.remove).toHaveBeenCalledTimes(1);
+      });
+    });
+
     describe('fetch', function () {
       it('should fetch from transporter', function () {
         return this.item.fetch()
