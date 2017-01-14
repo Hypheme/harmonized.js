@@ -1415,25 +1415,30 @@ describe('Schema', function () {
           pid: 123,
           _pid: 1230,
           name: 'hi',
+          isReadyFor: jasmine.createSpy('isReadyFor'),
+          onceReadyFor: jasmine.createSpy('onceReadyFor'),
         }, {
           pid: 124,
           _pid: 1231,
           name: 'hi',
+          isReadyFor: jasmine.createSpy('isReadyFor'),
+          onceReadyFor: jasmine.createSpy('onceReadyFor'),
         }, {
           pid: 125,
           _pid: 1232,
           name: 'hi',
+          isReadyFor: jasmine.createSpy('isReadyFor'),
+          onceReadyFor: jasmine.createSpy('onceReadyFor'),
         }],
         seats: {
           oneToOne: {
             pid: 9001,
             _pid: 9002,
             name: 'hi',
+            isReadyFor: jasmine.createSpy('isReadyFor'),
+            onceReadyFor: jasmine.createSpy('onceReadyFor'),
           },
         },
-
-        onceReadyFor: jasmine.createSpy('onceReadyFor')
-          .and.callFake(() => Promise.resolve()),
       };
 
       this.initialData = {
@@ -1448,79 +1453,203 @@ describe('Schema', function () {
       };
     });
 
-    it('should get for client storage', function (done) {
-      const schema = new Schema(this.inputDefinition);
-      schema.getFor(TARGET.CLIENT_STORAGE, this.item, this.initialData).then(returnedData => {
-        expect(returnedData).toEqual({
-          brand: 'VW',
-          price: '10000€',
-          passengers: [1230, 1231, 1232],
-          seats: {
-            oneToOne: 9002,
-            added: 'stuff',
-          },
-          supercool: 'property',
-          other: {
-            stuff: 'that',
-            is: 'included',
-          },
-        });
+    function setItemReady(item) {
+      item.isReadyFor.and.returnValue(true);
+      item.onceReadyFor.and.returnValue(Promise.resolve());
+    }
 
-        done();
+    function delayItemReady(item) {
+      item.isReadyFor.and.returnValues(false, false, false, true);
+      item.onceReadyFor.and.returnValue(Promise.resolve());
+    }
+
+    describe('with some items not ready yet', function () {
+      beforeEach(function () {
+        delayItemReady(this.item.passengers[0]);
+        setItemReady(this.item.passengers[1]);
+        delayItemReady(this.item.passengers[2]);
+        delayItemReady(this.item.seats.oneToOne);
+      });
+
+      it('should get for client storage', function (done) {
+        const schema = new Schema(this.inputDefinition);
+        schema.getFor(TARGET.CLIENT_STORAGE, this.item, this.initialData).then(returnedData => {
+          expect(returnedData).toEqual({
+            brand: 'VW',
+            price: '10000€',
+            passengers: [1230, 1231, 1232],
+            seats: {
+              oneToOne: 9002,
+              added: 'stuff',
+            },
+            supercool: 'property',
+            other: {
+              stuff: 'that',
+              is: 'included',
+            },
+          });
+
+          expect(this.item.passengers[0].isReadyFor).toHaveBeenCalledTimes(4);
+          expect(this.item.passengers[0].onceReadyFor).toHaveBeenCalledTimes(3);
+          expect(this.item.passengers[1].isReadyFor).toHaveBeenCalledTimes(4);
+          expect(this.item.passengers[1].onceReadyFor).toHaveBeenCalledTimes(0);
+          expect(this.item.passengers[2].isReadyFor).toHaveBeenCalledTimes(4);
+          expect(this.item.passengers[2].onceReadyFor).toHaveBeenCalledTimes(3);
+          expect(this.item.seats.oneToOne.isReadyFor).toHaveBeenCalledTimes(4);
+          expect(this.item.seats.oneToOne.onceReadyFor).toHaveBeenCalledTimes(3);
+
+          done();
+        });
+      });
+
+      it('should get for client storage without initial data', function (done) {
+        delayItemReady(this.item.passengers[0]);
+        const schema = new Schema(this.inputDefinition);
+        schema.getFor(TARGET.CLIENT_STORAGE, this.item).then(returnedData => {
+          expect(returnedData).toEqual({
+            brand: 'VW',
+            price: '10000€',
+            passengers: [1230, 1231, 1232],
+            seats: {
+              oneToOne: 9002,
+            },
+          });
+
+          done();
+        });
+      });
+
+      it('should get for transporter', function (done) {
+        const schema = new Schema(this.inputDefinition);
+        schema.getFor(TARGET.TRANSPORTER, this.item, this.initialData).then(returnedData => {
+          expect(returnedData).toEqual({
+            brand: 'VW',
+            price: '10000€',
+            passengers: [123, 124, 125],
+            seats: {
+              oneToOne: 9001,
+              added: 'stuff',
+            },
+            supercool: 'property',
+            other: {
+              stuff: 'that',
+              is: 'included',
+            },
+          });
+
+          done();
+        });
+      });
+
+      it('should get for transporter without initial data', function (done) {
+        const schema = new Schema(this.inputDefinition);
+        schema.getFor(TARGET.TRANSPORTER, this.item).then(returnedData => {
+          expect(returnedData).toEqual({
+            brand: 'VW',
+            price: '10000€',
+            passengers: [123, 124, 125],
+            seats: {
+              oneToOne: 9001,
+            },
+          });
+
+          done();
+        });
       });
     });
 
-    it('should get for client storage without initial data', function (done) {
-      const schema = new Schema(this.inputDefinition);
-      schema.getFor(TARGET.CLIENT_STORAGE, this.item).then(returnedData => {
-        expect(returnedData).toEqual({
-          brand: 'VW',
-          price: '10000€',
-          passengers: [1230, 1231, 1232],
-          seats: {
-            oneToOne: 9002,
-          },
-        });
-
-        done();
+    describe('with all items ready directly', function () {
+      beforeEach(function () {
+        setItemReady(this.item.passengers[0]);
+        setItemReady(this.item.passengers[1]);
+        setItemReady(this.item.passengers[2]);
+        setItemReady(this.item.seats.oneToOne);
       });
-    });
 
-    it('should get for transporter', function (done) {
-      const schema = new Schema(this.inputDefinition);
-      schema.getFor(TARGET.TRANSPORTER, this.item, this.initialData).then(returnedData => {
-        expect(returnedData).toEqual({
-          brand: 'VW',
-          price: '10000€',
-          passengers: [123, 124, 125],
-          seats: {
-            oneToOne: 9001,
-            added: 'stuff',
-          },
-          supercool: 'property',
-          other: {
-            stuff: 'that',
-            is: 'included',
-          },
+      it('should get for client storage', function (done) {
+        const schema = new Schema(this.inputDefinition);
+        schema.getFor(TARGET.CLIENT_STORAGE, this.item, this.initialData).then(returnedData => {
+          expect(returnedData).toEqual({
+            brand: 'VW',
+            price: '10000€',
+            passengers: [1230, 1231, 1232],
+            seats: {
+              oneToOne: 9002,
+              added: 'stuff',
+            },
+            supercool: 'property',
+            other: {
+              stuff: 'that',
+              is: 'included',
+            },
+          });
+
+          expect(this.item.passengers[0].isReadyFor).toHaveBeenCalledTimes(1);
+          expect(this.item.passengers[0].onceReadyFor).toHaveBeenCalledTimes(0);
+          expect(this.item.passengers[1].isReadyFor).toHaveBeenCalledTimes(1);
+          expect(this.item.passengers[1].onceReadyFor).toHaveBeenCalledTimes(0);
+          expect(this.item.passengers[2].isReadyFor).toHaveBeenCalledTimes(1);
+          expect(this.item.passengers[2].onceReadyFor).toHaveBeenCalledTimes(0);
+          expect(this.item.seats.oneToOne.isReadyFor).toHaveBeenCalledTimes(1);
+          expect(this.item.seats.oneToOne.onceReadyFor).toHaveBeenCalledTimes(0);
+
+          done();
         });
-
-        done();
       });
-    });
 
-    it('should get for transporter without initial data', function (done) {
-      const schema = new Schema(this.inputDefinition);
-      schema.getFor(TARGET.TRANSPORTER, this.item).then(returnedData => {
-        expect(returnedData).toEqual({
-          brand: 'VW',
-          price: '10000€',
-          passengers: [123, 124, 125],
-          seats: {
-            oneToOne: 9001,
-          },
+      it('should get for client storage without initial data', function (done) {
+        delayItemReady(this.item.passengers[0]);
+        const schema = new Schema(this.inputDefinition);
+        schema.getFor(TARGET.CLIENT_STORAGE, this.item).then(returnedData => {
+          expect(returnedData).toEqual({
+            brand: 'VW',
+            price: '10000€',
+            passengers: [1230, 1231, 1232],
+            seats: {
+              oneToOne: 9002,
+            },
+          });
+
+          done();
         });
+      });
 
-        done();
+      it('should get for transporter', function (done) {
+        const schema = new Schema(this.inputDefinition);
+        schema.getFor(TARGET.TRANSPORTER, this.item, this.initialData).then(returnedData => {
+          expect(returnedData).toEqual({
+            brand: 'VW',
+            price: '10000€',
+            passengers: [123, 124, 125],
+            seats: {
+              oneToOne: 9001,
+              added: 'stuff',
+            },
+            supercool: 'property',
+            other: {
+              stuff: 'that',
+              is: 'included',
+            },
+          });
+
+          done();
+        });
+      });
+
+      it('should get for transporter without initial data', function (done) {
+        const schema = new Schema(this.inputDefinition);
+        schema.getFor(TARGET.TRANSPORTER, this.item).then(returnedData => {
+          expect(returnedData).toEqual({
+            brand: 'VW',
+            price: '10000€',
+            passengers: [123, 124, 125],
+            seats: {
+              oneToOne: 9001,
+            },
+          });
+
+          done();
+        });
       });
     });
   });

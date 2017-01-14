@@ -300,14 +300,16 @@ class Schema {
 
   _resolveFor(target: DataTarget, item: Item): Promise {
     const { references } = this._getPickedData(item);
-    let unresolvedReferences = [];
+    const unresolvedReferences = [];
     this.references.forEach((value, key) => {
       const ref = _.get(references, key);
       if (_.isArray(ref)) {
-        unresolvedReferences = unresolvedReferences.concat(ref
+        ref
           .filter(refItem => !refItem.isReadyFor(target))
-          .map(refItem => refItem.onceReadyFor(target))
-        );
+          .reduce((referenceList, refItem) => {
+            referenceList.push(refItem.onceReadyFor(target));
+            return referenceList;
+          }, unresolvedReferences);
       } else if (!ref.isReadyFor(target)) {
         unresolvedReferences.push(ref.onceReadyFor(target));
       }
