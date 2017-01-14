@@ -1,9 +1,11 @@
 // @flow
 import { extendObservable } from 'mobx';
 import _ from 'lodash';
-import { SOURCE } from './constants';
+import Item from './Item';
+import { SOURCE, TARGET } from './constants';
 
 type DataSource = SOURCE.STATE|SOURCE.TRANSPORTER|SOURCE.CLIENT_STORAGE;
+type DataTarget = TARGET.TRANSPORTER|TARGET.CLIENT_STORAGE;
 
 // doesn't need any logic for now. Is used to determine keys in schema setup
 class Key {}
@@ -82,7 +84,7 @@ class Schema {
     return Promise.resolve(item);
   }
 
-  setFrom(source: DataSource, item: Object, data: Object, options = {}): Promise {
+  setFrom(source: DataSource, item: Item, data: Object, options = {}): Promise {
     switch (source) {
       case SOURCE.TRANSPORTER:
         return this._setFromOutside('', item, data, options);
@@ -191,7 +193,7 @@ class Schema {
     return refOptions;
   }
 
-  _setForeignValues(item: Object, data: Object, prefix: string, options: Object) {
+  _setForeignValues(item: Item, data: Object, prefix: string, options: Object) {
     let promises:Array<Promise> = [];
     this.references.forEach((definition, path) => {
       const thisValue = _.get(data, path);
@@ -206,17 +208,21 @@ class Schema {
       );
 
       if (definition.type === Array) {
+        const oldAutosaveValue = item.autoSave;
+        item.autoSave = false;
+
         if (options.establishObservables) {
           Schema.extendObservable(item, refOptions.propertyKey, []);
         } else {
           refOptions.parentObj[refOptions.propertyKey] = [];
         }
 
+        item.autoSave = oldAutosaveValue;
         promises = promises.concat(thisValue.map(
-          (foreignKey, index) => Schema._resolveForeignValues(refOptions, foreignKey, index))
+          (foreignKey, index) => Schema._resolveForeignValues(refOptions, foreignKey, item, index))
         );
       } else {
-        promises.push(Schema._resolveForeignValues(refOptions, thisValue));
+        promises.push(Schema._resolveForeignValues(refOptions, thisValue, item));
       }
     });
 
@@ -225,7 +231,7 @@ class Schema {
 
   _setFromOutside(
     keyPrefix: string,
-    item: Object,
+    item: Item,
     data: Object,
     options: Object
   ): Promise {
@@ -237,15 +243,20 @@ class Schema {
 
   static _mergeFromSet({ item, filteredData, options }, observables) {
     const { establishObservables } = options;
+    const oldAutosaveValue = item.autoSave;
+    item.autoSave = false;
     _.merge(item, filteredData);
     if (establishObservables) {
       Schema.setAsObservables(item, observables);
     }
+
+    item.autoSave = oldAutosaveValue;
   }
 
   static _resolveForeignValues(
     { definition, key, propertyKey, parentObj, options },
     foreignKey: string|Number,
+    item: Item,
     index: ?Number
   ): Promise {
     const ref = (definition.items) ? definition.items.ref : definition.ref;
@@ -253,6 +264,9 @@ class Schema {
       const resolver = {};
       resolver[key] = foreignKey;
       const newValue = ref.findOne(resolver);
+
+      const oldAutosaveValue = item.autoSave;
+      item.autoSave = false;
       if (options.establishObservables && index === undefined) {
         Schema.extendObservable(parentObj, propertyKey, newValue);
       } else if (index === undefined) {
@@ -260,6 +274,8 @@ class Schema {
       } else {
         parentObj[propertyKey][index] = newValue;
       }
+
+      item.autoSave = oldAutosaveValue;
     });
   }
 
@@ -296,27 +312,63 @@ class Schema {
     }
   }
 
-  // getForState(item){} // least important one, not even sure if needed
+  _resolveFor(target: DataTarget, item: Item): Promise {
+    const { references } = this._getPickedData(item);
+    const unresolvedReferences = [];
+    this.references.forEach((value, key) => {
+      const ref = _.get(references, key);
+      if (_.isArray(ref)) {
+        ref
+          .filter(refItem => !refItem.isReadyFor(target))
+          .reduce((referenceList, refItem) => {
+            referenceList.push(refItem.onceReadyFor(target));
+            return referenceList;
+          }, unresolvedReferences);
+      } else if (!ref.isReadyFor(target)) {
+        unresolvedReferences.push(ref.onceReadyFor(target));
+      }
+    });
 
-  /**
-   * gets all data for the transporter except for the primary key
-   * (an item can't have a key until its created in the transporter for example )
-   * has to wait until all foreing keys are created. (this is tricky,
-   * pls aks johannes before implementing).
-   *
-   * initialData is an object with data, that has to be in the result as well
-   */
-  // getFor(source: DataSource, item: Object, initialData: Object) {
-  //
-  // }
+    if (unresolvedReferences.length > 0) {
+      return Promise.all(unresolvedReferences)
+        .then(() => this._resolveFor(target, references));
+    }
 
-  /**
-   * gets the transporter primary key. The function is only called when the key
-   * already exists, so this should be sync. returns { <key_name> : <key_value> }
-   */
-  // getPrimaryKey(source: DataSource, item: Object) {
-  //
-  // }
+    return Promise.resolve();
+  }
+
+  getFor(target: DataTarget, item: Item, initialData: Object = {}): Promise {
+    const prefix = target === TARGET.CLIENT_STORAGE ? '_' : '';
+
+    return this._resolveFor(target, item).then(() => {
+      const { references, filteredData } = this._getPickedData(item);
+      const convertedReferences = {};
+      this.references.forEach((value, key) => {
+        const ref = _.get(references, key);
+        if (_.isArray(ref)) {
+          const refKeyArray = ref.map((refItem) => refItem[value.items[`${prefix}key`]]);
+          _.set(convertedReferences, key, refKeyArray);
+        } else {
+          _.set(convertedReferences, key, ref[value[`${prefix}key`]]);
+        }
+      });
+
+      return _.merge({}, filteredData, initialData, convertedReferences);
+    });
+  }
+
+  getPrimaryKey(source: DataSource, item: Item): Object {
+    let key;
+    if (source === TARGET.CLIENT_STORAGE) {
+      key = this._primaryKey._key;
+    } else {
+      key = this._primaryKey.key;
+    }
+
+    return {
+      [key]: item[key],
+    };
+  }
 }
 
 export default Schema;
