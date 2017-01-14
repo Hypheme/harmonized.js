@@ -20,7 +20,9 @@ describe('Item', function () {
   // const InternalStore = class InternalStore extends Store {};
   // const internalStoreInstance = new InternalStore();
 
-  const testStore = new(class TestStore {})();
+  const testStore = new(class TestStore {
+    remove() {}
+  })();
   testStore.transporter = new Transporter();
   testStore.clientStorage = new ClientStorage();
   const TestItem = class TestItem extends Item {
@@ -177,7 +179,7 @@ describe('Item', function () {
         next: STATE.BEING_DELETED,
       });
       expect(myItem._clientStorageStates).toEqual({
-        current: STATE.REMOVED,
+        current: STATE.EXISTENT,
         inProgress: undefined,
         next: undefined,
       });
@@ -319,6 +321,104 @@ describe('Item', function () {
         this.item._setPrimaryKey(SOURCE.CLIENT_STORAGE, {});
         expect(this.item.isReadyFor(TARGET.CLIENT_STORAGE))
           .toEqual(true);
+      });
+    });
+
+    describe('update', function () {
+      it('should update with values', function () {
+        return this.item.update('some data')
+          .then(syncResponse => {
+            expect(syncResponse).toEqual('syncResponse');
+            expect(testStore.schema.setFrom)
+            .toHaveBeenCalledWith(SOURCE.STATE, this.item, 'some data');
+            expect(this.item._synchronize)
+            .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
+          });
+      });
+
+      it('should update with values from transporter', function () {
+        return this.item.update('some data', SOURCE.TRANSPORTER)
+          .then(syncResponse => {
+            expect(syncResponse).toEqual('syncResponse');
+            expect(testStore.schema.setFrom)
+            .toHaveBeenCalledWith(SOURCE.TRANSPORTER, this.item, 'some data');
+            expect(this.item._synchronize)
+            .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.EXISTENT);
+          });
+      });
+
+      it('should update with values from clientStorage', function () {
+        return this.item.update('some data', SOURCE.CLIENT_STORAGE)
+          .then(syncResponse => {
+            expect(syncResponse).toEqual('syncResponse');
+            expect(testStore.schema.setFrom)
+            .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, this.item, 'some data');
+            expect(this.item._synchronize)
+            .toHaveBeenCalledWith(STATE.EXISTENT, STATE.BEING_UPDATED);
+          });
+      });
+    });
+    describe('remove', function () {
+      beforeEach(function () {
+        spyOn(this.item, '_dispose');
+        spyOn(testStore, 'remove');
+      });
+      function checkRemove(item) {
+        expect(item.removed).toBe(true);
+        expect(testStore.remove).toHaveBeenCalledWith(item);
+        expect();
+      }
+      function checkDispose(item) {
+        expect(item._dispose).toHaveBeenCalled();
+      }
+      it('should remove item from state', function () {
+        const p = this.item.remove()
+          .then(() => {
+            checkDispose(this.item);
+            expect(this.item._synchronize)
+            .toHaveBeenCalledWith(STATE.EXISTENT, STATE.BEING_DELETED);
+          });
+        checkRemove(this.item);
+        return p;
+      });
+      it('should remove item from transporter', function () {
+        const p = this.item.remove(SOURCE.TRANSPORTER)
+          .then(() => {
+            checkDispose(this.item);
+            expect(this.item._transporterStates.current).toEqual(STATE.DELETED);
+            expect(this.item._synchronize)
+            .toHaveBeenCalledWith(STATE.BEING_DELETED, undefined);
+          });
+        checkRemove(this.item);
+        return p;
+      });
+      it('should remove item from clientStorage', function () {
+        const p = this.item.remove(SOURCE.CLIENT_STORAGE)
+          .then(() => {
+            checkDispose(this.item);
+            expect(this.item._clientStorageStates.current).toEqual(STATE.DELETED);
+            expect(this.item._synchronize)
+            .toHaveBeenCalledWith(undefined, STATE.BEING_DELETED);
+          });
+        checkRemove(this.item);
+        return p;
+      });
+    });
+
+    describe('fetch', function () {
+      it('should fetch from transporter', function () {
+        return this.item.fetch()
+          .then(() => {
+            expect(this.item._synchronize)
+            .toHaveBeenCalledWith(undefined, STATE.BEING_FETCHED);
+          });
+      });
+      it('should fetch from clientStorage', function () {
+        return this.item.fetch(SOURCE.CLIENT_STORAGE)
+          .then(() => {
+            expect(this.item._synchronize)
+            .toHaveBeenCalledWith(STATE.BEING_FETCHED, undefined);
+          });
       });
     });
 
@@ -1112,6 +1212,7 @@ describe('Item', function () {
 
       it('should resolve as promise when done');
       it('should resolve all promises when multilpe synchronize run in parallel');
+      it('should remove item if was not found in target');
     });
   });
 });

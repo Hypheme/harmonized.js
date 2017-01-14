@@ -31,7 +31,7 @@ export default class Item {
       });
     }).catch(err => {
       this._lock(undefined, err);
-      this.removed = true; // TODO we remove item from store
+      this.removed = true;
       throw err;
     });
   }
@@ -53,7 +53,7 @@ export default class Item {
   }
 
   update(values, source = SOURCE.STATE) {
-    return this._store.schema.setFrom(source, values)
+    return this._store.schema.setFrom(source, this, values)
       .then(() => this._synchronize(
         source === SOURCE.CLIENT_STORAGE ? STATE.EXISTENT : STATE.BEING_UPDATED,
         source === SOURCE.TRANSPORTER ? STATE.EXISTENT : STATE.BEING_UPDATED
@@ -65,20 +65,11 @@ export default class Item {
     return this.remove(source);
   }
 
-  remove(source = SOURCE.STATE) {
+  remove(source) {
+    this.removed = true;
     this._store.remove(this);
     let p;
     switch (source) {
-      case SOURCE.STATE:
-        p = this._synchronize(
-          // we mark it in clientStorage as existent as it gets deleted after the
-          // transporter deleted it. We need this to save our current wish (to delete)
-          // in our clientStorage in case the app closes before the transporter is done
-          // see this._postSyncTransporter
-          STATE.EXISTENT,
-          STATE.BEING_DELETED
-        );
-        break;
       case SOURCE.TRANSPORTER:
         this._transporterStates.current = STATE.DELETED;
         p = this._synchronize(
@@ -94,11 +85,17 @@ export default class Item {
         );
         break;
       default:
-        this._lock(undefined, new Error('unkown source in item.remove'));
-        return Promise.reject(this.error.error);
+        p = this._synchronize(
+          // we mark it in clientStorage as existent as it gets deleted after the
+          // transporter deleted it. We need this to save our current wish (to delete)
+          // in our clientStorage in case the app closes before the transporter is done
+          // see this._postSyncTransporter
+          STATE.EXISTENT,
+          STATE.BEING_DELETED
+        );
+        break;
     }
     return p.then(() => {
-      this.removed = true;
       this._dispose();
       // TODO (maybe): this._store.delete(this);
       // TODO (planned for version 0.3): this._onDeleteTrigger()
@@ -107,8 +104,8 @@ export default class Item {
 
   fetch(source = SOURCE.TRANSPORTER) {
     return this._synchronize(
-      source === SOURCE.CLIENT_STORAGE ? STATE.BEING_FETCHED : STATE.EXISTENT,
-      source === SOURCE.TRANSPORTER ? STATE.BEING_FETCHED : STATE.EXISTENT,
+      source === SOURCE.CLIENT_STORAGE ? STATE.BEING_FETCHED : undefined,
+      source === SOURCE.TRANSPORTER ? STATE.BEING_FETCHED : undefined,
     );
   }
 
@@ -127,7 +124,7 @@ export default class Item {
       case STATE.BEING_DELETED:
       case STATE.BEING_UPDATED:
       case STATE.BEING_FETCHED:
-      case STATE.BEING_REMOVED:
+      // case STATE.BEING_REMOVED:
         return {
           current: STATE.EXISTENT,
           inProgress: undefined,
@@ -155,9 +152,10 @@ export default class Item {
     this._transporterStates =
       this._computeInitialStates(values._transporterState || STATE.BEING_CREATED);
     this._clientStorageStates =
-      this._computeInitialStates(this._transporterStates.next === STATE.BEING_DELETED ?
-        STATE.REMOVED : STATE.EXISTENT); // TODO (maybe): change REMOVED to EXISTENT
-    this.removed = (this._clientStorageStates.current === STATE.REMOVED);
+    this._computeInitialStates(STATE.EXISTENT); // TODO (maybe): change REMOVED to EXISTENT
+      // this._computeInitialStates(this._transporterStates.next === STATE.BEING_DELETED ?
+      //   STATE.REMOVED : STATE.EXISTENT);
+    this.removed = (this._transporterStates.next === STATE.BEING_DELETED);
     this.stored = true;
     this.synced = (this._transporterStates.next === undefined);
     this._setPrimaryKey(SOURCE.CLIENT_STORAGE, values);
@@ -169,7 +167,6 @@ export default class Item {
     this.synced = false;
     this.stored = false;
     this.removed = false;
-    // TODO change this to states
     this._transporterStates = this._computeInitialStates(STATE.BEING_CREATED);
     this._clientStorageStates = this._computeInitialStates(STATE.BEING_CREATED);
     // no need for keys as its from the state and therefore has no keys yet
