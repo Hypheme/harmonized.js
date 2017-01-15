@@ -71,14 +71,22 @@ export default class Item {
     let p;
     switch (source) {
       case SOURCE.TRANSPORTER:
-        this._transporterStates.current = STATE.DELETED;
+        this._transporterStates = {
+          current: STATE.DELETED,
+          inProgress: undefined,
+          next: undefined,
+        };
         p = this._synchronize(
           STATE.BEING_DELETED,
           undefined,
         );
         break;
       case SOURCE.CLIENT_STORAGE:
-        this._clientStorageStates.current = STATE.DELETED;
+        this._clientStorageStates = {
+          current: STATE.DELETED,
+          inProgress: undefined,
+          next: undefined,
+        };
         p = this._synchronize(
           undefined,
           STATE.BEING_DELETED,
