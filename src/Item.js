@@ -61,7 +61,7 @@ export default class Item {
     );
   }
 
-  delete(source = SOURCE.STATE) {
+  delete(source) {
     return this.remove(source);
   }
 
@@ -481,14 +481,12 @@ export default class Item {
       // this is the actual call to the outside world
       return this._store[target.PROCESSOR][workingState.ACTION](itemData)
         .then(result => {
-          if (result.status !== PROMISE_STATE.RESOLVED) {
+          if (result.status === PROMISE_STATE.PENDING) {
             this[target.STATES].next = this._getNextActionState(
               this[target.STATES].current,
               this[target.STATES].inProgress,
               this[target.STATES].next);
             this[target.STATES].inProgress = undefined;
-          }
-          if (result.status === PROMISE_STATE.PENDING) {
             return this._store[target.PROCESSOR].onceAvailable()
               .then(() => {
                 if (this[target.STATES].next) { // need that bc create + delete result in undefined
@@ -498,7 +496,12 @@ export default class Item {
               });
           }
           // the item was deleted by another client
-          if (result.status === PROMISE_STATE.NOT_FOUND) {
+          if (result.status === PROMISE_STATE.NOT_FOUND && workingState !== STATE.BEING_DELETED) {
+            this[target.STATES].next = this._getNextActionState(
+              this[target.STATES].current,
+              this[target.STATES].inProgress,
+              this[target.STATES].next);
+            this[target.STATES].inProgress = undefined;
             return this._removeSingle(target.AS_SOURCE);
           }
           if (this[target.STATES].inProgress === STATE.BEING_CREATED) {

@@ -1291,6 +1291,22 @@ describe('Item', function () {
             expect(this.item.removed).toBe(true);
           });
       });
+
+      it('should behave normally if not found in target and we wanted to delete anyway',
+        function () {
+          spyOn(testStore.clientStorage, 'delete')
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.NOT_FOUND, data: {} }));
+          this.item._transporterStates.current = STATE.EXISTENT;
+          this.item._clientStorageStates.current = STATE.EXISTENT;
+          return this.item._synchronize(STATE.BEING_DELETED, STATE.EXISTENT)
+          .then(() => {
+            expect(this.item._clientStorageStates).toEqual({
+              current: STATE.DELETED,
+              inProgress: undefined,
+              next: undefined,
+            });
+          });
+        });
     });
   });
 });
