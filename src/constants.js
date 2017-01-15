@@ -37,7 +37,9 @@ const TARGET = {
     TARGET: 'TRANSPORTER',
     AS_SOURCE: SOURCE.TRANSPORTER,
     NAME: 'transporter',
+    STATUS_KEY: 'synced',
     STATES: '_transporterStates',
+    GET_FOR: '_getForTransporter',
     PROCESSOR: 'transporter',
     POST_SYNC_PROCESSOR: '_postSyncTransporter',
   },
@@ -45,7 +47,9 @@ const TARGET = {
     TARGET: 'CLIENT_STORAGE',
     AS_SOURCE: SOURCE.CLIENT_STORAGE,
     NAME: 'clientStorage',
+    STATUS_KEY: 'stored',
     STATES: '_clientStorageStates',
+    GET_FOR: '_getForClientStorage',
     PROCESSOR: 'clientStorage',
     POST_SYNC_PROCESSOR: '_postSyncClientStorage',
   },
@@ -54,6 +58,7 @@ const TARGET = {
 const PROMISE_STATE = {
   PENDING: { PROMISE_STATE: 'PENDING' },
   RESOLVED: { PROMISE_STATE: 'RESOLVED' },
+  NOT_FOUND: { PROMISE_STATE: 'NOT_FOUND' },
 };
 
 export { STATE, SOURCE, TARGET, PROMISE_STATE };
