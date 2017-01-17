@@ -40,7 +40,7 @@ module.exports = function (config) {
     // possible values: 'dots', 'progress'
     // available reporters: https://npmjs.org/browse/keyword/karma-reporter
     // reporters: ['progress'],
-    reporters: ['jasmine-diff', 'progress', 'coverage'],
+    reporters: ['spec', 'jasmine-diff', 'coverage'],
 
 
     // web server port
