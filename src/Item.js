@@ -1,5 +1,5 @@
 import { observable, autorun/* , computed*/ } from 'mobx';
-import uuid from 'uuid-v4';
+import uuid from 'uuid/v4';
 import { STATE, SOURCE, PROMISE_STATE, TARGET } from './constants';
 
 export default class Item {
@@ -28,7 +28,7 @@ export default class Item {
       this._dispose = autorun(() => {
         this._stateHandler(call++);
       });
-    }).catch(err => {
+    }).catch((err) => {
       this._lock(undefined, err);
       this.removed = true; // TODO we remove item from store
       throw err;
@@ -347,7 +347,7 @@ export default class Item {
     return ((workingState === STATE.BEING_DELETED || workingState === STATE.BEING_FETCHED) ?
       Promise.resolve(itemKeys) : // no payload needed for deleting/fetching
       this._store.schema.getFor(target, this, itemKeys))
-    .then(itemData => {
+    .then((itemData) => {
       if (!this[target.STATES].next) {
         // if next is no longer set due to merging create and delete action together
         return Promise.resolve();
@@ -360,7 +360,7 @@ export default class Item {
       this[target.STATES].next = undefined;
       // this is the actual call to the outside world
       return this._store[target.PROCESSOR][workingState.ACTION](itemData)
-        .then(result => {
+        .then((result) => {
           if (result.status === PROMISE_STATE.PENDING) {
             this[target.STATES].next = this._getNextActionState(
               this[target.STATES].current,

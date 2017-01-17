@@ -1,7 +1,6 @@
 // Karma configuration
 // Generated on Fri May 27 2016 18:39:38 GMT+0200 (CEST)
 const webpackConf = require('./test/unit/webpack.config');
-const webpackConfTravis = require('./test/unit/webpack.travis.config');
 
 module.exports = function (config) {
   config.set({
@@ -41,7 +40,7 @@ module.exports = function (config) {
     // possible values: 'dots', 'progress'
     // available reporters: https://npmjs.org/browse/keyword/karma-reporter
     // reporters: ['progress'],
-    reporters: ['jasmine-diff', 'progress'],
+    reporters: ['jasmine-diff', 'progress', 'coverage'],
 
 
     // web server port
@@ -76,31 +75,28 @@ module.exports = function (config) {
     },
   });
 
-  if (process.env.TRAVIS) {
-    config.customLaunchers = {
-      Chrome_no_sandbox: {
-        base: 'Chrome',
-        flags: ['--no-sandbox'],
-      },
-    };
+  // if (process.env.TRAVIS) {
+  config.customLaunchers = {
+    Chrome_no_sandbox: {
+      base: 'Chrome',
+      flags: ['--no-sandbox'],
+    },
+  };
 
-    config.browsers = ['Chrome_no_sandbox'];
+  config.browsers = ['Chrome_no_sandbox'];
 
-    config.webpack = webpackConfTravis;
-    config.reporters = ['progress', 'coverage'];
-    // config.reporters.push('coverage');
+  config.webpack = webpackConf;
 
     // Configure code coverage reporter
-    config.coverageReporter = {
-      dir: 'coverage/',
-      reporters: [
+  config.coverageReporter = {
+    dir: 'coverage/',
+    reporters: [
         { type: 'lcovonly', subdir: '.' },
         { type: 'json', subdir: '.' },
-        { type: 'html', subdir: '.' },
-      ],
-    };
-  } else {
-    config.webpack = webpackConf;
-    config.browsers = ['Chrome'];
-  }
+        // { type: 'html', subdir: '.' },
+    ],
+  };
+  // } else {
+  //   config.browsers = ['Chrome'];
+  // }
 };

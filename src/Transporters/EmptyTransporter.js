@@ -1,4 +1,4 @@
-import uuid from 'uuid-v4';
+import uuid from 'uuid/v4';
 import { PROMISE_STATE } from '../constants';
 
 export default class EmptyTransporter {
