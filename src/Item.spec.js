@@ -376,7 +376,7 @@ describe('Item', function () {
           .then(() => {
             checkDispose(this.item);
             expect(this.item._synchronize)
-            .toHaveBeenCalledWith(STATE.EXISTENT, STATE.BEING_DELETED);
+            .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.BEING_DELETED);
           });
         checkRemove(this.item);
         return p;

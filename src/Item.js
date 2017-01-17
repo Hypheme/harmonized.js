@@ -94,11 +94,11 @@ export default class Item {
         break;
       default:
         p = this._synchronize(
-          // we mark it in clientStorage as existent as it gets deleted after the
+          // we mark it in clientStorage as being updated as it gets deleted after the
           // transporter deleted it. We need this to save our current wish (to delete)
           // in our clientStorage in case the app closes before the transporter is done
           // see this._postSyncTransporter
-          STATE.EXISTENT,
+          STATE.BEING_UPDATED,
           STATE.BEING_DELETED
         );
         break;
