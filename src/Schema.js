@@ -294,9 +294,10 @@ class Schema {
       switch (property.type) {
         case Array:
           Schema._transformArrayType(property);
-          return;
+          break;
         case Object:
-          return Schema._normalizeDefinition(property);
+          Schema._normalizeDefinition(property);
+          break;
       }
     });
   }
