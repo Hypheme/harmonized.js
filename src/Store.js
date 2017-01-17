@@ -1,8 +1,8 @@
-class EmptyTransporter {}
-
 import {
   observable,
 } from 'mobx';
+
+class EmptyTransporter {}
 
 export default class Store {
 

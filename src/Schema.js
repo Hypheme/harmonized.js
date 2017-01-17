@@ -296,10 +296,7 @@ class Schema {
           Schema._transformArrayType(property);
           return;
         case Object:
-          Schema._normalizeDefinition(property);
-
-        default:
-
+          return Schema._normalizeDefinition(property);
       }
     });
   }
