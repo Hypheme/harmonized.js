@@ -132,14 +132,12 @@ export default class Item {
       case STATE.BEING_DELETED:
       case STATE.BEING_UPDATED:
       case STATE.BEING_FETCHED:
-      // case STATE.BEING_REMOVED:
         return {
           current: STATE.EXISTENT,
           inProgress: undefined,
           next: initialState,
         };
       case STATE.LOCKED:
-      case STATE.REMOVED:
       case STATE.EXISTENT:
       case STATE.DELETED:
         return {
@@ -166,9 +164,7 @@ export default class Item {
     this._transporterStates =
       this._computeInitialStates(values._transporterState || STATE.BEING_CREATED);
     this._clientStorageStates =
-    this._computeInitialStates(STATE.EXISTENT); // TODO (maybe): change REMOVED to EXISTENT
-      // this._computeInitialStates(this._transporterStates.next === STATE.BEING_DELETED ?
-      //   STATE.REMOVED : STATE.EXISTENT);
+    this._computeInitialStates(STATE.EXISTENT);
     this.removed = (this._transporterStates.next === STATE.BEING_DELETED);
     this.stored = true;
     this.synced = (this._transporterStates.next === undefined);
@@ -222,8 +218,6 @@ export default class Item {
         return STATE.EXISTENT;
       case STATE.BEING_DELETED:
         return STATE.DELETED;
-      // case STATE.BEING_REMOVED: // TODO: not sure if needed
-      //   return STATE.REMOVED;
       default:
         return STATE.LOCKED;
     }
@@ -255,11 +249,10 @@ export default class Item {
         // only deleting an item right after a fetch makes sense
         allowedNewStates = [STATE.BEING_DELETED];
         break;
-      // case STATE.BEING_REMOVED: // TODO not sure if even needed
       case STATE.EXISTENT:
         allowedNewStates = [STATE.BEING_UPDATED, STATE.BEING_DELETED, STATE.BEING_FETCHED];
         break;
-      case STATE.LOCKED: // TODO not sure yet, we might can un-LOCK in the future
+      case STATE.LOCKED:
         return undefined;
       case STATE.DELETED: // pretty much the same as BEING_DELETED.
         return undefined;
@@ -269,7 +262,6 @@ export default class Item {
         }
         allowedNewStates = [STATE.BEING_UPDATED, STATE.BEING_DELETED];
         break;
-      // case STATE.REMOVED: // TODO once again not sure if needed anymore
       default: // we don't change anything
         return next;
     }
@@ -286,9 +278,6 @@ export default class Item {
       case STATE.LOCKED:
       case STATE.DELETED:
         return current;
-      // case STATE.REMOVED:
-      //   return this._getDesiredFixedState(action) === STATE.DELETED ?
-      //     STATE.DELETED : STATE.REMOVED;
       default:
         return this._getDesiredFixedState(action);
     }
