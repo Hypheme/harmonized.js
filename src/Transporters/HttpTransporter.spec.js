@@ -359,7 +359,7 @@ describe('HttpTransporter', function () {
           headers: jasmine.any(Headers),
         });
 
-        res.json().then(body => {
+        res.json().then((body) => {
           expect(body).toEqual({
             error: 'message',
           });
@@ -438,7 +438,7 @@ describe('HttpTransporter', function () {
 
     httpTransporter.getItemPath({
       id: 123,
-    }).then(path => {
+    }).then((path) => {
       expect(path).toBe('login/somesubpath/123');
       done();
     });

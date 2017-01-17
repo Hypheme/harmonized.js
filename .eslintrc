@@ -5,6 +5,7 @@
     "modules": true
   },
   "rules": {
+    "no-plusplus": 0,
     "no-underscore-dangle": 0,
     "no-restricted-syntax": ["error", "WithStatement"],
     "no-param-reassign": ["error", {
@@ -12,6 +13,9 @@
     }],
     "func-names": 0,
     "prefer-arrow-callback": 0,
+
+    "import/no-extraneous-dependencies": ["error", {"devDependencies": true, "optionalDependencies": false, "peerDependencies": true}],
+    "class-methods-use-this": 0
   },
   "env": {
     "browser": true,

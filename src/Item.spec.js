@@ -1,14 +1,13 @@
-
-import Item from './Item';
-// import Store from '../test/unit/helpers/Test.Store';
-import Transporter from '../test/unit/helpers/Test.Transporter';
-import ClientStorage from '../test/unit/helpers/Test.ClientStorage';
-
 // import * as _ from 'lodash';
 import {
   // observable,
   autorun,
 } from 'mobx';
+
+import Item from './Item';
+// import Store from '../test/unit/helpers/Test.Store';
+import Transporter from '../test/unit/helpers/Test.Transporter';
+import ClientStorage from '../test/unit/helpers/Test.ClientStorage';
 
 import { /* ACTION,*/ STATE, SOURCE, TARGET, PROMISE_STATE } from './constants';
 
@@ -20,7 +19,7 @@ describe('Item', function () {
   // const InternalStore = class InternalStore extends Store {};
   // const internalStoreInstance = new InternalStore();
 
-  const testStore = new(class TestStore {
+  const testStore = new (class TestStore {
     remove() {}
   })();
   testStore.transporter = new Transporter();
@@ -265,7 +264,7 @@ describe('Item', function () {
 
       expect(myItem.__id).toBeDefined();
       expect(myItem._store).toEqual(testStore);
-      return construction.catch(err => {
+      return construction.catch((err) => {
         expect(myItem._transporterStates).toEqual({
           current: STATE.LOCKED,
           inProgress: undefined,
@@ -327,7 +326,7 @@ describe('Item', function () {
     describe('update', function () {
       it('should update with values', function () {
         return this.item.update('some data')
-          .then(syncResponse => {
+          .then((syncResponse) => {
             expect(syncResponse).toEqual('syncResponse');
             expect(testStore.schema.setFrom)
             .toHaveBeenCalledWith(SOURCE.STATE, this.item, 'some data');
@@ -338,7 +337,7 @@ describe('Item', function () {
 
       it('should update with values from transporter', function () {
         return this.item.update('some data', SOURCE.TRANSPORTER)
-          .then(syncResponse => {
+          .then((syncResponse) => {
             expect(syncResponse).toEqual('syncResponse');
             expect(testStore.schema.setFrom)
             .toHaveBeenCalledWith(SOURCE.TRANSPORTER, this.item, 'some data');
@@ -349,7 +348,7 @@ describe('Item', function () {
 
       it('should update with values from clientStorage', function () {
         return this.item.update('some data', SOURCE.CLIENT_STORAGE)
-          .then(syncResponse => {
+          .then((syncResponse) => {
             expect(syncResponse).toEqual('syncResponse');
             expect(testStore.schema.setFrom)
             .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, this.item, 'some data');
@@ -476,7 +475,7 @@ describe('Item', function () {
           next: undefined,
         };
         spyOn(testStore.schema, 'getPrimaryKey')
-          .and.callFake(target => {
+          .and.callFake((target) => {
             const result = target === TARGET.TRANSPORTER ?
               { id: 123 } : { _id: 456 };
             return result;
@@ -598,9 +597,10 @@ describe('Item', function () {
       });
       it('should fetch an item from client storage', function (done) {
         spyOn(testStore.clientStorage, 'fetch')
-          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {
-            fetched: 'data',
-          } }));
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED,
+            data: {
+              fetched: 'data',
+            } }));
         this.item._transporterStates.current = STATE.EXISTENT;
         this.item._clientStorageStates.current = STATE.EXISTENT;
         let call = 0;
@@ -769,9 +769,10 @@ describe('Item', function () {
 
       it('should fetch an item from transporter', function (done) {
         spyOn(testStore.transporter, 'fetch')
-          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {
-            fetched: 'data',
-          } }));
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED,
+            data: {
+              fetched: 'data',
+            } }));
         spyOn(testStore.clientStorage, 'update')
           .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
         this.item._clientStorageStates.current = STATE.EXISTENT;

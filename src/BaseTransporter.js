@@ -63,10 +63,10 @@ export default class BaseTransporter {
 
   static add(mw) {
     if (mw.replaces) {
-      const foundId = this.middleware.findIndex((thisMw) => thisMw.name === mw.replaces);
+      const foundId = this.middleware.findIndex(thisMw => thisMw.name === mw.replaces);
       if (foundId === -1) {
         throw new Error(
-          `The middleware "${mw.replaces}" could not be replaced because it can\'t be found`
+          `The middleware "${mw.replaces}" could not be replaced because it can't be found`,
         );
       }
 

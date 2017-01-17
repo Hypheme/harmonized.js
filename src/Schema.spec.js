@@ -1418,7 +1418,6 @@ describe('Schema', function () {
         'old autosave value',
       ]);
 
-      let autorunCount = 0;
       const dispose = autorun(() => { // what does this even do??
         let blub = '';
         blub = item.brand;
@@ -1426,7 +1425,6 @@ describe('Schema', function () {
         blub = item.passengers;
         blub = item.seats.deeper.evenDeeper.property1;
         blub = item.seats.deeper.evenDeeper.property2;
-        autorunCount += 1;
         return blub;
       });
       detach(dispose);
@@ -1624,7 +1622,7 @@ describe('Schema', function () {
 
       it('should get for client storage', function (done) {
         const schema = new Schema(this.inputDefinition);
-        schema.getFor(TARGET.CLIENT_STORAGE, this.item, this.initialData).then(returnedData => {
+        schema.getFor(TARGET.CLIENT_STORAGE, this.item, this.initialData).then((returnedData) => {
           expect(returnedData).toEqual({
             brand: 'VW',
             price: '10000€',
@@ -1656,7 +1654,7 @@ describe('Schema', function () {
       it('should get for client storage without initial data', function (done) {
         delayItemReady(this.item.passengers[0]);
         const schema = new Schema(this.inputDefinition);
-        schema.getFor(TARGET.CLIENT_STORAGE, this.item).then(returnedData => {
+        schema.getFor(TARGET.CLIENT_STORAGE, this.item).then((returnedData) => {
           expect(returnedData).toEqual({
             brand: 'VW',
             price: '10000€',
@@ -1672,7 +1670,7 @@ describe('Schema', function () {
 
       it('should get for transporter', function (done) {
         const schema = new Schema(this.inputDefinition);
-        schema.getFor(TARGET.TRANSPORTER, this.item, this.initialData).then(returnedData => {
+        schema.getFor(TARGET.TRANSPORTER, this.item, this.initialData).then((returnedData) => {
           expect(returnedData).toEqual({
             brand: 'VW',
             price: '10000€',
@@ -1694,7 +1692,7 @@ describe('Schema', function () {
 
       it('should get for transporter without initial data', function (done) {
         const schema = new Schema(this.inputDefinition);
-        schema.getFor(TARGET.TRANSPORTER, this.item).then(returnedData => {
+        schema.getFor(TARGET.TRANSPORTER, this.item).then((returnedData) => {
           expect(returnedData).toEqual({
             brand: 'VW',
             price: '10000€',
@@ -1719,7 +1717,7 @@ describe('Schema', function () {
 
       it('should get for client storage', function (done) {
         const schema = new Schema(this.inputDefinition);
-        schema.getFor(TARGET.CLIENT_STORAGE, this.item, this.initialData).then(returnedData => {
+        schema.getFor(TARGET.CLIENT_STORAGE, this.item, this.initialData).then((returnedData) => {
           expect(returnedData).toEqual({
             brand: 'VW',
             price: '10000€',
@@ -1751,7 +1749,7 @@ describe('Schema', function () {
       it('should get for client storage without initial data', function (done) {
         delayItemReady(this.item.passengers[0]);
         const schema = new Schema(this.inputDefinition);
-        schema.getFor(TARGET.CLIENT_STORAGE, this.item).then(returnedData => {
+        schema.getFor(TARGET.CLIENT_STORAGE, this.item).then((returnedData) => {
           expect(returnedData).toEqual({
             brand: 'VW',
             price: '10000€',
@@ -1767,7 +1765,7 @@ describe('Schema', function () {
 
       it('should get for transporter', function (done) {
         const schema = new Schema(this.inputDefinition);
-        schema.getFor(TARGET.TRANSPORTER, this.item, this.initialData).then(returnedData => {
+        schema.getFor(TARGET.TRANSPORTER, this.item, this.initialData).then((returnedData) => {
           expect(returnedData).toEqual({
             brand: 'VW',
             price: '10000€',
@@ -1789,7 +1787,7 @@ describe('Schema', function () {
 
       it('should get for transporter without initial data', function (done) {
         const schema = new Schema(this.inputDefinition);
-        schema.getFor(TARGET.TRANSPORTER, this.item).then(returnedData => {
+        schema.getFor(TARGET.TRANSPORTER, this.item).then((returnedData) => {
           expect(returnedData).toEqual({
             brand: 'VW',
             price: '10000€',
