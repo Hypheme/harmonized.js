@@ -9,6 +9,7 @@ export default class Item {
     this._store = store;
     this._createRunTimeId();
     this._establishIsReadyPromises();
+    this._syncPromises = {};
   }
   construct(values = {}, { source }) {
     let p;
@@ -30,7 +31,7 @@ export default class Item {
       });
     }).catch((err) => {
       this._lock(undefined, err);
-      this.removed = true; // TODO we remove item from store
+      this.removed = true;
       throw err;
     });
   }
@@ -43,8 +44,77 @@ export default class Item {
   // PUBLIC METHODS //
   // //////////////////
 
-  onceReadyFor(source) {
-    return this._isReady[source.NAME].promise;
+  onceReadyFor(target) {
+    return this._isReady[target.NAME].promise;
+  }
+
+  isReadyFor(target) {
+    return !this._isReady[target.NAME].resolve;
+  }
+
+  update(values, source = SOURCE.STATE) {
+    return this._store.schema.setFrom(source, this, values)
+      .then(() => this._synchronize(
+        source === SOURCE.CLIENT_STORAGE ? STATE.EXISTENT : STATE.BEING_UPDATED,
+        source === SOURCE.TRANSPORTER ? STATE.EXISTENT : STATE.BEING_UPDATED,
+      ),
+    );
+  }
+
+  delete(source) {
+    return this.remove(source);
+  }
+
+  remove(source) {
+    this.removed = true;
+    this._store.remove(this);
+    let p;
+    switch (source) {
+      case SOURCE.TRANSPORTER:
+        this._transporterStates = {
+          current: STATE.DELETED,
+          inProgress: undefined,
+          next: undefined,
+        };
+        p = this._synchronize(
+          STATE.BEING_DELETED,
+          undefined,
+        );
+        break;
+      case SOURCE.CLIENT_STORAGE:
+        this._clientStorageStates = {
+          current: STATE.DELETED,
+          inProgress: undefined,
+          next: undefined,
+        };
+        p = this._synchronize(
+          undefined,
+          STATE.BEING_DELETED,
+        );
+        break;
+      default:
+        p = this._synchronize(
+          // we mark it in clientStorage as being updated as it gets deleted after the
+          // transporter deleted it. We need this to save our current wish (to delete)
+          // in our clientStorage in case the app closes before the transporter is done
+          // see this._postSyncTransporter
+          STATE.BEING_UPDATED,
+          STATE.BEING_DELETED,
+        );
+        break;
+    }
+    return p.then(() => {
+      this._dispose();
+      // TODO (maybe): this._store.delete(this);
+      // TODO (planned for version 0.3): this._onDeleteTrigger()
+    });
+  }
+
+  fetch(source = SOURCE.TRANSPORTER) {
+    return this._synchronize(
+      source === SOURCE.CLIENT_STORAGE ? STATE.BEING_FETCHED : undefined,
+      source === SOURCE.TRANSPORTER ? STATE.BEING_FETCHED : undefined,
+    );
   }
 
   // ///////////////////
@@ -62,7 +132,7 @@ export default class Item {
       case STATE.BEING_DELETED:
       case STATE.BEING_UPDATED:
       case STATE.BEING_FETCHED:
-      case STATE.BEING_REMOVED:
+      // case STATE.BEING_REMOVED:
         return {
           current: STATE.EXISTENT,
           inProgress: undefined,
@@ -78,8 +148,14 @@ export default class Item {
           next: undefined,
         };
       default:
-        throw new Error('inkown initial state');
+        throw new Error('unkown initial state');
     }
+  }
+
+  _computeTransporterStateForClientStorage() {
+    return (this._transporterStates.next ||
+      this._transporterStates.inProgress ||
+      this._transporterStates.current).STATE;
   }
 
   _createRunTimeId() {
@@ -90,9 +166,10 @@ export default class Item {
     this._transporterStates =
       this._computeInitialStates(values._transporterState || STATE.BEING_CREATED);
     this._clientStorageStates =
-      this._computeInitialStates(this._transporterStates.next === STATE.BEING_DELETED ?
-        STATE.REMOVED : STATE.EXISTENT);
-    this.removed = (this._clientStorageStates.current === STATE.REMOVED);
+    this._computeInitialStates(STATE.EXISTENT); // TODO (maybe): change REMOVED to EXISTENT
+      // this._computeInitialStates(this._transporterStates.next === STATE.BEING_DELETED ?
+      //   STATE.REMOVED : STATE.EXISTENT);
+    this.removed = (this._transporterStates.next === STATE.BEING_DELETED);
     this.stored = true;
     this.synced = (this._transporterStates.next === undefined);
     this._setPrimaryKey(SOURCE.CLIENT_STORAGE, values);
@@ -104,7 +181,6 @@ export default class Item {
     this.synced = false;
     this.stored = false;
     this.removed = false;
-    // TODO change this to states
     this._transporterStates = this._computeInitialStates(STATE.BEING_CREATED);
     this._clientStorageStates = this._computeInitialStates(STATE.BEING_CREATED);
     // no need for keys as its from the state and therefore has no keys yet
@@ -151,6 +227,15 @@ export default class Item {
       default:
         return STATE.LOCKED;
     }
+  }
+
+  _getForClientStorage(target, itemKeys) {
+    itemKeys._transporterState = this._computeTransporterStateForClientStorage();
+    return this._store.schema.getFor(target, this, itemKeys);
+  }
+
+  _getForTransporter(target, itemKeys) {
+    return this._store.schema.getFor(target, this, itemKeys);
   }
 
   _getNextActionState(current, next, newState) {
@@ -271,26 +356,73 @@ export default class Item {
   }
 
   _postSyncTransporter(workingState) {
-    const itemKeys = this._store.schema.getPrimaryKey(TARGET.CLIENT_STORAGE, this);
     if (workingState === STATE.BEING_DELETED) {
-      return this._store.clientStorage.delete(itemKeys);
+      return this._removeSingle(SOURCE.TRANSPORTER);
     }
-    return this._store.schema.getFor(TARGET.CLIENT_STORAGE, this, itemKeys)
-      .then(data => this._store.clientStorage.update(data));
+    return this._synchronizeFor(TARGET.CLIENT_STORAGE, STATE.BEING_UPDATED);
   }
 
-  // TODO get _transporterState we will compute _transporterState out of _transporterStates
-
-  _setNextStoreState(state) {
-    this._clientStorageStates.next = this._getNextActionState(
-      this._clientStorageStates.inProgress || this._clientStorageStates.current,
-      this._clientStorageStates.next,
-      state);
+  /**
+   * this does basically the same as remove, but for only one state and by circumventing
+   * _synchronize.
+   * We need this, because we would otherwise create promise loops, eg a promise waits
+   * for itself to get resolved. This happens because the tarted/source switching
+   * in the process.
+   *
+   * An example: _synchronize(STATE.BEING_UPDATED, STATE.EXISTENT)
+   * -> results in an update operation in the clientStorage branch.
+   * <- the clientStorage returns PROMISE_STATE.NOT_FOUND
+   * -> we now delete the item in the transporter
+   * <- the transporter returns ok
+   * now (as usual, when sth gets removed in the transporter,
+   *   we want to delete it in clientStorage as well)
+   * BUT: if we would use our public remove function, _synchronize would get triggered
+   * and as nothing would have changed in the clientStorage branch (remember,
+   * we are already deleted in here, thats what started this whole thing),
+   * _synchronize would not create a new promise but return the last one...
+   * which is the promise from the first _synchronize
+   *
+   * => we would wait on our owm promise to be resolved to resolve
+   * => never resolved
+   */
+  _removeSingle(source) {
+    this.removed = true;
+    this._store.remove(this);
+    let p;
+    switch (source) {
+      default:
+      case SOURCE.TRANSPORTER:
+        this._transporterStates.current = STATE.DELETED;
+        if (this._clientStorageStates.current === STATE.DELETED) {
+          return Promise.resolve();
+        }
+        p = this._synchronizeFor(
+          TARGET.CLIENT_STORAGE,
+          STATE.BEING_DELETED,
+        );
+        break;
+      case SOURCE.CLIENT_STORAGE:
+        this._clientStorageStates.current = STATE.DELETED;
+        if (this._transporterStates.current === STATE.DELETED) {
+          return Promise.resolve();
+        }
+        p = this._synchronizeFor(
+          TARGET.TRANSPORTER,
+          STATE.BEING_DELETED,
+        );
+        break;
+    }
+    return p.then(() => {
+      this._dispose();
+      // TODO (maybe): this._store.delete(this);
+      // TODO (planned for version 0.3): this._onDeleteTrigger()
+    });
   }
-  _setNextTransporterState(state) {
-    this._transporterStates.next = this._getNextActionState(
-      this._transporterStates.inProgress || this._transporterStates.current,
-      this._transporterStates.next,
+
+  _setNextStateFor(target, state) {
+    this[target.STATES].next = this._getNextActionState(
+      this[target.STATES].inProgress || this[target.STATES].current,
+      this[target.STATES].next,
       state);
   }
 
@@ -312,31 +444,27 @@ export default class Item {
   }
 
   _synchronize(clientStorageState, transporterState) {
-    // first determine if a sync process is already happening
-    const clientStorageSyncInProgress = this._clientStorageStates.inProgress
-      || this._clientStorageStates.next;
-    const transporterSyncInProgress = this._transporterStates.inProgress
-      || this._transporterStates.next;
-    // merge the new state with the exiting ones
-    this._setNextStoreState(clientStorageState);
-    this._setNextTransporterState(transporterState);
-    // trigger sync processes if it's not already happening
-    if (!clientStorageSyncInProgress && this._clientStorageStates.next) {
-      this.stored = false;
-      this._triggerSync(TARGET.CLIENT_STORAGE)
+    return Promise.all([
+      // the order matters as we need to make sure the transporterState is set before
+      // getFor(clientStorage) is called.
+      this._synchronizeFor(TARGET.TRANSPORTER, transporterState),
+      this._synchronizeFor(TARGET.CLIENT_STORAGE, clientStorageState),
+    ]);
+  }
+
+  _synchronizeFor(target, state) {
+    const syncInProgress = this[target.STATES].inProgress
+      || this[target.STATES].next;
+    this._setNextStateFor(target, state);
+    if (!syncInProgress && this[target.STATES].next) {
+      this[target.STATUS_KEY] = false;
+      this._syncPromises[target.NAME] = this._triggerSync(target)
         .then(() => {
-          this.stored = true;
+          this[target.STATUS_KEY] = true;
         })
-        .catch(err => this._lock(TARGET.CLIENT_STORAGE, err));
+        .catch(err => this._lock(target, err));
     }
-    if (!transporterSyncInProgress && this._transporterStates.next) {
-      this.synced = false;
-      this._triggerSync(TARGET.TRANSPORTER)
-        .then(() => {
-          this.synced = true;
-        })
-        .catch(err => this._lock(TARGET.TRANSPORTER, err));
-    }
+    return this._syncPromises[target.NAME];
   }
 
   _triggerSync(target) {
@@ -346,7 +474,7 @@ export default class Item {
       this._store.schema.getPrimaryKey(target, this);
     return ((workingState === STATE.BEING_DELETED || workingState === STATE.BEING_FETCHED) ?
       Promise.resolve(itemKeys) : // no payload needed for deleting/fetching
-      this._store.schema.getFor(target, this, itemKeys))
+      this[target.GET_FOR](target, itemKeys))
     .then((itemData) => {
       if (!this[target.STATES].next) {
         // if next is no longer set due to merging create and delete action together
@@ -374,6 +502,15 @@ export default class Item {
                 }
                 return Promise.resolve();
               });
+          }
+          // the item was deleted by another client
+          if (result.status === PROMISE_STATE.NOT_FOUND && workingState !== STATE.BEING_DELETED) {
+            this[target.STATES].next = this._getNextActionState(
+              this[target.STATES].current,
+              this[target.STATES].inProgress,
+              this[target.STATES].next);
+            this[target.STATES].inProgress = undefined;
+            return this._removeSingle(target.AS_SOURCE);
           }
           if (this[target.STATES].inProgress === STATE.BEING_CREATED) {
             this._setPrimaryKey(target.AS_SOURCE, result.data);
