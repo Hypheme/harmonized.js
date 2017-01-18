@@ -8,7 +8,8 @@ describe('HttpTransporter', function () {
       this.test = jasmine.createSpy('offline checker test');
     });
 
-    HttpTransporter.__Rewire__('HttpOfflineChecker', this.HttpOfflineCheckerMock);
+    // HttpTransporter.__Rewire__('HttpOfflineChecker', this.HttpOfflineCheckerMock);
+    HttpTransporter.HttpOfflineChecker = this.HttpOfflineCheckerMock;
 
     HttpTransporter.offlineCheckerList = [
       { name: 'third', test: () => true },
@@ -359,7 +360,7 @@ describe('HttpTransporter', function () {
           headers: jasmine.any(Headers),
         });
 
-        res.json().then(body => {
+        res.json().then((body) => {
           expect(body).toEqual({
             error: 'message',
           });
@@ -438,7 +439,7 @@ describe('HttpTransporter', function () {
 
     httpTransporter.getItemPath({
       id: 123,
-    }).then(path => {
+    }).then((path) => {
       expect(path).toBe('login/somesubpath/123');
       done();
     });

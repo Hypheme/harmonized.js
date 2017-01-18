@@ -112,7 +112,7 @@ class Schema {
   }
 
   static setAsObservables(item, observables) {
-    Object.keys(observables).forEach(key => {
+    Object.keys(observables).forEach((key) => {
       const obsValue = observables[key];
       if (!_.isPlainObject(obsValue)) {
         Schema.extendObservable(item, key, obsValue);
@@ -126,7 +126,7 @@ class Schema {
     if (!_.isPlainObject(definition.properties)) return;
 
     Object.keys(definition.properties)
-      .filter((key) => !Schema.isPrimaryKey(definition.properties[key]))
+      .filter(key => !Schema.isPrimaryKey(definition.properties[key]))
       .forEach((key) => {
         const property = definition.properties[key];
         if (property.type !== Object) {
@@ -134,7 +134,7 @@ class Schema {
             this.nonObservables.push(`${parentPath}${key}`);
           } else if (
             Schema.isKey(property) ||
-            property.type === Array && Schema.isKey(property.items)
+            (property.type === Array && Schema.isKey(property.items))
           ) {
             this.references.set(`${parentPath}${key}`, property);
           } else {
@@ -165,7 +165,7 @@ class Schema {
     path: string,
     item: Object,
     prefix: string,
-    options: Object
+    options: Object,
   ) {
     const def = definition.type === Array ? definition.items : definition;
     const refOptions: Object = {
@@ -219,7 +219,7 @@ class Schema {
 
         item.autoSave = oldAutosaveValue;
         promises = promises.concat(thisValue.map(
-          (foreignKey, index) => Schema._resolveForeignValues(refOptions, foreignKey, item, index))
+          (foreignKey, index) => Schema._resolveForeignValues(refOptions, foreignKey, item, index)),
         );
       } else {
         promises.push(Schema._resolveForeignValues(refOptions, thisValue, item));
@@ -233,7 +233,7 @@ class Schema {
     keyPrefix: string,
     item: Item,
     data: Object,
-    options: Object
+    options: Object,
   ): Promise {
     const { observables, filteredData } = this._getPickedData(data);
     Schema._mergeFromSet({ item, filteredData, options }, observables);
@@ -257,7 +257,7 @@ class Schema {
     { definition, key, propertyKey, parentObj, options },
     foreignKey: string|Number,
     item: Item,
-    index: ?Number
+    index: ?Number,
   ): Promise {
     const ref = (definition.items) ? definition.items.ref : definition.ref;
     return ref.onceLoaded().then(() => {
@@ -294,12 +294,10 @@ class Schema {
       switch (property.type) {
         case Array:
           Schema._transformArrayType(property);
-          return;
+          break;
         case Object:
           Schema._normalizeDefinition(property);
-          return;
-        default:
-          return;
+          break;
       }
     });
   }
@@ -346,7 +344,7 @@ class Schema {
       this.references.forEach((value, key) => {
         const ref = _.get(references, key);
         if (_.isArray(ref)) {
-          const refKeyArray = ref.map((refItem) => refItem[value.items[`${prefix}key`]]);
+          const refKeyArray = ref.map(refItem => refItem[value.items[`${prefix}key`]]);
           _.set(convertedReferences, key, refKeyArray);
         } else {
           _.set(convertedReferences, key, ref[value[`${prefix}key`]]);

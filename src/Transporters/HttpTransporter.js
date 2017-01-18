@@ -5,9 +5,12 @@ import { PROMISE_STATE } from '../constants';
 import { TransactionItem } from '../TransactionItem';
 
 export default class HttpTransporter extends Transporter {
+  static HttpOfflineChecker: HttpOfflineChecker = HttpOfflineChecker;
+
   baseUrl: string;
   path: string;
   methodMap: Map;
+
 
   constructor(options: Object) {
     super();
@@ -16,7 +19,7 @@ export default class HttpTransporter extends Transporter {
     this.methodMap = new Map();
     const constructedUrl = `${this.baseUrl}/${this.path}`;
     this.offlineChecker = this.constructor.offlineCheckerList
-      .filter((checker) => checker.test(constructedUrl))[0];
+      .filter(checker => checker.test(constructedUrl))[0];
 
     if (!this.offlineChecker) {
       throw new Error('missing offline checker');
@@ -98,7 +101,7 @@ export default class HttpTransporter extends Transporter {
 
     return fetch(url, req).then((res) => {
       if (res.ok) {
-        return res.json().then((data) => ({
+        return res.json().then(data => ({
           res,
           req,
           data,
@@ -107,7 +110,7 @@ export default class HttpTransporter extends Transporter {
       }
 
       return Promise.reject({ res, req });
-    }, error => {
+    }, (error) => {
       this.offlineChecker.setOffline();
       return Promise.resolve({
         error,
@@ -122,10 +125,10 @@ export default class HttpTransporter extends Transporter {
 
   static addOfflineChecker(offlineChecker: HttpOfflineChecker | Object) {
     let offlineCheckerInstance;
-    if (offlineChecker instanceof HttpOfflineChecker) {
+    if (offlineChecker instanceof HttpTransporter.HttpOfflineChecker) {
       offlineCheckerInstance = offlineChecker;
     } else {
-      offlineCheckerInstance = new HttpOfflineChecker(offlineChecker);
+      offlineCheckerInstance = new HttpTransporter.HttpOfflineChecker(offlineChecker);
     }
 
     this.offlineCheckerList.push(offlineCheckerInstance);

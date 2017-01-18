@@ -9,4 +9,11 @@
     "es6-promise",
     "transform-decorators-legacy"
   ],
+  "env": {
+    "test": {
+      "plugins": [
+        ["istanbul", { "exclude": ["src/**/*.spec.js", "test/**/*.js"] }]
+      ],
+    }
+  }
 }

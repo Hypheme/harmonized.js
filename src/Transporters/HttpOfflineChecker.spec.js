@@ -61,7 +61,7 @@ describe('HttpOfflineChecker', function () {
       spyOn(window, 'clearTimeout').and.callThrough();
       spyOn(this.offlineChecker, '_checkOffline').and.callFake((...args) => {
         originalOnceAvailable.apply(this.offlineChecker, args);
-        const prePause = statusReqCount < 11 ? statusReqCount * 3000 - 1 : 29999;
+        const prePause = statusReqCount < 11 ? (statusReqCount * 3000) - 1 : 29999;
         jasmine.clock().tick(prePause);
         expect(statusReqCount).toBe(statusReqCount);
         jasmine.clock().tick(1);

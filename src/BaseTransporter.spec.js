@@ -18,8 +18,9 @@ describe('BaseTransporter', function () {
 
     TestTransporter = BfeTestTransporter;
     this.TransactionItemMock = jasmine.createSpy('TransactionItem');
-    BaseTransporter.__Rewire__('TransactionItem', this.TransactionItemMock);
+    // BaseTransporter.__Rewire__('TransactionItem', this.TransactionItemMock);
     this.testTransporter = new TestTransporter();
+    BaseTransporter.TransactionItem = this.TransactionItemMock;
 
     expect(TestTransporter.middleware instanceof Array).toBe(true);
     TestTransporter.middleware = [];
@@ -120,7 +121,7 @@ describe('BaseTransporter', function () {
   it('should run sub middleware with no middleware', function (done) {
     expect(TestTransporter.middleware).toEqual([]);
     TestTransporter.runMiddleware('send', { some: 'data' })
-      .then(data => {
+      .then((data) => {
         expect(data).toEqual({ some: 'data' });
         done();
       });
@@ -132,7 +133,7 @@ describe('BaseTransporter', function () {
       receive: jasmine.createSpy('receive middleware'),
     });
     TestTransporter.runMiddleware('send', { some: 'data' })
-      .then(data => {
+      .then((data) => {
         expect(data).toEqual({ some: 'data' });
         expect(TestTransporter.middleware.length).toBe(1);
         expect(TestTransporter.middleware[0].receive).not.toHaveBeenCalled();
@@ -143,7 +144,7 @@ describe('BaseTransporter', function () {
   it('should run sub middleware with matching middleware', function (done) {
     expect(TestTransporter.middleware).toEqual([]);
     TestTransporter.add({
-      send: (data) => new Promise((resolve) => {
+      send: data => new Promise((resolve) => {
         const dataClone = { ...data };
         dataClone.addedData = 'is available';
         resolve(dataClone);
@@ -152,7 +153,7 @@ describe('BaseTransporter', function () {
 
     const inputData = { some: 'data' };
     TestTransporter.runMiddleware('send', inputData)
-      .then(data => {
+      .then((data) => {
         expect(data).toEqual({
           some: 'data',
           addedData: 'is available',
