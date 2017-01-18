@@ -5,32 +5,34 @@ import TransporterMiddleware from './TransporterMiddleware/TransporterMiddleware
 export default class BaseTransporter {
   static middleware: TransporterMiddleware[] = [];
 
+  static TransactionItem: TransactionItem = TransactionItem;
+
   _shouldBeImplemented() {
     throw new Error('should be implemented by the transporter');
   }
 
   create(data: Object) {
-    return this._sendRequest(new TransactionItem('create', data));
+    return this._sendRequest(new BaseTransporter.TransactionItem('create', data));
   }
 
   update(data: Object) {
-    return this._sendRequest(new TransactionItem('update', data));
+    return this._sendRequest(new BaseTransporter.TransactionItem('update', data));
   }
 
   delete(data: Object) {
-    return this._sendRequest(new TransactionItem('delete', data));
+    return this._sendRequest(new BaseTransporter.TransactionItem('delete', data));
   }
 
   fetch(data: Object) {
-    return this._sendRequest(new TransactionItem('fetch', data));
+    return this._sendRequest(new BaseTransporter.TransactionItem('fetch', data));
   }
 
   fetchAll() {
-    return this._sendRequest(new TransactionItem('fetchAll', {}));
+    return this._sendRequest(new BaseTransporter.TransactionItem('fetchAll', {}));
   }
 
   initialFetch() {
-    return this._sendRequest(new TransactionItem('initialFetch', {}));
+    return this._sendRequest(new BaseTransporter.TransactionItem('initialFetch', {}));
   }
 
   onceAvailable() {

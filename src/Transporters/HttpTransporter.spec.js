@@ -8,7 +8,8 @@ describe('HttpTransporter', function () {
       this.test = jasmine.createSpy('offline checker test');
     });
 
-    HttpTransporter.__Rewire__('HttpOfflineChecker', this.HttpOfflineCheckerMock);
+    // HttpTransporter.__Rewire__('HttpOfflineChecker', this.HttpOfflineCheckerMock);
+    HttpTransporter.HttpOfflineChecker = this.HttpOfflineCheckerMock;
 
     HttpTransporter.offlineCheckerList = [
       { name: 'third', test: () => true },

@@ -87,17 +87,14 @@ module.exports = function (config) {
 
   config.webpack = webpackConf;
 
-    // Configure code coverage reporter
+  // Configure code coverage reporter
   config.coverageReporter = {
     dir: 'coverage/',
     reporters: [
         { type: 'lcovonly', subdir: '.' },
         { type: 'json', subdir: '.' },
         { type: 'text', subdir: '.' },
-        // { type: 'html', subdir: '.' },
+        { type: 'html', subdir: '.' },
     ],
   };
-  // } else {
-  //   config.browsers = ['Chrome'];
-  // }
 };

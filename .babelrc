@@ -12,8 +12,7 @@
   "env": {
     "test": {
       "plugins": [
-        ["istanbul", { "exclude": ["src/**/*.spec.js", "test/**/*.js"] }],
-        "rewire"
+        ["istanbul", { "exclude": ["src/**/*.spec.js", "test/**/*.js"] }]
       ],
     }
   }

@@ -5,9 +5,12 @@ import { PROMISE_STATE } from '../constants';
 import { TransactionItem } from '../TransactionItem';
 
 export default class HttpTransporter extends Transporter {
+  static HttpOfflineChecker: HttpOfflineChecker = HttpOfflineChecker;
+
   baseUrl: string;
   path: string;
   methodMap: Map;
+
 
   constructor(options: Object) {
     super();
@@ -122,10 +125,10 @@ export default class HttpTransporter extends Transporter {
 
   static addOfflineChecker(offlineChecker: HttpOfflineChecker | Object) {
     let offlineCheckerInstance;
-    if (offlineChecker instanceof HttpOfflineChecker) {
+    if (offlineChecker instanceof HttpTransporter.HttpOfflineChecker) {
       offlineCheckerInstance = offlineChecker;
     } else {
-      offlineCheckerInstance = new HttpOfflineChecker(offlineChecker);
+      offlineCheckerInstance = new HttpTransporter.HttpOfflineChecker(offlineChecker);
     }
 
     this.offlineCheckerList.push(offlineCheckerInstance);

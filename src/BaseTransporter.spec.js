@@ -18,8 +18,9 @@ describe('BaseTransporter', function () {
 
     TestTransporter = BfeTestTransporter;
     this.TransactionItemMock = jasmine.createSpy('TransactionItem');
-    BaseTransporter.__Rewire__('TransactionItem', this.TransactionItemMock);
+    // BaseTransporter.__Rewire__('TransactionItem', this.TransactionItemMock);
     this.testTransporter = new TestTransporter();
+    BaseTransporter.TransactionItem = this.TransactionItemMock;
 
     expect(TestTransporter.middleware instanceof Array).toBe(true);
     TestTransporter.middleware = [];
