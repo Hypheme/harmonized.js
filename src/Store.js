@@ -2,42 +2,26 @@ import {
   observable,
 } from 'mobx';
 
-class EmptyTransporter {}
-
 export default class Store {
 
-  static transporterOptions = {
-    http: {
-      url: 'http',
-    },
+  @observable items = [];
+  @observable loaded = false;
+  // @observable deletedItems = [];
+  constructor(/* { Item, schema, transporter, clientStorage }*/) {
 
-    socket: {
-      url: 'http',
-    },
-
-    indexedDb: {
-      tableName: '123',
-    },
-  };
-
-  constructor({ Item, Transporter, Storage }) {
-    this.Item = Item;
-
-    if (Transporter) {
-      this.transporter = new Transporter(this.constructor.transporterOptions[Transporter.name]);
-    } else {
-      this.transporter = new EmptyTransporter();
-    }
-
-    this.storage = Storage || new EmptyTransporter();
   }
 
-  @observable store = [];
-  @observable deleted = [];
+  create() {}
+  fetchAndCreate() {} // same as findOneOrFetch
+  fetch() {} // maybe? fetches again from the given SOURCE, defaults to transporter
 
-  // This is used to add store to an item (as a sub store)
-  static useWith(Item, transporter, store) {
-    // Returns "create" function
-    return () => new this({ Item, transporter, store });
-  }
+  find() {} // returns array of items
+  findOne() {} // returns item or undefined
+  findOneOrFetch() {} // returns promise which resolves in harmonized promise
+
+  isLoaded() {}
+
+  onceLoaded() {}
+
+  remove() {}
 }
