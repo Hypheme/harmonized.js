@@ -10,17 +10,17 @@ coverage:
     project:
       default:
         target: 98%
-        threshold: 8
+        threshold: 4
         branches:
           - "!feature/*"
       feature:
-        target: 96%
-        threshold: 26
+        target: 98%
+        threshold: 4
         branches:
-          - "feature/*"
+          - "*/*"
       pr:
         target: 98%
-        threshold: 8
+        threshold: 4
         branches: 'master'
         only_pulls: true
     patch:
