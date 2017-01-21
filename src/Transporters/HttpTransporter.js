@@ -1,5 +1,6 @@
 // @flow
 import Transporter from './Transporter';
+import InitialFetchHttpMiddleware from '../TransporterMiddleware/InitialFetchHttpMiddleware';
 import HttpOfflineChecker from './HttpOfflineChecker';
 import { PROMISE_STATE } from '../constants';
 import { TransactionItem } from '../TransactionItem';
@@ -11,9 +12,8 @@ export default class HttpTransporter extends Transporter {
   path: string;
   methodMap: Map;
 
-
-  constructor(options: Object) {
-    super();
+  constructor(key: string, options: Object) {
+    super(key);
     this.baseUrl = options.baseUrl.replace(/\/$/, '') || this.constructor.baseUrl;
     this.path = options.path;
     this.methodMap = new Map();
@@ -28,7 +28,7 @@ export default class HttpTransporter extends Transporter {
 
   createPath(path: string, pathTemplate: string, payload: Object) {
     let constructedPath = pathTemplate.replace(':basePath', path);
-    constructedPath = constructedPath.replace(':id', payload.id);
+    constructedPath = constructedPath.replace(':id', payload[this.key]);
     return constructedPath;
   }
 
@@ -166,3 +166,5 @@ HttpTransporter.methodMap.set('initialFetch', {
   method: 'GET',
   pathTemplate: ':basePath',
 });
+
+HttpTransporter.add(new InitialFetchHttpMiddleware());

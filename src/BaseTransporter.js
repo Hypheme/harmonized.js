@@ -4,8 +4,13 @@ import TransporterMiddleware from './TransporterMiddleware/TransporterMiddleware
 
 export default class BaseTransporter {
   static middleware: TransporterMiddleware[] = [];
-
   static TransactionItem: TransactionItem = TransactionItem;
+
+  key: string;
+
+  constructor(key: string) {
+    this.key = key;
+  }
 
   _shouldBeImplemented() {
     throw new Error('should be implemented by the transporter');
@@ -31,11 +36,17 @@ export default class BaseTransporter {
     return this._sendRequest(new BaseTransporter.TransactionItem('fetchAll', {}));
   }
 
-  initialFetch() {
-    return this._sendRequest(new BaseTransporter.TransactionItem('initialFetch', {}));
+  initialFetch(inputArray: Object[]) {
+    return this._sendRequest(new BaseTransporter.TransactionItem('initialFetch', {
+      inputArray,
+    }));
   }
 
   onceAvailable() {
+    this._shouldBeImplemented();
+  }
+
+  _mergeInitialFetchArrays(/* inputArray: Object[], fetchArray: Object[] */) {
     this._shouldBeImplemented();
   }
 
@@ -50,16 +61,19 @@ export default class BaseTransporter {
   _sendRequest(item: TransactionItem) {
     const preparedReq = this._prepareRequest(item);
     const action = item.action;
+    const meta = {
+      key: this.key,
+    };
 
     // run send middleware then send and afterwards work off the queue
-    return this.constructor.runMiddleware('send', preparedReq)
+    return this.constructor.runMiddleware('send', { meta, req: preparedReq })
       .then(this._request.bind(this))
       // when error run transmissionError middleware
       .catch(({ error, req }) => this.constructor
         .runMiddleware('transmissionError', { action, req, error })
         .then(() => Promise.reject({ error, req })))
       .then(({ status, data, res, req }) => this.constructor.runMiddleware('receive',
-        { action, status, data, req, res }))
+        { meta, action, status, data, req, res }))
       .then(({ status, data }) => ({ status, data }));
   }
 

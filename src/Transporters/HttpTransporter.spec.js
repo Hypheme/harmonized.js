@@ -16,13 +16,14 @@ describe('HttpTransporter', function () {
     ];
   });
   it('should be constructed', function () {
-    const httpTransporter = new HttpTransporter({
+    const httpTransporter = new HttpTransporter('uuid', {
       baseUrl: 'https://www.hyphe.me',
       path: 'login',
     });
 
     expect(httpTransporter.baseUrl).toBe('https://www.hyphe.me');
     expect(httpTransporter.path).toBe('login');
+    expect(httpTransporter.key).toBe('uuid');
     expect(httpTransporter.methodMap instanceof Map).toBe(true);
     expect(httpTransporter.methodMap.size).toBe(0);
   });
@@ -35,7 +36,7 @@ describe('HttpTransporter', function () {
       { name: 'fourth', test: () => true },
     ];
 
-    const httpTransporter = new HttpTransporter({
+    const httpTransporter = new HttpTransporter('id', {
       baseUrl: 'https://www.hyphe.me',
       path: 'login',
     });
@@ -50,7 +51,7 @@ describe('HttpTransporter', function () {
       { name: 'fourth', test: () => true },
     ];
 
-    const httpTransporter = new HttpTransporter({
+    const httpTransporter = new HttpTransporter('id', {
       baseUrl: 'https://www.hyphe.me',
       path: 'login',
     });
@@ -65,7 +66,7 @@ describe('HttpTransporter', function () {
       { name: 'fourth', test: () => false },
     ];
 
-    expect(() => new HttpTransporter({
+    expect(() => new HttpTransporter('id', {
       baseUrl: 'https://www.hyphe.me',
       path: 'login',
     })).toThrowError('missing offline checker');
@@ -73,14 +74,14 @@ describe('HttpTransporter', function () {
 
   describe('prepare requests', function () {
     beforeEach(function () {
-      this.httpTransporter = new HttpTransporter({
+      this.httpTransporter = new HttpTransporter('superid', {
         baseUrl: 'https://www.hyphe.me',
         path: 'login',
       });
 
       this.item = {
         payload: {
-          id: 123,
+          superid: 123,
           some: 'value',
         },
       };
@@ -95,7 +96,7 @@ describe('HttpTransporter', function () {
         path: 'login',
         pathTemplate: ':basePath',
         payload: {
-          id: 123,
+          superid: 123,
           some: 'value',
         },
         method: 'POST',
@@ -115,7 +116,7 @@ describe('HttpTransporter', function () {
         path: 'login',
         pathTemplate: ':basePath/:id',
         payload: {
-          id: 123,
+          superid: 123,
           some: 'value',
         },
         method: 'PUT',
@@ -135,7 +136,7 @@ describe('HttpTransporter', function () {
         path: 'login',
         pathTemplate: ':basePath/:id',
         payload: {
-          id: 123,
+          superid: 123,
           some: 'value',
         },
         method: 'DELETE',
@@ -155,7 +156,7 @@ describe('HttpTransporter', function () {
         path: 'login',
         pathTemplate: ':basePath/:id',
         payload: {
-          id: 123,
+          superid: 123,
           some: 'value',
         },
         method: 'GET',
@@ -284,7 +285,7 @@ describe('HttpTransporter', function () {
         };
       });
 
-      const httpTransporter = new HttpTransporter({
+      const httpTransporter = new HttpTransporter('id', {
         baseUrl: 'https://www.hyphe.me',
         path: 'login',
       });
@@ -330,7 +331,7 @@ describe('HttpTransporter', function () {
         },
       });
 
-      const httpTransporter = new HttpTransporter({
+      const httpTransporter = new HttpTransporter('id', {
         baseUrl: 'https://www.hyphe.me',
         path: 'login',
       });
@@ -377,7 +378,7 @@ describe('HttpTransporter', function () {
         },
       });
 
-      const httpTransporter = new HttpTransporter({
+      const httpTransporter = new HttpTransporter('id', {
         baseUrl: 'https://www.hyphe.me',
         path: 'login',
       });
@@ -432,7 +433,7 @@ describe('HttpTransporter', function () {
       },
     });
 
-    const httpTransporter = new HttpTransporter({
+    const httpTransporter = new HttpTransporter('id', {
       baseUrl: 'https://www.hyphe.me',
       path: 'login',
     });
@@ -491,7 +492,7 @@ describe('HttpTransporter', function () {
   });
 
   it('should get onceAvailable', function () {
-    const httpTransporter = new HttpTransporter({
+    const httpTransporter = new HttpTransporter('id', {
       baseUrl: 'https://www.hyphe.me',
       path: 'login',
     });

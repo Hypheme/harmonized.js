@@ -19,7 +19,7 @@ describe('BaseTransporter', function () {
     TestTransporter = BfeTestTransporter;
     this.TransactionItemMock = jasmine.createSpy('TransactionItem');
     // BaseTransporter.__Rewire__('TransactionItem', this.TransactionItemMock);
-    this.testTransporter = new TestTransporter();
+    this.testTransporter = new TestTransporter('uuid');
     BaseTransporter.TransactionItem = this.TransactionItemMock;
 
     expect(TestTransporter.middleware instanceof Array).toBe(true);
@@ -188,7 +188,8 @@ describe('BaseTransporter', function () {
         expect(TestTransporter.runMiddleware).toHaveBeenCalledTimes(2);
 
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('send', {
-          prepared: 'item',
+          req: { prepared: 'item' },
+          meta: { key: 'uuid' },
         });
 
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('receive', {
@@ -197,6 +198,7 @@ describe('BaseTransporter', function () {
           req: 'req',
           data: 'data',
           status: 'status',
+          meta: { key: 'uuid' },
         });
 
         expect(returnedData).toEqual({
@@ -247,11 +249,16 @@ describe('BaseTransporter', function () {
         expect(TestTransporter.runMiddleware).toHaveBeenCalledTimes(2);
 
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('send', {
-          prepared: 'item',
+          meta: {
+            key: 'uuid',
+          },
+          req: {
+            prepared: 'item',
+          },
         });
 
         expect(TestTransporter.runMiddleware).not.toHaveBeenCalledWith('receive',
-          jasmine.any(Object));
+          {});
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('transmissionError', {
           action: 'create',
           req: 'req',
@@ -351,11 +358,11 @@ describe('BaseTransporter', function () {
   it('should do initial fetch all items and send the request', function () {
     this.TransactionItemMock.and.callFake((action, data) => {
       expect(action).toBe('initialFetch');
-      expect(data).toEqual({});
+      expect(data).toEqual({ inputArray: ['a', 'b', 'c'] });
     });
 
     spyOn(this.testTransporter, '_sendRequest').and.returnValue('return value');
-    const initialFetchReturn = this.testTransporter.initialFetch();
+    const initialFetchReturn = this.testTransporter.initialFetch(['a', 'b', 'c']);
     expect(initialFetchReturn).toBe('return value');
     expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(
       jasmine.any(this.TransactionItemMock));
@@ -376,6 +383,10 @@ describe('BaseTransporter', function () {
 
     expect(() => {
       transporter._request();
+    }).toThrowError('should be implemented by the transporter');
+
+    expect(() => {
+      transporter._mergeInitialFetchArrays();
     }).toThrowError('should be implemented by the transporter');
   });
 });
