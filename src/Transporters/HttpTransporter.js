@@ -1,8 +1,8 @@
 // @flow
+import { differenceWith } from 'lodash/fp';
 import Transporter from './Transporter';
-import InitialFetchHttpMiddleware from '../TransporterMiddleware/InitialFetchHttpMiddleware';
 import HttpOfflineChecker from './HttpOfflineChecker';
-import { PROMISE_STATE } from '../constants';
+import { STATE, PROMISE_STATE, ROLE } from '../constants';
 import { TransactionItem } from '../TransactionItem';
 
 export default class HttpTransporter extends Transporter {
@@ -12,8 +12,8 @@ export default class HttpTransporter extends Transporter {
   path: string;
   methodMap: Map;
 
-  constructor(key: string, options: Object) {
-    super(key);
+  constructor(options: Object) {
+    super(options);
     this.baseUrl = options.baseUrl.replace(/\/$/, '') || this.constructor.baseUrl;
     this.path = options.path;
     this.methodMap = new Map();
@@ -121,6 +121,19 @@ export default class HttpTransporter extends Transporter {
     });
   }
 
+  initialFetchStrategy(inputArray: Object[]) {
+    const key = this.store.schema.getKeyIdentifierFor(this.role.AS_TARGET);
+    this.fetch().then((items) => {
+      const toDelete = differenceWith(
+        (val: Object, otherVal: Object) => val[key] === otherVal[key],
+      )(items)(inputArray)
+        .filter(item => item._transporterState !== STATE.BEING_CREATED &&
+          item._transporterState !== STATE.BEING_DELETED);
+
+      return { items, toDelete };
+    });
+  }
+
   static offlineCheckerList = [];
 
   static addOfflineChecker(offlineChecker: HttpOfflineChecker | Object) {
@@ -166,5 +179,3 @@ HttpTransporter.methodMap.set('initialFetch', {
   method: 'GET',
   pathTemplate: ':basePath',
 });
-
-HttpTransporter.add(new InitialFetchHttpMiddleware());
