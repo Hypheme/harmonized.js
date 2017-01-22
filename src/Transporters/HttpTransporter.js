@@ -123,14 +123,13 @@ export default class HttpTransporter extends Transporter {
   }
 
   initialFetchStrategy(inputArray: Object[]) {
-    const key = this._store.schema.getKeyIdentifierFor(this.role.AS_TARGET);
-    this.fetch().then((items) => {
+    const key = this._store.schema.getKeyIdentifierFor(this._role.AS_TARGET);
+    return this.fetch().then((items) => {
       const toDelete = differenceWith(
         (val: Object, otherVal: Object) => val[key] === otherVal[key],
-      )(items)(inputArray)
+      )(inputArray)(items)
         .filter(item => item._transporterState !== STATE.BEING_CREATED &&
           item._transporterState !== STATE.BEING_DELETED);
-
       return { items, toDelete };
     });
   }

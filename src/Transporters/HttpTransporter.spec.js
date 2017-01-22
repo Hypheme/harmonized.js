@@ -1,6 +1,6 @@
 import fetchMock from 'fetch-mock';
 import HttpTransporter from './HttpTransporter';
-import { PROMISE_STATE } from '../constants';
+import { STATE, PROMISE_STATE } from '../constants';
 
 describe('HttpTransporter', function () {
   beforeEach(function () {
@@ -71,7 +71,7 @@ describe('HttpTransporter', function () {
     })).toThrowError('missing offline checker');
   });
 
-  it('should use the default initialFetchStrategy', function () {
+  it('should use the default initialFetchStrategy', function (done) {
     const httpTransporter = new HttpTransporter({
       baseUrl: 'https://www.hyphe.me',
       path: 'login',
@@ -83,7 +83,7 @@ describe('HttpTransporter', function () {
 
     httpTransporter._store = {
       schema: {
-        getKeyIdentifierFor: jasmine.createSpy('getKeyIdentifierFor'),
+        getKeyIdentifierFor: jasmine.createSpy('getKeyIdentifierFor').and.returnValue('superid'),
       },
     };
 
@@ -102,6 +102,9 @@ describe('HttpTransporter', function () {
         _transporterState: STATE.EXISTENT,
       },
       {
+        _transporterState: STATE.BEING_CREATED,
+      },
+      {
         superid: 125,
         _transporterState: STATE.BEING_DELETED,
       },
@@ -110,18 +113,19 @@ describe('HttpTransporter', function () {
         _transporterState: STATE.EXISTENT,
       },
     ]).then((items) => {
-      expect(items).toEqual([
-        items: {
+      expect(items).toEqual({
+        items: [
           { superid: 123 },
           { superid: 126 },
-        },
+        ],
         toDelete: [
           {
             superid: 124,
             _transporterState: STATE.EXISTENT,
           },
-        ]
-      ]);
+        ],
+      });
+      done();
     });
   });
 
