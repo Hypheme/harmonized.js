@@ -15,7 +15,7 @@ export default class Store {
     Item = DefaultItem, schema,
     transporter = new EmptyTransporter(),
     clientStorage = new EmptyTransporter(),
-    options = { autosave: true },
+    options = { autoSave: true },
   }) {
     if (!schema) {
       throw new Error('undefined schema');
@@ -47,7 +47,7 @@ export default class Store {
         item._transporterState = this._castItemTransporterState(item._transporterState);
       });
       this._createItems(tData.items, SOURCE.TRANSPORTER);
-      this._deleteItems(tData.toDelete, SOURCE.TRANSPORTER);
+      this._removeItems(tData.toDelete, SOURCE.CLIENT_STORAGE);
     })
     .then(() => this._finishLoading());
   }
@@ -78,24 +78,27 @@ export default class Store {
   // PRIVATE METHODS  //
   // ///////////////////
 
-  _castItemTransporterState(/* rawState*/) {
-    // TODO get transporterState out of string
+  _castItemTransporterState(rawState) {
+    for (const state in STATE) {
+      if (Object.prototype.hasOwnProperty.call(STATE, state)) {
+        if (state === rawState) {
+          return STATE[state];
+        }
+      }
+    }
+    return undefined;
   }
 
   _createItems(rawItems, source) {
     return Promise.all(rawItems.map((rawItem) => {
-      const item = new this._Item({ store: this, autoSave: this.options.autoSave });
+      const item = new this._Item({ store: this, autoSave: this._options.autoSave });
       if (rawItem._transporterState !== STATE.BEING_DELETED &&
-        rawItem._transporterState !== STATE.REMOVED &&
+        rawItem._transporterState !== STATE.DELETED &&
         rawItem._transporterState !== STATE.LOCKED) {
         this.items.push(item);
       }
       return item.construct(rawItem, { source });
     }));
-  }
-
-  _deleteItems(/* items, source*/) {
-    // TODO deletedItems
   }
 
   _finishLoading() {
@@ -104,7 +107,7 @@ export default class Store {
   }
 
   _removeItems(itemKeys, source) {
-    const identifier = this.schema.getKeyIdentiferFor(source.AS_TARGET);
+    const identifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
     return Promise.all(itemKeys.map(itemKey =>
       this.findOne({ [identifier]: itemKey[identifier] }).remove(source)));
   }
