@@ -374,18 +374,12 @@ describe('BaseTransporter', function () {
     expect(this.testTransporter._sendRequest).toHaveBeenCalledTimes(1);
   });
 
-  it('should do initial fetch all items and send the request', function () {
-    this.TransactionItemMock.and.callFake((action, data) => {
-      expect(action).toBe('initialFetch');
-      expect(data).toEqual({ inputArray: ['a', 'b', 'c'] });
-    });
-
-    spyOn(this.testTransporter, '_sendRequest').and.returnValue('return value');
+  it('should do initial fetch and call the initialFetchStategy', function () {
+    this.testTransporter.initialFetchStrategy = jasmine.createSpy()
+      .and.returnValue('initial fetch stategy');
     const initialFetchReturn = this.testTransporter.initialFetch(['a', 'b', 'c']);
-    expect(initialFetchReturn).toBe('return value');
-    expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(
-      jasmine.any(this.TransactionItemMock));
-    expect(this.testTransporter._sendRequest).toHaveBeenCalledTimes(1);
+    expect(initialFetchReturn).toBe('initial fetch stategy');
+    expect(this.testTransporter.initialFetchStrategy).toHaveBeenCalledWith(['a', 'b', 'c']);
   });
 
   it('should throw an error when interface methods are not implemented', function () {
@@ -402,10 +396,6 @@ describe('BaseTransporter', function () {
 
     expect(() => {
       transporter._request();
-    }).toThrowError('should be implemented by the transporter');
-
-    expect(() => {
-      transporter._mergeInitialFetchArrays();
     }).toThrowError('should be implemented by the transporter');
   });
 });

@@ -55,16 +55,10 @@ export default class BaseTransporter {
   }
 
   initialFetch(inputArray: Object[]) {
-    return this._sendRequest(new BaseTransporter.TransactionItem('initialFetch', {
-      inputArray,
-    }));
+    return this.initialFetchStrategy(inputArray);
   }
 
   onceAvailable() {
-    this._shouldBeImplemented();
-  }
-
-  _mergeInitialFetchArrays(/* inputArray: Object[], fetchArray: Object[] */) {
     this._shouldBeImplemented();
   }
 
