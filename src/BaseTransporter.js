@@ -14,7 +14,7 @@ export default class BaseTransporter {
   _store: Store;
   _role: Role;
 
-  constructor(options: Object) {
+  constructor(options: Object = {}) {
     if (options.initialFetchStrategy) {
       this.initialFetchStrategy = options.initialFetchStrategy;
     }

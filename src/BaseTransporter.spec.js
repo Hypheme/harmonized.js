@@ -189,7 +189,6 @@ describe('BaseTransporter', function () {
 
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('send', {
           req: { prepared: 'item' },
-          meta: { key: 'uuid' },
         });
 
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('receive', {
@@ -198,7 +197,6 @@ describe('BaseTransporter', function () {
           req: 'req',
           data: 'data',
           status: 'status',
-          meta: { key: 'uuid' },
         });
 
         expect(returnedData).toEqual({
@@ -249,9 +247,6 @@ describe('BaseTransporter', function () {
         expect(TestTransporter.runMiddleware).toHaveBeenCalledTimes(2);
 
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('send', {
-          meta: {
-            key: 'uuid',
-          },
           req: {
             prepared: 'item',
           },

@@ -27,8 +27,9 @@ export default class HttpTransporter extends Transporter {
   }
 
   createPath(path: string, pathTemplate: string, payload: Object) {
+    const key = this._store.schema.getKeyIdentifierFor(this._role.AS_TARGET);
     let constructedPath = pathTemplate.replace(':basePath', path);
-    constructedPath = constructedPath.replace(':id', payload[this.key]);
+    constructedPath = constructedPath.replace(':id', payload[key]);
     return constructedPath;
   }
 
