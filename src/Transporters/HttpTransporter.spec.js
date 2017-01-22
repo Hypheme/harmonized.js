@@ -71,6 +71,60 @@ describe('HttpTransporter', function () {
     })).toThrowError('missing offline checker');
   });
 
+  it('should use the default initialFetchStrategy', function () {
+    const httpTransporter = new HttpTransporter({
+      baseUrl: 'https://www.hyphe.me',
+      path: 'login',
+    });
+
+    httpTransporter._role = {
+      AS_TARGET: 'as target',
+    };
+
+    httpTransporter._store = {
+      schema: {
+        getKeyIdentifierFor: jasmine.createSpy('getKeyIdentifierFor'),
+      },
+    };
+
+    httpTransporter.fetch = jasmine.createSpy('fetch').and.returnValue(Promise.resolve([
+      { superid: 123 },
+      { superid: 126 },
+    ]));
+
+    httpTransporter.initialFetchStrategy([
+      {
+        superid: 123,
+        _transporterState: STATE.BEING_CREATED,
+      },
+      {
+        superid: 124,
+        _transporterState: STATE.EXISTENT,
+      },
+      {
+        superid: 125,
+        _transporterState: STATE.BEING_DELETED,
+      },
+      {
+        superid: 126,
+        _transporterState: STATE.EXISTENT,
+      },
+    ]).then((items) => {
+      expect(items).toEqual([
+        items: {
+          { superid: 123 },
+          { superid: 126 },
+        },
+        toDelete: [
+          {
+            superid: 124,
+            _transporterState: STATE.EXISTENT,
+          },
+        ]
+      ]);
+    });
+  });
+
   describe('prepare requests', function () {
     beforeEach(function () {
       this.httpTransporter = new HttpTransporter({

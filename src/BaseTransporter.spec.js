@@ -19,11 +19,35 @@ describe('BaseTransporter', function () {
     TestTransporter = BfeTestTransporter;
     this.TransactionItemMock = jasmine.createSpy('TransactionItem');
     // BaseTransporter.__Rewire__('TransactionItem', this.TransactionItemMock);
-    this.testTransporter = new TestTransporter('uuid');
+    this.testTransporter = new TestTransporter();
     BaseTransporter.TransactionItem = this.TransactionItemMock;
 
     expect(TestTransporter.middleware instanceof Array).toBe(true);
     TestTransporter.middleware = [];
+  });
+
+  it('should construct with custom initial fetch strategy', function () {
+    this.testTransporter = new TestTransporter({
+      initialFetchStrategy: 'custom strategy',
+    });
+    expect(this.testTransporter.initialFetchStrategy).toBe('custom strategy');
+  });
+
+  it('should construct with custom initial fetch strategy', function () {
+    this.testTransporter = new TestTransporter();
+    expect(this.testTransporter.initialFetchStrategy).toBeUndefined();
+  });
+
+  it('should set the environment', function () {
+    expect(this.testTransporter._store).toBeUndefined();
+    expect(this.testTransporter._role).toBeUndefined();
+    this.testTransporter.setEnvironment({
+      role: 'role',
+      store: 'store',
+    });
+
+    expect(this.testTransporter._store).toBe('store');
+    expect(this.testTransporter._role).toBe('role');
   });
 
   it('should add middleware', function () {

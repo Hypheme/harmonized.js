@@ -52,12 +52,14 @@ class Schema {
 
   getKeyIdentifierFor(target: DataTarget) {
     if (target === TARGET.TRANSPORTER) {
-      return this.primaryKey.key;
+      return this._primaryKey.key;
     }
 
     if (target === TARGET.CLIENT_STORAGE) {
-      return this.primaryKey._key;
+      return this._primaryKey._key;
     }
+
+    throw new Error('unsupported target for getKeyIdentifierFor');
   }
 
   getObservables(item: Object) {

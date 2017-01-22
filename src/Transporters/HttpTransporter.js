@@ -123,7 +123,7 @@ export default class HttpTransporter extends Transporter {
   }
 
   initialFetchStrategy(inputArray: Object[]) {
-    const key = this.store.schema.getKeyIdentifierFor(this.role.AS_TARGET);
+    const key = this._store.schema.getKeyIdentifierFor(this.role.AS_TARGET);
     this.fetch().then((items) => {
       const toDelete = differenceWith(
         (val: Object, otherVal: Object) => val[key] === otherVal[key],
