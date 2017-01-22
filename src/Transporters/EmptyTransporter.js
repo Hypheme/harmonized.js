@@ -8,7 +8,6 @@ export default class EmptyTransporter {
     this.delete = this._returnInput;
     this.fetch = this._returnInput;
     this.fetchAll = this._returnEmptyArray;
-    this.initialFetch = this._returnEmptyArray;
   }
 
   _returnInput(input) {
@@ -20,6 +19,13 @@ export default class EmptyTransporter {
 
   _returnEmptyArray() {
     return Promise.resolve([]);
+  }
+
+  initialFetch(/* baseData*/) {
+    return Promise.resolve({
+      items: [],
+      toDelete: [],
+    });
   }
 
   create(): Promise {

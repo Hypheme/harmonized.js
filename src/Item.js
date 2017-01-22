@@ -124,10 +124,11 @@ export default class Item {
   _computeInitialStates(initialState) {
     switch (initialState) {
       case STATE.BEING_CREATED:
+      default:
         return {
           current: undefined,
           inProgress: undefined,
-          next: initialState,
+          next: STATE.BEING_CREATED,
         };
       case STATE.BEING_DELETED:
       case STATE.BEING_UPDATED:
@@ -145,8 +146,6 @@ export default class Item {
           inProgress: undefined,
           next: undefined,
         };
-      default:
-        throw new Error('unkown initial state');
     }
   }
 
