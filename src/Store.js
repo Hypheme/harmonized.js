@@ -47,7 +47,7 @@ export default class Store {
         item._transporterState = this._castItemTransporterState(item._transporterState);
       });
       this._createItems(tData.items, SOURCE.TRANSPORTER);
-      this._removeItems(tData.toDelete, SOURCE.CLIENT_STORAGE);
+      this._removeItems(tData.toDelete, SOURCE.TRANSPORTER);
     })
     .then(() => this._finishLoading());
   }

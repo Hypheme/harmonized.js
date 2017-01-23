@@ -1,14 +1,12 @@
 import uuid from 'uuid/v4';
 import { PROMISE_STATE } from '../constants';
+
 // TODO include base transporter
-// import BaseTransporter from '../BaseTransporter';
+import BaseTransporter from '../BaseTransporter';
 
-// console.log('BASE TRANSPORTER');
-// console.log(BaseTransporter);
-
-export default class EmptyTransporter /* extends BaseTransporter*/ {
+export default class EmptyTransporter extends BaseTransporter {
   constructor(keyName) {
-    // super();
+    super();
     this._keyName = keyName;
     this.update = this._returnInput;
     this.delete = this._returnInput;

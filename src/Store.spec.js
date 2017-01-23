@@ -9,14 +9,6 @@ import OriginalItem from './Item';
 import OriginalEmptyTransporter from './Transporters/EmptyTransporter';
 
 
-//
-// setInterval(()=> {
-//   import BaseTransporter from './BaseTransporter';
-//
-//   console.log('in tests:');
-//   console.log(BaseTransporter);
-// }, 100)
-
 class SchemaStub extends Schema {
   constructor() {
     super({
@@ -101,8 +93,8 @@ describe('Store', function () {
           checkItem(store.items[4], '6');
           checkItem(store.items[5], '7');
           checkItem(store.items[6], '8');
-          expect(this.items[0].remove).toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE);
-          expect(this.items[1].remove).toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE);
+          expect(this.items[0].remove).toHaveBeenCalledWith(SOURCE.TRANSPORTER);
+          expect(this.items[1].remove).toHaveBeenCalledWith(SOURCE.TRANSPORTER);
         });
     });
 

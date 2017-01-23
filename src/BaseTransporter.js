@@ -1,5 +1,4 @@
 // @flow
-import Store from './Store';
 import TransactionItem from './TransactionItem';
 import TransporterMiddleware from './TransporterMiddleware/TransporterMiddleware';
 import { ROLE } from './constants';
@@ -11,7 +10,7 @@ export default class BaseTransporter {
   static TransactionItem: TransactionItem = TransactionItem;
 
   initialFetchStrategy: Function;
-  _store: Store;
+  _store: Object;
   _role: Role;
 
   constructor(options: Object = {}) {
@@ -21,7 +20,7 @@ export default class BaseTransporter {
   }
 
   setEnvironment({ store, role }: {
-    store: Store,
+    store: Object,
     role: Role,
   }) {
     this._store = store;
