@@ -62,7 +62,7 @@ export default class Store {
 
   find() {} // returns array of items
   findOne() {} // returns item or undefined
-  findOneOrFetch() {} // returns promise which resolves in harmonized promise
+  findOneOrFetch() {} // returns either a existing item or creates a new one and fetches it
 
   isLoaded() {
     return this.loaded;

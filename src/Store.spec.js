@@ -159,5 +159,83 @@ describe('Store', function () {
         this.store._finishLoading();
       });
     });
+
+    describe('finds', function () {
+      beforeEach(function () {
+        this.initialStoreData = [{
+          id: '1',
+          name: 'hans',
+          lastname: 'wurst',
+        }, {
+          id: '2',
+          name: 'hans',
+          lastname: 'pan',
+        }, {
+          id: '3',
+          name: 'peter',
+          lastname: 'wurst',
+        }, {
+          id: '4',
+          name: 'peter',
+          lastname: 'pan',
+        }, {
+          id: '5',
+          name: 'hans',
+          lastname: 'wurst',
+        }, {
+          id: '6',
+          name: 'hans',
+          lastname: 'pan',
+        }, {
+          id: '7',
+          name: 'peter',
+          lastname: 'wurst',
+        }, {
+          id: '8',
+          name: 'peter',
+          lastname: 'pan',
+        }];
+        this.initialStoreData.forEach(item => this.store.items.push(item));
+      });
+
+      describe('find', function () {
+        it('should find all items that matches all filters', function () {
+          expect(this.store.find({ name: 'hans', lastname: 'wurst' }))
+          .toEqual([this.storeData[0], this.storeData[4]]);
+        });
+        it('should return an empty array if no item matches', function () {
+          expect(this.store.find({ id: '10' }))
+          .toEqual([]);
+        });
+      });
+
+      describe('findOne', function () {
+        it('should find the first item that machtes all filters', function () {
+          expect(this.store.findOne({ name: 'peter', lastname: 'pan' }))
+          .toEqual(this.storeData[3]);
+        });
+        it('should return undefined if no item matches', function () {
+          expect(this.store.findOne({ id: '10' }))
+          .toBe(undefined);
+        });
+      });
+
+      describe.skip('findOneOrFetch', function () {
+        it('should return the first item that matches the primary key', function () {
+          expect(this.store.findOneOrFetch({ id: '4' }))
+            .toEqual(this.storeData[3]);
+        });
+        it('should fetch and create an item if no item matches and add it to the store as soon as it arrives', function () {
+          // TODO mock Item
+          // const item = this.store.findOneOrFetch({ id: '10' });
+          // TODO check if item was created,
+          // check if construct was called
+          // check if fetched was called
+        });
+        it('should throw if given filter is not a primary key', function () {
+          // export(()=> {}).toThrow('no primary key defined');
+        });
+      });
+    });
   });
 });
