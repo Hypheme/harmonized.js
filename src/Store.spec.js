@@ -19,11 +19,25 @@ class SchemaStub extends Schema {
 class TransporterStub extends BaseTransporter {
   constructor() {
     super({});
+    this.promise = new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+    });
+  }
+  initialFetch() {
+    return this.promise;
   }
 }
 class ClientStorageStub extends BaseTransporter {
   constructor() {
     super({});
+    this.promise = new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+    });
+  }
+  initialFetch() {
+    return this.promise;
   }
 }
 class Item {
@@ -38,10 +52,10 @@ class Item {
 }
 
 describe('Store', function () {
+  beforeEach(function () {
+    this.schema = new SchemaStub();
+  });
   describe('constructor', function () {
-    beforeEach(function () {
-      this.schema = new SchemaStub();
-    });
     it('should create a store and populate with fetched data', function () {
       this.clientStorage = new ClientStorageStub();
       spyOn(this.clientStorage, 'initialFetch')
@@ -115,15 +129,35 @@ describe('Store', function () {
     });
   });
 
-  describe('public', function () {
+  describe('methods', function () {
+    beforeEach(function () {
+      this.store = new Store({
+        schema: this.schema,
+        transporter: new TransporterStub(),
+        clientStorage: new ClientStorageStub(),
+      });
+    });
 
-  });
+    describe('isLoaded', function () {
+      it('should return true', function () {
+        this.store.loaded = true;
+        expect(this.store.isLoaded()).toBe(true);
+      });
+      it('should return false', function () {
+        this.store.loaded = false;
+        expect(this.store.isLoaded()).toBe(false);
+      });
+    });
 
-  describe('private', function () {
-
-  });
-
-  describe('interface', function () {
-
+    describe('onceLoaded', function () {
+      it('should resolve immediatly', function (done) {
+        this.store._finishLoading();
+        this.store.onceLoaded().then(() => done());
+      });
+      it('should resolve once loaded', function (done) {
+        this.store.onceLoaded().then(() => done());
+        this.store._finishLoading();
+      });
+    });
   });
 });
