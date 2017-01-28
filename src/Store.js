@@ -60,8 +60,12 @@ export default class Store {
   fetchAndCreate() {} // same as findOneOrFetch
   fetch() {} // maybe? fetches again from the given SOURCE, defaults to transporter
 
-  find() {} // returns array of items
-  findOne() {} // returns item or undefined
+  find(identifiers) {
+    return this.items.filter(current => this._itemMatches(current, identifiers));
+  }
+  findOne(identifiers) {
+    return this.items.find(current => this._itemMatches(current, identifiers));
+  }
   findOneOrFetch() {} // returns either a existing item or creates a new one and fetches it
 
   isLoaded() {
@@ -104,6 +108,15 @@ export default class Store {
   _finishLoading() {
     this.loaded = true;
     this._isLoaded.resolve();
+  }
+
+  _itemMatches(item, identifiers = {}) {
+    for (const key in identifiers) {
+      if (item[key] !== identifiers[key]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   _removeItems(itemKeys, source) {

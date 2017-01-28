@@ -162,7 +162,7 @@ describe('Store', function () {
 
     describe('finds', function () {
       beforeEach(function () {
-        this.initialStoreData = [{
+        this.storeData = [{
           id: '1',
           name: 'hans',
           lastname: 'wurst',
@@ -195,7 +195,7 @@ describe('Store', function () {
           name: 'peter',
           lastname: 'pan',
         }];
-        this.initialStoreData.forEach(item => this.store.items.push(item));
+        this.storeData.forEach(item => this.store.items.push(item));
       });
 
       describe('find', function () {
@@ -220,7 +220,7 @@ describe('Store', function () {
         });
       });
 
-      describe.skip('findOneOrFetch', function () {
+      xdescribe('findOneOrFetch', function () {
         it('should return the first item that matches the primary key', function () {
           expect(this.store.findOneOrFetch({ id: '4' }))
             .toEqual(this.storeData[3]);
