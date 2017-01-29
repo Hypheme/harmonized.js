@@ -4,7 +4,7 @@ import {
 
 import DefaultItem from './Item';
 import EmptyTransporter from './Transporters/EmptyTransporter';
-import { ROLE, SOURCE, STATE } from './constants';
+import { ROLE, SOURCE, STATE, PROMISE_STATE } from './constants';
 
 export default class Store {
 
@@ -56,9 +56,30 @@ export default class Store {
   // PUBLIC METHODS   //
   // ///////////////////
 
-  create() {}
-  fetchAndCreate() {} // same as findOneOrFetch
-  fetch() {} // maybe? fetches again from the given SOURCE, defaults to transporter
+  create(values, source = SOURCE.STATE) {
+    const item = new this._Item({ store: this, autoSave: this._options.autoSave });
+    item.construct(values, { source });
+    this.items.push(item);
+    return item;
+  }
+
+  fetchAndCreate(key, source) {
+    return this.findOneOrFetch(key, source);
+  }
+
+  fetch(source) {
+    const keyIdentifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
+    this[source.NAME].fetchAll()
+    .then((result) => {
+      if (result.status === PROMISE_STATE.RESOLVED) {
+        // TODO delete all items that don't exist anymore (and aren't being created)
+        // TODO update all items, that are already existent
+        // TODO create new items, that aren't existent
+      } else {
+        throw new Error(`${SOURCE.NAME} is currently not available`);
+      }
+    });
+  } // maybe? fetches again from the given SOURCE, defaults to transporter
 
   find(identifiers) {
     return this.items.filter(current => this._itemMatches(current, identifiers));
