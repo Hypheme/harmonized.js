@@ -66,7 +66,14 @@ export default class Store {
   findOne(identifiers) {
     return this.items.find(current => this._itemMatches(current, identifiers));
   }
-  findOneOrFetch() {} // returns either a existing item or creates a new one and fetches it
+  findOneOrFetch(key, source = SOURCE.TRANSPORTER) {
+    const keyIdentifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
+    if (!key[keyIdentifier]) {
+      throw new Error(`missing identifier ${keyIdentifier}`);
+    }
+    return this.findOne({ [keyIdentifier]: key[keyIdentifier] }) ||
+      this._createAndFetchFrom(key, source);
+  }
 
   isLoaded() {
     return this.loaded;
@@ -91,6 +98,13 @@ export default class Store {
       }
     }
     return undefined;
+  }
+
+  _createAndFetchFrom(values, source) {
+    const item = new this._Item({ store: this, autoSave: this._options.autoSave });
+    item.construct(values, { source });
+    item.fetch(source);
+    return item;
   }
 
   _createItems(rawItems, source) {

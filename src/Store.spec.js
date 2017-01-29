@@ -49,6 +49,7 @@ class Item {
     return Promise.resolve();
   }
   remove() {}
+  fetch() {}
 }
 
 describe('Store', function () {
@@ -220,20 +221,25 @@ describe('Store', function () {
         });
       });
 
-      xdescribe('findOneOrFetch', function () {
+      describe('findOneOrFetch', function () {
+        beforeEach(function () {
+          spyOn(this.store.schema, 'getKeyIdentifierFor').and.returnValue('id');
+        });
         it('should return the first item that matches the primary key', function () {
           expect(this.store.findOneOrFetch({ id: '4' }))
             .toEqual(this.storeData[3]);
         });
         it('should fetch and create an item if no item matches and add it to the store as soon as it arrives', function () {
-          // TODO mock Item
-          // const item = this.store.findOneOrFetch({ id: '10' });
-          // TODO check if item was created,
-          // check if construct was called
-          // check if fetched was called
+          spyOn(this.store._Item.prototype, 'construct');
+          spyOn(this.store._Item.prototype, 'fetch');
+          const item = this.store.findOneOrFetch({ id: '10' });
+          expect(item.construct).toHaveBeenCalledWith({ id: '10' }, { source: SOURCE.TRANSPORTER });
+          expect(item.fetch).toHaveBeenCalledWith(SOURCE.TRANSPORTER);
         });
         it('should throw if given filter is not a primary key', function () {
-          // export(()=> {}).toThrow('no primary key defined');
+          expect(() => {
+            this.store.findOneOrFetch({ noId: 4 });
+          }).toThrow(new Error('missing identifier id'));
         });
       });
     });
