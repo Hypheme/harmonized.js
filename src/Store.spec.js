@@ -108,6 +108,7 @@ describe('Store', function () {
           checkItem(store.items[4], '6');
           checkItem(store.items[5], '7');
           checkItem(store.items[6], '8');
+          checkItem(store.incompleteItems[0], '1');
           expect(this.items[0].remove).toHaveBeenCalledWith(SOURCE.TRANSPORTER);
           expect(this.items[1].remove).toHaveBeenCalledWith(SOURCE.TRANSPORTER);
         });
@@ -197,12 +198,49 @@ describe('Store', function () {
           lastname: 'pan',
         }];
         this.storeData.forEach(item => this.store.items.push(item));
+        this.incompleteStoreData = [{
+          id: '11',
+          name: 'hans',
+          lastname: 'wurst',
+        }, {
+          id: '12',
+          name: 'hans',
+          lastname: 'pan',
+        }, {
+          id: '13',
+          name: 'peter',
+          lastname: 'wurst',
+        }, {
+          id: '14',
+          name: 'peter',
+          lastname: 'pan',
+        }, {
+          id: '15',
+          name: 'hans',
+          lastname: 'wurst',
+        }, {
+          id: '16',
+          name: 'hans',
+          lastname: 'pan',
+        }, {
+          id: '17',
+          name: 'peter',
+          lastname: 'wurst',
+        }, {
+          id: '18',
+          name: 'peter',
+          lastname: 'pan',
+        }];
+        this.incompleteStoreData.forEach(item => this.store.incompleteItems.push(item));
       });
 
       describe('find', function () {
         it('should find all items that matches all filters', function () {
           expect(this.store.find({ name: 'hans', lastname: 'wurst' }))
-          .toEqual([this.storeData[0], this.storeData[4]]);
+          .toEqual([
+            this.storeData[0], this.storeData[4],
+            this.incompleteStoreData[0], this.incompleteStoreData[4],
+          ]);
         });
         it('should return an empty array if no item matches', function () {
           expect(this.store.find({ id: '10' }))
@@ -219,6 +257,10 @@ describe('Store', function () {
           expect(this.store.findOne({ id: '10' }))
           .toBe(undefined);
         });
+        it('should return item from incompleteItems if nothing matches in store.items', function () {
+          expect(this.store.findOne({ id: '11' }))
+          .toBe(this.incompleteStoreData[0]);
+        });
       });
 
       describe('findOneOrFetch', function () {
@@ -228,13 +270,24 @@ describe('Store', function () {
         it('should return the first item that matches the primary key', function () {
           expect(this.store.findOneOrFetch({ id: '4' }))
             .toEqual(this.storeData[3]);
+          expect(this.store.findOneOrFetch({ id: '11' }))
+            .toEqual(this.incompleteStoreData[0]);
         });
-        it('should fetch and create an item if no item matches and add it to the store as soon as it arrives', function () {
+        it('should fetch and create an item if no item matches and add it to the store as soon as it arrives', function (done) {
+          let triggerResolve;
           spyOn(this.store._Item.prototype, 'construct');
-          spyOn(this.store._Item.prototype, 'fetch');
+          spyOn(this.store._Item.prototype, 'fetch').and
+            .returnValue(new Promise((resolve) => { triggerResolve = resolve; }));
           const item = this.store.findOneOrFetch({ id: '10' });
           expect(item.construct).toHaveBeenCalledWith({ id: '10' }, { source: SOURCE.TRANSPORTER });
           expect(item.fetch).toHaveBeenCalledWith(SOURCE.TRANSPORTER);
+          expect(this.store.incompleteItems[8]).toEqual(item);
+          triggerResolve();
+          setTimeout(() => {
+            expect(this.store.incompleteItems[8]).toBe(undefined);
+            expect(this.store.items[8]).toEqual(item);
+            done();
+          }, 0);
         });
         it('should throw if given filter is not a primary key', function () {
           expect(() => {
