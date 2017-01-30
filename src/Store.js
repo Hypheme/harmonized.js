@@ -12,7 +12,8 @@ export default class Store {
   @observable loaded = false;
   // @observable deletedItems = [];
   constructor({
-    Item = DefaultItem, schema,
+    Item = DefaultItem,
+    schema,
     transporter = new EmptyTransporter(),
     clientStorage = new EmptyTransporter(),
     options = { autoSave: true },
