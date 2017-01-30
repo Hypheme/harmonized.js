@@ -1,7 +1,8 @@
 // @flow
+import { differenceWith } from 'lodash/fp';
 import Transporter from './Transporter';
 import HttpOfflineChecker from './HttpOfflineChecker';
-import { PROMISE_STATE } from '../constants';
+import { STATE, PROMISE_STATE } from '../constants';
 import { TransactionItem } from '../TransactionItem';
 
 export default class HttpTransporter extends Transporter {
@@ -11,9 +12,8 @@ export default class HttpTransporter extends Transporter {
   path: string;
   methodMap: Map;
 
-
   constructor(options: Object) {
-    super();
+    super(options);
     this.baseUrl = options.baseUrl.replace(/\/$/, '') || this.constructor.baseUrl;
     this.path = options.path;
     this.methodMap = new Map();
@@ -27,8 +27,9 @@ export default class HttpTransporter extends Transporter {
   }
 
   createPath(path: string, pathTemplate: string, payload: Object) {
+    const key = this._store.schema.getKeyIdentifierFor(this._role.AS_TARGET);
     let constructedPath = pathTemplate.replace(':basePath', path);
-    constructedPath = constructedPath.replace(':id', payload.id);
+    constructedPath = constructedPath.replace(':id', payload[key]);
     return constructedPath;
   }
 
@@ -118,6 +119,18 @@ export default class HttpTransporter extends Transporter {
         data: {},
         status: PROMISE_STATE.PENDING,
       });
+    });
+  }
+
+  initialFetchStrategy(inputArray: Object[]) {
+    const key = this._store.schema.getKeyIdentifierFor(this._role.AS_TARGET);
+    return this.fetch().then((items) => {
+      const toDelete = differenceWith(
+        (val: Object, otherVal: Object) => val[key] === otherVal[key],
+      )(inputArray)(items)
+        .filter(item => item._transporterState !== STATE.BEING_CREATED &&
+          item._transporterState !== STATE.BEING_DELETED);
+      return { items, toDelete };
     });
   }
 

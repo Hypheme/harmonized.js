@@ -1,6 +1,6 @@
 import fetchMock from 'fetch-mock';
 import HttpTransporter from './HttpTransporter';
-import { PROMISE_STATE } from '../constants';
+import { STATE, PROMISE_STATE } from '../constants';
 
 describe('HttpTransporter', function () {
   beforeEach(function () {
@@ -71,6 +71,64 @@ describe('HttpTransporter', function () {
     })).toThrowError('missing offline checker');
   });
 
+  it('should use the default initialFetchStrategy', function (done) {
+    const httpTransporter = new HttpTransporter({
+      baseUrl: 'https://www.hyphe.me',
+      path: 'login',
+    });
+
+    httpTransporter._role = {
+      AS_TARGET: 'as target',
+    };
+
+    httpTransporter._store = {
+      schema: {
+        getKeyIdentifierFor: jasmine.createSpy('getKeyIdentifierFor').and.returnValue('superid'),
+      },
+    };
+
+    httpTransporter.fetch = jasmine.createSpy('fetch').and.returnValue(Promise.resolve([
+      { superid: 123 },
+      { superid: 126 },
+    ]));
+
+    httpTransporter.initialFetchStrategy([
+      {
+        superid: 123,
+        _transporterState: STATE.BEING_CREATED,
+      },
+      {
+        superid: 124,
+        _transporterState: STATE.EXISTENT,
+      },
+      {
+        _transporterState: STATE.BEING_CREATED,
+      },
+      {
+        superid: 125,
+        _transporterState: STATE.BEING_DELETED,
+      },
+      {
+        superid: 126,
+        _transporterState: STATE.EXISTENT,
+      },
+    ]).then((items) => {
+      expect(items).toEqual({
+        items: [
+          { superid: 123 },
+          { superid: 126 },
+        ],
+        toDelete: [
+          {
+            superid: 124,
+            _transporterState: STATE.EXISTENT,
+          },
+        ],
+      });
+      done();
+    });
+  });
+
   describe('prepare requests', function () {
     beforeEach(function () {
       this.httpTransporter = new HttpTransporter({
@@ -80,7 +138,7 @@ describe('HttpTransporter', function () {
 
       this.item = {
         payload: {
-          id: 123,
+          superid: 123,
           some: 'value',
         },
       };
@@ -95,7 +153,7 @@ describe('HttpTransporter', function () {
         path: 'login',
         pathTemplate: ':basePath',
         payload: {
-          id: 123,
+          superid: 123,
           some: 'value',
         },
         method: 'POST',
@@ -115,7 +173,7 @@ describe('HttpTransporter', function () {
         path: 'login',
         pathTemplate: ':basePath/:id',
         payload: {
-          id: 123,
+          superid: 123,
           some: 'value',
         },
         method: 'PUT',
@@ -135,7 +193,7 @@ describe('HttpTransporter', function () {
         path: 'login',
         pathTemplate: ':basePath/:id',
         payload: {
-          id: 123,
+          superid: 123,
           some: 'value',
         },
         method: 'DELETE',
@@ -155,7 +213,7 @@ describe('HttpTransporter', function () {
         path: 'login',
         pathTemplate: ':basePath/:id',
         payload: {
-          id: 123,
+          superid: 123,
           some: 'value',
         },
         method: 'GET',
@@ -289,6 +347,13 @@ describe('HttpTransporter', function () {
         path: 'login',
       });
 
+      httpTransporter._role = { AS_TARGET: 'as target' };
+      httpTransporter._store = {
+        schema: {
+          getKeyIdentifierFor: jasmine.createSpy('getKeyIdentifierFor').and.returnValue('id'),
+        },
+      };
+
       httpTransporter._request({
         baseUrl: 'https://www.hyphe.me',
         path: 'users',
@@ -334,6 +399,13 @@ describe('HttpTransporter', function () {
         baseUrl: 'https://www.hyphe.me',
         path: 'login',
       });
+
+      httpTransporter._role = { AS_TARGET: 'as target' };
+      httpTransporter._store = {
+        schema: {
+          getKeyIdentifierFor: jasmine.createSpy('getKeyIdentifierFor').and.returnValue('id'),
+        },
+      };
 
       httpTransporter._request({
         baseUrl: 'https://www.hyphe.me',
@@ -383,6 +455,13 @@ describe('HttpTransporter', function () {
       });
       httpTransporter.offlineChecker = {
         setOffline: jasmine.createSpy('set offline'),
+      };
+
+      httpTransporter._role = { AS_TARGET: 'as target' };
+      httpTransporter._store = {
+        schema: {
+          getKeyIdentifierFor: jasmine.createSpy('getKeyIdentifierFor').and.returnValue('id'),
+        },
       };
 
       expect(httpTransporter.offlineChecker.setOffline).toHaveBeenCalledTimes(0);
@@ -436,6 +515,13 @@ describe('HttpTransporter', function () {
       baseUrl: 'https://www.hyphe.me',
       path: 'login',
     });
+
+    httpTransporter._role = { AS_TARGET: 'as target' };
+    httpTransporter._store = {
+      schema: {
+        getKeyIdentifierFor: jasmine.createSpy('getKeyIdentifierFor').and.returnValue('id'),
+      },
+    };
 
     httpTransporter.getItemPath({
       id: 123,

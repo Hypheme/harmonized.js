@@ -1,14 +1,17 @@
 import uuid from 'uuid/v4';
 import { PROMISE_STATE } from '../constants';
 
-export default class EmptyTransporter {
+// TODO include base transporter
+import BaseTransporter from '../BaseTransporter';
+
+export default class EmptyTransporter extends BaseTransporter {
   constructor(keyName) {
+    super();
     this._keyName = keyName;
     this.update = this._returnInput;
     this.delete = this._returnInput;
     this.fetch = this._returnInput;
     this.fetchAll = this._returnEmptyArray;
-    this.initialFetch = this._returnEmptyArray;
   }
 
   _returnInput(input) {
@@ -20,6 +23,13 @@ export default class EmptyTransporter {
 
   _returnEmptyArray() {
     return Promise.resolve([]);
+  }
+
+  initialFetch(/* baseData*/) {
+    return Promise.resolve({
+      items: [],
+      toDelete: [],
+    });
   }
 
   create(): Promise {

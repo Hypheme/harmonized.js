@@ -26,6 +26,30 @@ describe('BaseTransporter', function () {
     TestTransporter.middleware = [];
   });
 
+  it('should construct with custom initial fetch strategy', function () {
+    this.testTransporter = new TestTransporter({
+      initialFetchStrategy: 'custom strategy',
+    });
+    expect(this.testTransporter.initialFetchStrategy).toBe('custom strategy');
+  });
+
+  it('should construct with custom initial fetch strategy', function () {
+    this.testTransporter = new TestTransporter();
+    expect(this.testTransporter.initialFetchStrategy).toBeUndefined();
+  });
+
+  it('should set the environment', function () {
+    expect(this.testTransporter._store).toBeUndefined();
+    expect(this.testTransporter._role).toBeUndefined();
+    this.testTransporter.setEnvironment({
+      role: 'role',
+      store: 'store',
+    });
+
+    expect(this.testTransporter._store).toBe('store');
+    expect(this.testTransporter._role).toBe('role');
+  });
+
   it('should add middleware', function () {
     expect(TestTransporter.middleware).toEqual([]);
     TestTransporter.add('super awesome middleware');
@@ -188,7 +212,7 @@ describe('BaseTransporter', function () {
         expect(TestTransporter.runMiddleware).toHaveBeenCalledTimes(2);
 
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('send', {
-          prepared: 'item',
+          req: { prepared: 'item' },
         });
 
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('receive', {
@@ -247,11 +271,13 @@ describe('BaseTransporter', function () {
         expect(TestTransporter.runMiddleware).toHaveBeenCalledTimes(2);
 
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('send', {
-          prepared: 'item',
+          req: {
+            prepared: 'item',
+          },
         });
 
         expect(TestTransporter.runMiddleware).not.toHaveBeenCalledWith('receive',
-          jasmine.any(Object));
+          {});
         expect(TestTransporter.runMiddleware).toHaveBeenCalledWith('transmissionError', {
           action: 'create',
           req: 'req',
@@ -348,18 +374,12 @@ describe('BaseTransporter', function () {
     expect(this.testTransporter._sendRequest).toHaveBeenCalledTimes(1);
   });
 
-  it('should do initial fetch all items and send the request', function () {
-    this.TransactionItemMock.and.callFake((action, data) => {
-      expect(action).toBe('initialFetch');
-      expect(data).toEqual({});
-    });
-
-    spyOn(this.testTransporter, '_sendRequest').and.returnValue('return value');
-    const initialFetchReturn = this.testTransporter.initialFetch();
-    expect(initialFetchReturn).toBe('return value');
-    expect(this.testTransporter._sendRequest).toHaveBeenCalledWith(
-      jasmine.any(this.TransactionItemMock));
-    expect(this.testTransporter._sendRequest).toHaveBeenCalledTimes(1);
+  it('should do initial fetch and call the initialFetchStategy', function () {
+    this.testTransporter.initialFetchStrategy = jasmine.createSpy()
+      .and.returnValue('initial fetch stategy');
+    const initialFetchReturn = this.testTransporter.initialFetch(['a', 'b', 'c']);
+    expect(initialFetchReturn).toBe('initial fetch stategy');
+    expect(this.testTransporter.initialFetchStrategy).toHaveBeenCalledWith(['a', 'b', 'c']);
   });
 
   it('should throw an error when interface methods are not implemented', function () {

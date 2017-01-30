@@ -236,6 +236,41 @@ describe('Schema', function () {
     });
   });
 
+  it('should get key identifier for transporter', function () {
+    const inputDefinition = {
+      properties: {
+        brand: String,
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+    expect(schema.getKeyIdentifierFor(TARGET.TRANSPORTER)).toBe('id');
+  });
+
+  it('should get key identifier for client storage', function () {
+    const inputDefinition = {
+      properties: {
+        brand: String,
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+    expect(schema.getKeyIdentifierFor(TARGET.CLIENT_STORAGE)).toBe('_id');
+  });
+
+  it('should get key identifier for other', function () {
+    const inputDefinition = {
+      properties: {
+        brand: String,
+      },
+    };
+
+    const schema = new Schema(inputDefinition);
+    expect(() => {
+      schema.getKeyIdentifierFor(TARGET.STATE);
+    }).toThrowError('unsupported target for getKeyIdentifierFor');
+  });
+
   it('should set primary client storage key', function () {
     const inputDefinition = {
       properties: {

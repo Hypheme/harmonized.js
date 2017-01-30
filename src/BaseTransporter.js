@@ -1,11 +1,33 @@
 // @flow
 import TransactionItem from './TransactionItem';
 import TransporterMiddleware from './TransporterMiddleware/TransporterMiddleware';
+import { ROLE } from './constants';
+
+type Role = ROLE.CLIENT_STORAGE | ROLE.TRANSPORTER;
 
 export default class BaseTransporter {
   static middleware: TransporterMiddleware[] = [];
-
   static TransactionItem: TransactionItem = TransactionItem;
+
+  initialFetchStrategy: Function;
+  _store: Object;
+  _role: Role;
+
+  constructor(options: Object = {}) {
+    if (options.initialFetchStrategy) {
+      this.initialFetchStrategy = options.initialFetchStrategy;
+    }
+  }
+
+  setEnvironment({ store, role }: {
+    store: Object,
+    role: Role,
+  }) {
+    this._store = store;
+    this._role = role;
+  }
+
+  init() {}
 
   _shouldBeImplemented() {
     throw new Error('should be implemented by the transporter');
@@ -31,8 +53,8 @@ export default class BaseTransporter {
     return this._sendRequest(new BaseTransporter.TransactionItem('fetchAll', {}));
   }
 
-  initialFetch() {
-    return this._sendRequest(new BaseTransporter.TransactionItem('initialFetch', {}));
+  initialFetch(inputArray: Object[]) {
+    return this.initialFetchStrategy(inputArray);
   }
 
   onceAvailable() {
@@ -52,7 +74,7 @@ export default class BaseTransporter {
     const action = item.action;
 
     // run send middleware then send and afterwards work off the queue
-    return this.constructor.runMiddleware('send', preparedReq)
+    return this.constructor.runMiddleware('send', { req: preparedReq })
       .then(this._request.bind(this))
       // when error run transmissionError middleware
       .catch(({ error, req }) => this.constructor

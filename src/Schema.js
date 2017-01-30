@@ -50,10 +50,23 @@ class Schema {
     this._isLocked = lock;
   }
 
+  getKeyIdentifierFor(target: DataTarget) {
+    if (target === TARGET.TRANSPORTER) {
+      return this._primaryKey.key;
+    }
+
+    if (target === TARGET.CLIENT_STORAGE) {
+      return this._primaryKey._key;
+    }
+
+    throw new Error('unsupported target for getKeyIdentifierFor');
+  }
+
   getObservables(item: Object) {
     const keys = this.observables.concat(Array.from(this.references.keys()));
     return keys.map(key => _.get(item, key));
   }
+
 
   lock() {
     this._isLocked = true;
