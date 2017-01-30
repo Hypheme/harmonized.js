@@ -14,12 +14,6 @@ export default class EmptyTransporter extends BaseTransporter {
     this.fetchAll = this._returnEmptyArray;
   }
 
-  // TODO remove once we inherit from base transporter
-  setEnvironment({ store, role }) {
-    this._store = store;
-    this._role = role;
-  }
-
   _returnInput(input) {
     return Promise.resolve({
       status: PROMISE_STATE.RESOLVED,
