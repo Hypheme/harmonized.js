@@ -157,8 +157,15 @@ describe('Store', function () {
         this.store.onceLoaded().then(() => done());
       });
       it('should resolve once loaded', function (done) {
-        this.store.onceLoaded().then(() => done());
-        this.store._finishLoading();
+        let loadTrigger = false;
+        this.store.onceLoaded().then(() => {
+          expect(loadTrigger).toBe(true);
+          done();
+        });
+        setTimeout(() => {
+          loadTrigger = true;
+          this.store._finishLoading();
+        }, 0);
       });
     });
 
