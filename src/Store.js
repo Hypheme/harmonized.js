@@ -10,7 +10,8 @@ export default class Store {
 
   @observable items = [];
   @observable loaded = false;
-  // @observable deletedItems = [];
+  incompleteItems = [];
+
   constructor({
     Item = DefaultItem,
     schema,
@@ -61,9 +62,22 @@ export default class Store {
   fetchAndCreate() {} // same as findOneOrFetch
   fetch() {} // maybe? fetches again from the given SOURCE, defaults to transporter
 
-  find() {} // returns array of items
-  findOne() {} // returns item or undefined
-  findOneOrFetch() {} // returns promise which resolves in harmonized promise
+  find(identifiers) {
+    return this.items.filter(current => this._itemMatches(current, identifiers))
+      .concat(this.incompleteItems.filter(current => this._itemMatches(current, identifiers)));
+  }
+  findOne(identifiers) {
+    return this.items.find(current => this._itemMatches(current, identifiers))
+     || this.incompleteItems.find(current => this._itemMatches(current, identifiers));
+  }
+  findOneOrFetch(key, source = SOURCE.TRANSPORTER) {
+    const keyIdentifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
+    if (!key[keyIdentifier]) {
+      throw new Error(`missing identifier ${keyIdentifier}`);
+    }
+    return this.findOne({ [keyIdentifier]: key[keyIdentifier] }) ||
+      this._createAndFetchFrom(key, source);
+  }
 
   isLoaded() {
     return this.loaded;
@@ -90,12 +104,25 @@ export default class Store {
     return undefined;
   }
 
+  _createAndFetchFrom(values, source) {
+    const item = new this._Item({ store: this, autoSave: this._options.autoSave });
+    item.construct(values, { source });
+    item.fetch(source).then(() => {
+      this.items.push(item);
+      this.incompleteItems = this.incompleteItems.filter(incompleteItem => incompleteItem !== item);
+    });
+    this.incompleteItems.push(item);
+    return item;
+  }
+
   _createItems(rawItems, source) {
     return Promise.all(rawItems.map((rawItem) => {
       const item = new this._Item({ store: this, autoSave: this._options.autoSave });
-      if (rawItem._transporterState !== STATE.BEING_DELETED &&
-        rawItem._transporterState !== STATE.DELETED &&
-        rawItem._transporterState !== STATE.LOCKED) {
+      if (rawItem._transporterState === STATE.BEING_DELETED ||
+        rawItem._transporterState === STATE.DELETED ||
+        rawItem._transporterState === STATE.LOCKED) {
+        this.incompleteItems.push(item);
+      } else {
         this.items.push(item);
       }
       return item.construct(rawItem, { source });
@@ -105,6 +132,15 @@ export default class Store {
   _finishLoading() {
     this.loaded = true;
     this._isLoaded.resolve();
+  }
+
+  _itemMatches(item, identifiers = {}) {
+    for (const key in identifiers) {
+      if (item[key] !== identifiers[key]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   _removeItems(itemKeys, source) {
