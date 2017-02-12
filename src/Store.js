@@ -75,6 +75,13 @@ export default class Store {
     return item;
   }
 
+  delete(item) {
+    const index = this.removedItems.indexOf(item);
+    if (index !== -1) {
+      this.removedItems.splice(index, 1);
+    }
+  }
+
   fetchAndCreate(key, source) {
     return this.findOneOrFetch(key, source);
   }

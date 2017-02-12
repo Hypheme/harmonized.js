@@ -105,7 +105,7 @@ export default class Item {
     }
     return p.then(() => {
       this._dispose();
-      // TODO (maybe): this._store.delete(this);
+      this._store.delete(this);
       // TODO (planned for version 0.3): this._onDeleteTrigger()
     });
   }

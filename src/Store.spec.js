@@ -327,6 +327,13 @@ describe('Store', function () {
           }).toThrow(new Error('missing identifier id'));
         });
       });
+      describe('fetchAndCreate', function () {
+        it('should be the same as findOneOrFetch', function () {
+          spyOn(this.store, 'findOneOrFetch').and.returnValue('sth');
+          expect(this.store.fetchAndCreate()).toEqual('sth');
+          expect(this.store.findOneOrFetch).toHaveBeenCalled();
+        });
+      });
     });
 
     describe('fetch', function () {
@@ -412,13 +419,35 @@ describe('Store', function () {
 
     describe('remove', function () {
       it('should remove item from item arary and put it into remove array', function () {
-        this.store.remove(this.storeData[1]);
-        expect(this.store.items.find(item => this.storeData === item)).toEqual(undefined);
-        expect(this.store.removedItems).toEqual([this.storeData[1]]);
+        this.store.items = this.storeData;
+        const item2Remove = this.storeData[1];
+        this.store.remove(item2Remove);
+        expect(this.store.items.find(item => item2Remove === item)).toEqual(undefined);
+        expect(this.store.removedItems).toEqual([item2Remove]);
       });
       it('should not remove unkown items', function () {
-        this.store.remove('unkown item');
+        const length = this.storeData.length;
+        this.store.items = this.storeData;
+        const item2Remove = 'sth';
+        this.store.remove(item2Remove);
+        expect(this.store.items.length).toEqual(length);
         expect(this.store.removedItems).toEqual([]);
+      });
+    });
+
+    describe('delete', function () {
+      it('should remove an item from removedItem', function () {
+        this.store.removedItems = this.storeData;
+        const item2Remove = this.storeData[1];
+        this.store.delete(item2Remove);
+        expect(this.store.removedItems.find(item => item2Remove === item)).toEqual(undefined);
+      });
+      it('should not remove unkown items', function () {
+        const length = this.storeData.length;
+        this.store.removedItems = this.storeData;
+        const item2Remove = 'sth';
+        this.store.delete(item2Remove);
+        expect(this.store.removedItems.length).toEqual(length);
       });
     });
   });
