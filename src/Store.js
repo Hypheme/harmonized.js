@@ -10,7 +10,8 @@ export default class Store {
 
   @observable items = [];
   @observable loaded = false;
-  // @observable deletedItems = [];
+  removedItems = [];
+
   constructor({
     Item = DefaultItem, schema,
     transporter = new EmptyTransporter(),
@@ -113,8 +114,9 @@ export default class Store {
   }
 
   remove(item) {
-    const removed = this.items.splice(this.items.indexOf(item), 1);
-    if (removed.length === 1) {
+    const index = this.items.indexOf(item);
+    if (index !== -1) {
+      this.items.splice(index, 1);
       this.removedItems.push(item);
     }
   }
@@ -199,6 +201,7 @@ export default class Store {
     });
     // create all unused fetched items
     fetchItems.forEach(entry => this.create(entry, source));
+    // remove all items not known and not being created
     itemsToRemove.forEach(entry => storeItems.splice(storeItems.indexOf(entry), 1));
   }
 

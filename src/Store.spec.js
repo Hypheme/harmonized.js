@@ -409,5 +409,17 @@ describe('Store', function () {
           });
       });
     });
+
+    describe('remove', function () {
+      it('should remove item from item arary and put it into remove array', function () {
+        this.store.remove(this.storeData[1]);
+        expect(this.store.items.find(item => this.storeData === item)).toEqual(undefined);
+        expect(this.store.removedItems).toEqual([this.storeData[1]]);
+      });
+      it('should not remove unkown items', function () {
+        this.store.remove('unkown item');
+        expect(this.store.removedItems).toEqual([]);
+      });
+    });
   });
 });
