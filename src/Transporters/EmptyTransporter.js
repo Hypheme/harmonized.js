@@ -1,7 +1,6 @@
 import uuid from 'uuid/v4';
 import { PROMISE_STATE } from '../constants';
 
-// TODO include base transporter
 import BaseTransporter from '../BaseTransporter';
 
 export default class EmptyTransporter extends BaseTransporter {
@@ -12,12 +11,6 @@ export default class EmptyTransporter extends BaseTransporter {
     this.delete = this._returnInput;
     this.fetch = this._returnInput;
     this.fetchAll = this._returnEmptyArray;
-  }
-
-  // TODO remove once we inherit from base transporter
-  setEnvironment({ store, role }) {
-    this._store = store;
-    this._role = role;
   }
 
   _returnInput(input) {
