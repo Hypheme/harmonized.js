@@ -316,7 +316,7 @@ describe('Store', function () {
         });
         it('should fetch and create an item if no item matches and add it to the store as soon as it arrives', function () {
           spyOn(this.store._Item.prototype, 'construct');
-          spyOn(this.store._Item.prototype, 'fetch');
+          spyOn(this.store._Item.prototype, 'fetch').and.returnValue(Promise.resolve());
           const item = this.store.findOneOrFetch({ id: '10' });
           expect(item.construct).toHaveBeenCalledWith({ id: '10' }, { source: SOURCE.TRANSPORTER });
           expect(item.fetch).toHaveBeenCalledWith(SOURCE.TRANSPORTER);
@@ -423,7 +423,7 @@ describe('Store', function () {
         const item2Remove = this.storeData[1];
         this.store.remove(item2Remove);
         expect(this.store.items.find(item => item2Remove === item)).toEqual(undefined);
-        expect(this.store.removedItems).toEqual([item2Remove]);
+        expect(this.store.incompleteItems).toEqual([item2Remove]);
       });
       it('should not remove unkown items', function () {
         const length = this.storeData.length;
@@ -431,23 +431,23 @@ describe('Store', function () {
         const item2Remove = 'sth';
         this.store.remove(item2Remove);
         expect(this.store.items.length).toEqual(length);
-        expect(this.store.removedItems).toEqual([]);
+        expect(this.store.incompleteItems).toEqual([]);
       });
     });
 
     describe('delete', function () {
       it('should remove an item from removedItem', function () {
-        this.store.removedItems = this.storeData;
+        this.store.incompleteItems = this.storeData;
         const item2Remove = this.storeData[1];
         this.store.delete(item2Remove);
-        expect(this.store.removedItems.find(item => item2Remove === item)).toEqual(undefined);
+        expect(this.store.incompleteItems.find(item => item2Remove === item)).toEqual(undefined);
       });
       it('should not remove unkown items', function () {
         const length = this.storeData.length;
-        this.store.removedItems = this.storeData;
+        this.store.incompleteItems = this.storeData;
         const item2Remove = 'sth';
         this.store.delete(item2Remove);
-        expect(this.store.removedItems.length).toEqual(length);
+        expect(this.store.incompleteItems.length).toEqual(length);
       });
     });
   });

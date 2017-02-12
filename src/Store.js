@@ -10,10 +10,11 @@ export default class Store {
 
   @observable items = [];
   @observable loaded = false;
-  removedItems = [];
+  incompleteItems = [];
 
   constructor({
-    Item = DefaultItem, schema,
+    Item = DefaultItem,
+    schema,
     transporter = new EmptyTransporter(),
     clientStorage = new EmptyTransporter(),
     options = { autoSave: true },
@@ -76,9 +77,9 @@ export default class Store {
   }
 
   delete(item) {
-    const index = this.removedItems.indexOf(item);
+    const index = this.incompleteItems.indexOf(item);
     if (index !== -1) {
-      this.removedItems.splice(index, 1);
+      this.incompleteItems.splice(index, 1);
     }
   }
 
@@ -98,10 +99,12 @@ export default class Store {
   } // maybe? fetches again from the given SOURCE, defaults to transporter
 
   find(identifiers) {
-    return this.items.filter(current => this._itemMatches(current, identifiers));
+    return this.items.filter(current => this._itemMatches(current, identifiers))
+      .concat(this.incompleteItems.filter(current => this._itemMatches(current, identifiers)));
   }
   findOne(identifiers) {
-    return this.items.find(current => this._itemMatches(current, identifiers));
+    return this.items.find(current => this._itemMatches(current, identifiers))
+     || this.incompleteItems.find(current => this._itemMatches(current, identifiers));
   }
   findOneOrFetch(key, source = SOURCE.TRANSPORTER) {
     const keyIdentifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
@@ -124,7 +127,7 @@ export default class Store {
     const index = this.items.indexOf(item);
     if (index !== -1) {
       this.items.splice(index, 1);
-      this.removedItems.push(item);
+      this.incompleteItems.push(item);
     }
   }
 
@@ -146,16 +149,22 @@ export default class Store {
   _createAndFetchFrom(values, source) {
     const item = new this._Item({ store: this, autoSave: this._options.autoSave });
     item.construct(values, { source });
-    item.fetch(source);
+    item.fetch(source).then(() => {
+      this.items.push(item);
+      this.incompleteItems = this.incompleteItems.filter(incompleteItem => incompleteItem !== item);
+    });
+    this.incompleteItems.push(item);
     return item;
   }
 
   _createItems(rawItems, source) {
     return Promise.all(rawItems.map((rawItem) => {
       const item = new this._Item({ store: this, autoSave: this._options.autoSave });
-      if (rawItem._transporterState !== STATE.BEING_DELETED &&
-        rawItem._transporterState !== STATE.DELETED &&
-        rawItem._transporterState !== STATE.LOCKED) {
+      if (rawItem._transporterState === STATE.BEING_DELETED ||
+        rawItem._transporterState === STATE.DELETED ||
+        rawItem._transporterState === STATE.LOCKED) {
+        this.incompleteItems.push(item);
+      } else {
         this.items.push(item);
       }
       return item.construct(rawItem, { source });
@@ -211,5 +220,4 @@ export default class Store {
     // remove all items not known and not being created
     itemsToRemove.forEach(entry => storeItems.splice(storeItems.indexOf(entry), 1));
   }
-
 }
