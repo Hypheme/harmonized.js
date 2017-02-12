@@ -46,7 +46,15 @@ class Item {
   }
   construct(values) {
     this.testId = values.id || values._id;
+    for (const key in values) {
+      if (Object.prototype.hasOwnProperty.call(values, key)) {
+        this[key] = values[key];
+      }
+    }
     return Promise.resolve();
+  }
+  isReadyFor() {
+    return !!this.id;
   }
   remove() {}
   fetch() {}
@@ -170,8 +178,56 @@ describe('Store', function () {
     beforeEach(function () {
       this.store = new Store({
         schema: this.schema,
-        transporter: new TransporterStub(),
-        clientStorage: new ClientStorageStub(),
+        // transporter: new TransporterStub(),
+        // clientStorage: new ClientStorageStub(),
+      });
+      return this.store.onceLoaded()
+      .then(() => {
+        function getItem(values) {
+          const item = new Item();
+          item.construct(values);
+          return item;
+        }
+        this.storeData = [];
+        this.storeData.push(getItem({
+          id: '1',
+          name: 'hans',
+          lastname: 'wurst',
+        }));
+        this.storeData.push(getItem({
+          id: '2',
+          name: 'hans',
+          lastname: 'pan',
+        }));
+        this.storeData.push(getItem({
+          id: '3',
+          name: 'peter',
+          lastname: 'wurst',
+        }));
+        this.storeData.push(getItem({
+          id: '4',
+          name: 'peter',
+          lastname: 'pan',
+        }));
+        this.storeData.push(getItem({
+          id: '5',
+          name: 'hans',
+          lastname: 'wurst',
+        }));
+        this.storeData.push(getItem({
+          id: '6',
+          name: 'hans',
+          lastname: 'pan',
+        }));
+        this.storeData.push(getItem({
+          name: 'peter',
+          lastname: 'wurst',
+        }));
+        this.storeData.push(getItem({
+          name: 'peter',
+          lastname: 'pan',
+        }));
+        this.storeData.forEach(item => this.store.items.push(item));
       });
     });
 
@@ -187,61 +243,37 @@ describe('Store', function () {
     });
 
     describe('onceLoaded', function () {
+      beforeEach(function () {
+        OriginalEmptyTransporter.prototype.initialFetch
+        .and.returnValue(new Promise((resolve, reject) => {
+          this.resolve = () => resolve({
+            status: PROMISE_STATE.RESOLVED,
+            data: { items: [], toDelete: [] },
+          });
+          this.reject = () => reject(new Error('loading err'));
+        }));
+        this.store = new Store({
+          schema: this.schema,
+        });
+      });
       it('should resolve immediatly', function (done) {
-        this.store._finishLoading();
+        this.resolve();
         this.store.onceLoaded().then(() => done());
       });
       it('should resolve once loaded', function (done) {
         this.store.onceLoaded().then(() => done());
-        this.store._finishLoading();
+        this.resolve();
       });
       it('should reject on loading error', function (done) {
         this.store.onceLoaded().catch((err) => {
           expect(err).toEqual(new Error('loading err'));
           done();
         });
-        this.store._finishLoading(new Error('loading err'));
+        this.reject();
       });
     });
 
     describe('finds', function () {
-      beforeEach(function () {
-        this.storeData = [{
-          id: '1',
-          name: 'hans',
-          lastname: 'wurst',
-        }, {
-          id: '2',
-          name: 'hans',
-          lastname: 'pan',
-        }, {
-          id: '3',
-          name: 'peter',
-          lastname: 'wurst',
-        }, {
-          id: '4',
-          name: 'peter',
-          lastname: 'pan',
-        }, {
-          id: '5',
-          name: 'hans',
-          lastname: 'wurst',
-        }, {
-          id: '6',
-          name: 'hans',
-          lastname: 'pan',
-        }, {
-          id: '7',
-          name: 'peter',
-          lastname: 'wurst',
-        }, {
-          id: '8',
-          name: 'peter',
-          lastname: 'pan',
-        }];
-        this.storeData.forEach(item => this.store.items.push(item));
-      });
-
       describe('find', function () {
         it('should find all items that matches all filters', function () {
           expect(this.store.find({ name: 'hans', lastname: 'wurst' }))
@@ -288,10 +320,41 @@ describe('Store', function () {
     });
 
     describe('fetch', function () {
-      it('should fetch from source and update store');
+      beforeEach(function () {
+        spyOn(this.store.schema, 'getKeyIdentifierFor').and.returnValue('id');
+        spyOn(this.store.transporter, 'fetch').and.returnValue({
+          status: PROMISE_STATE.RESOLVED,
+          data: [{
+            id: '1',
+            name: 'hans2',
+            lastname: 'wurst',
+          }, {
+            id: '2',
+            name: 'hans2',
+            lastname: 'pan',
+          }, {
+            id: '3',
+            name: 'peter2',
+            lastname: 'wurst',
+          }, {
+            id: '4',
+            name: 'peter2',
+            lastname: 'pan',
+          }],
+        });
+      });
+      xit('should fetch from source and update store', function () {
+        this.store.fetch(SOURCE.TRANSPORTER)
+          .then(() => {
+            expect(this.store.items).toEqual();
+          });
+      });
+      it('should default to fetch from transporter');
+      it('should reject if service is offline');
       it('should remove all items that don\'t exist anymore');
       it('should update all items that already exist');
       it('should create non existing items');
+      it('should not touch not uploaded items');
     });
   });
 });
