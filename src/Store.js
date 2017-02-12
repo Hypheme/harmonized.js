@@ -36,20 +36,31 @@ export default class Store {
 
     this.clientStorage.initialFetch([])
     .then((csData) => {
-      csData.items.forEach((item) => {
-        item._transporterState = this._castItemTransporterState(item._transporterState);
-      });
-      this._createItems(csData.items, SOURCE.CLIENT_STORAGE);
-      return this.transporter.initialFetch(csData.items);
+      if (csData.status === PROMISE_STATE.RESOLVED) {
+        csData.data.items.forEach((item) => {
+          item._transporterState = this._castItemTransporterState(item._transporterState);
+        });
+        this._createItems(csData.data.items, SOURCE.CLIENT_STORAGE);
+        return this.transporter.initialFetch(csData.items);
+      }
+      // for now we just go with a init error
+      throw new Error('cannot build store if local storage is not available');
     })
     .then((tData) => {
-      tData.items.forEach((item) => {
-        item._transporterState = this._castItemTransporterState(item._transporterState);
-      });
-      this._createItems(tData.items, SOURCE.TRANSPORTER);
-      this._removeItems(tData.toDelete, SOURCE.TRANSPORTER);
+      if (tData.status === PROMISE_STATE.RESOLVED) {
+        tData.data.items.forEach((item) => {
+          item._transporterState = this._castItemTransporterState(item._transporterState);
+        });
+        this._createItems(tData.data.items, SOURCE.TRANSPORTER);
+        this._removeItems(tData.data.toDelete, SOURCE.TRANSPORTER);
+      }
+      // if we can't load from transporter we don't care as we get the items
+      // from local storage anyway
+      // NOTE: this part is likly to change, but we want to get the first alpha release outside
+      // to get a bit of a feeling what is best right here.
     })
-    .then(() => this._finishLoading());
+    .then(() => this._finishLoading())
+    .catch(err => this._finishLoading(err));
   }
 
   // ///////////////////
@@ -68,7 +79,7 @@ export default class Store {
   }
 
   fetch(source) {
-    const keyIdentifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
+    // const keyIdentifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
     this[source.NAME].fetchAll()
     .then((result) => {
       if (result.status === PROMISE_STATE.RESOLVED) {
@@ -140,9 +151,15 @@ export default class Store {
     }));
   }
 
-  _finishLoading() {
-    this.loaded = true;
-    this._isLoaded.resolve();
+  _finishLoading(err) {
+    if (err) {
+      this.errored = true;
+      this.error = err;
+      this._isLoaded.reject(err);
+    } else {
+      this.loaded = true;
+      this._isLoaded.resolve();
+    }
   }
 
   _itemMatches(item, identifiers = {}) {

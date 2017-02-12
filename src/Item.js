@@ -11,7 +11,7 @@ export default class Item {
     this._establishIsReadyPromises();
     this._syncPromises = {};
   }
-  construct(values = {}, { source }) {
+  construct(values = {}, { source = SOURCE.STATE } = {}) {
     let p;
     switch (source) {
       case SOURCE.TRANSPORTER:

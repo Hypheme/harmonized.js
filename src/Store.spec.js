@@ -3,7 +3,7 @@ import { isObservable, isObservableArray } from 'mobx';
 import Store from './Store';
 import BaseTransporter from './BaseTransporter';
 import Schema from './Schema';
-import { SOURCE } from './constants';
+import { SOURCE, PROMISE_STATE } from './constants';
 
 import OriginalItem from './Item';
 import OriginalEmptyTransporter from './Transporters/EmptyTransporter';
@@ -55,23 +55,35 @@ class Item {
 describe('Store', function () {
   beforeEach(function () {
     this.schema = new SchemaStub();
+    spyOn(OriginalEmptyTransporter.prototype, 'setEnvironment');
+    spyOn(OriginalEmptyTransporter.prototype, 'initialFetch')
+    .and.returnValue(Promise.resolve({
+      status: PROMISE_STATE.RESOLVED,
+      data: { items: [], toDelete: [] },
+    }));
   });
   describe('constructor', function () {
     it('should create a store and populate with fetched data', function () {
       this.clientStorage = new ClientStorageStub();
       spyOn(this.clientStorage, 'initialFetch')
       .and.returnValue(Promise.resolve({
-        items: [
+        status: PROMISE_STATE.RESOLVED,
+        data: {
+          items: [
           { _id: '1', _transporterState: 'BEING_DELETED' },
           { _id: '2', _transporterState: 'BEING_UPDATED' },
           { _id: '3', _transporterState: 'EXISTENT' },
           { _id: '4', _transporterState: 'BEING_CREATED' }],
+        },
       }));
       this.transporter = new TransporterStub();
       spyOn(this.transporter, 'initialFetch')
         .and.returnValue(Promise.resolve({
-          items: [{ id: '5' }, { id: '6' }, { id: '7' }, { id: '8' }],
-          toDelete: [{ id: '1' }, { id: '3' }],
+          status: PROMISE_STATE.RESOLVED,
+          data: {
+            items: [{ id: '5' }, { id: '6' }, { id: '7' }, { id: '8' }],
+            toDelete: [{ id: '1' }, { id: '3' }],
+          },
         }));
       this.items = [new Item(1), new Item(3)];
       spyOn(Store.prototype, 'findOne').and.returnValues(this.items[0], this.items[1]);
@@ -114,9 +126,6 @@ describe('Store', function () {
     });
 
     it('should switch to defaults if nothing is given', function () {
-      spyOn(OriginalEmptyTransporter.prototype, 'setEnvironment');
-      spyOn(OriginalEmptyTransporter.prototype, 'initialFetch')
-      .and.returnValue(Promise.resolve({ items: [], toDelete: [] }));
       const store = new Store({
         schema: this.schema,
       });
@@ -127,6 +136,33 @@ describe('Store', function () {
     });
     it('should throw if no schema is given', function () {
       expect(() => new Store({})).toThrow(new Error('undefined schema'));
+    });
+    it('should reject if client storage is not available', function () {
+      this.clientStorage = new ClientStorageStub();
+      spyOn(this.clientStorage, 'initialFetch')
+      .and.returnValue(Promise.resolve({
+        status: PROMISE_STATE.PENDING,
+      }));
+      const store = new Store({
+        clientStorage: this.clientStorage,
+        schema: this.schema,
+      });
+      return store.onceLoaded()
+        .catch(err => expect(err)
+        .toEqual(new Error('cannot build store if local storage is not available')));
+    });
+    // NOTE: this is to change
+    it('should ignore if transporter is not available', function () {
+      this.transporter = new TransporterStub();
+      spyOn(this.transporter, 'initialFetch')
+      .and.returnValue(Promise.resolve({
+        status: PROMISE_STATE.PENDING,
+      }));
+      const store = new Store({
+        transporter: this.transporter,
+        schema: this.schema,
+      });
+      return store.onceLoaded();
     });
   });
 
@@ -158,6 +194,13 @@ describe('Store', function () {
       it('should resolve once loaded', function (done) {
         this.store.onceLoaded().then(() => done());
         this.store._finishLoading();
+      });
+      it('should reject on loading error', function (done) {
+        this.store.onceLoaded().catch((err) => {
+          expect(err).toEqual(new Error('loading err'));
+          done();
+        });
+        this.store._finishLoading(new Error('loading err'));
       });
     });
 
@@ -242,6 +285,13 @@ describe('Store', function () {
           }).toThrow(new Error('missing identifier id'));
         });
       });
+    });
+
+    describe('fetch', function () {
+      it('should fetch from source and update store');
+      it('should remove all items that don\'t exist anymore');
+      it('should update all items that already exist');
+      it('should create non existing items');
     });
   });
 });
