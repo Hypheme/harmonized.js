@@ -43,7 +43,7 @@ export default class Store {
           item._transporterState = this._castItemTransporterState(item._transporterState);
         });
         this._createItems(csData.data.items, SOURCE.CLIENT_STORAGE);
-        return this.transporter.initialFetch(csData.items);
+        return this.transporter.initialFetch(csData.data.items);
       }
       // for now we just go with a init error
       throw new Error('cannot build store if local storage is not available');
