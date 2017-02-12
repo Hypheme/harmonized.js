@@ -78,16 +78,13 @@ export default class Store {
     return this.findOneOrFetch(key, source);
   }
 
-  fetch(source) {
-    // const keyIdentifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
-    this[source.NAME].fetchAll()
+  fetch(source = SOURCE.TRANSPORTER) {
+    return this[source.NAME].fetchAll()
     .then((result) => {
       if (result.status === PROMISE_STATE.RESOLVED) {
-        // TODO delete all items that don't exist anymore (and aren't being created)
-        // TODO update all items, that are already existent
-        // TODO create new items, that aren't existent
+        this._workFetchResult(this.items, result.data, 0, source);
       } else {
-        throw new Error(`${SOURCE.NAME} is currently not available`);
+        throw new Error(`${source.NAME} is currently not available`);
       }
     });
   } // maybe? fetches again from the given SOURCE, defaults to transporter
@@ -115,7 +112,12 @@ export default class Store {
     return this._isLoaded.promise;
   }
 
-  remove() {}
+  remove(item) {
+    const removed = this.items.splice(this.items.indexOf(item), 1);
+    if (removed.length === 1) {
+      this.removedItems.push(item);
+    }
+  }
 
   // ///////////////////
   // PRIVATE METHODS  //
@@ -175,6 +177,29 @@ export default class Store {
     const identifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
     return Promise.all(itemKeys.map(itemKey =>
       this.findOne({ [identifier]: itemKey[identifier] }).remove(source)));
+  }
+
+  _workFetchResult(storeItems, fetchItems, count, source) {
+    // this is not very performant right now. But as we want to release the first
+    // beta and aren't sure if this behavior stays the same anyway we go with this for now.
+    const identifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
+    const itemsToRemove = [];
+    storeItems.forEach((storeItem) => {
+      if (storeItem[identifier]) {
+        const fetchItem = fetchItems.find(entry => storeItem[identifier] === entry[identifier]);
+        // this is kinda bad style but as the array is never used after this
+        // i think we should be fine
+        if (fetchItem) {
+          fetchItems.splice(fetchItems.indexOf(fetchItem), 1);
+          storeItem.update(fetchItem, source);
+        } else {
+          itemsToRemove.push(storeItem);
+        }
+      }
+    });
+    // create all unused fetched items
+    fetchItems.forEach(entry => this.create(entry, source));
+    itemsToRemove.forEach(entry => storeItems.splice(storeItems.indexOf(entry), 1));
   }
 
 }

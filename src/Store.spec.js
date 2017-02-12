@@ -58,6 +58,13 @@ class Item {
   }
   remove() {}
   fetch() {}
+  update(values) {
+    for (const key in values) {
+      if (Object.prototype.hasOwnProperty.call(values, key)) {
+        this[key] = values[key];
+      }
+    }
+  }
 }
 
 describe('Store', function () {
@@ -178,6 +185,7 @@ describe('Store', function () {
     beforeEach(function () {
       this.store = new Store({
         schema: this.schema,
+        Item,
         // transporter: new TransporterStub(),
         // clientStorage: new ClientStorageStub(),
       });
@@ -186,8 +194,10 @@ describe('Store', function () {
         function getItem(values) {
           const item = new Item();
           item.construct(values);
+          item.constructorArg = undefined;
           return item;
         }
+        this.getItem = getItem;
         this.storeData = [];
         this.storeData.push(getItem({
           id: '1',
@@ -322,39 +332,82 @@ describe('Store', function () {
     describe('fetch', function () {
       beforeEach(function () {
         spyOn(this.store.schema, 'getKeyIdentifierFor').and.returnValue('id');
-        spyOn(this.store.transporter, 'fetch').and.returnValue({
+        spyOn(this.store.transporter, 'fetchAll').and.returnValue(Promise.resolve({
           status: PROMISE_STATE.RESOLVED,
           data: [{
             id: '1',
             name: 'hans2',
             lastname: 'wurst',
           }, {
-            id: '2',
-            name: 'hans2',
-            lastname: 'pan',
-          }, {
-            id: '3',
-            name: 'peter2',
-            lastname: 'wurst',
-          }, {
-            id: '4',
-            name: 'peter2',
+            id: '11',
+            name: 'new',
             lastname: 'pan',
           }],
+        }));
+        spyOn(this.store.clientStorage, 'fetchAll').and.returnValue(Promise.resolve({
+          status: PROMISE_STATE.PENDINGm,
+        }));
+        spyOn(this.store._Item.prototype, 'remove').and.callFake(function () {
+          this.store.remove(this);
         });
       });
-      xit('should fetch from source and update store', function () {
-        this.store.fetch(SOURCE.TRANSPORTER)
+      it('should fetch from source and update store', function () {
+        return this.store.fetch(SOURCE.TRANSPORTER)
           .then(() => {
-            expect(this.store.items).toEqual();
+            expect(this.store.items.length).toEqual(4);
+            expect(this.store.transporter.fetchAll).toHaveBeenCalled();
           });
       });
-      it('should default to fetch from transporter');
-      it('should reject if service is offline');
-      it('should remove all items that don\'t exist anymore');
-      it('should update all items that already exist');
-      it('should create non existing items');
-      it('should not touch not uploaded items');
+      it('should default to fetch from transporter', function () {
+        return this.store.fetch()
+          .then(() => {
+            expect(this.store.items.length).toEqual(4);
+            expect(this.store.transporter.fetchAll).toHaveBeenCalled();
+          });
+      });
+      it('should reject if service is offline', function () {
+        return this.store.fetch(SOURCE.CLIENT_STORAGE)
+          .catch((err) => {
+            expect(this.store.clientStorage.fetchAll).toHaveBeenCalled();
+            expect(err).toEqual(new Error('clientStorage is currently not available'));
+          });
+      });
+      it('should remove all items that don\'t exist anymore', function () {
+        return this.store.fetch()
+          .then(() => {
+            const items = this.store.items.filter(item =>
+              ['2', '3', '4', '5', '6'].find(deletedId => deletedId === item.id));
+            expect(items).toEqual([]);
+          });
+      });
+      it('should update all items that already exist', function () {
+        return this.store.fetch()
+          .then(() => {
+            const items = this.store.items.filter(item =>
+              ['1'].find(updatedItemsId => updatedItemsId === item.id));
+            expect(items).toEqual([this.storeData[0]]);
+          });
+      });
+      it('should create non existing items', function () {
+        return this.store.fetch()
+          .then(() => {
+            const newItem = this.store.items[this.store.items.length - 1];
+            newItem.constructorArg = undefined;
+            expect(newItem)
+              .toEqual(this.getItem({
+                id: '11',
+                name: 'new',
+                lastname: 'pan',
+              }));
+          });
+      });
+      it('should not touch not uploaded items', function () {
+        return this.store.fetch()
+          .then(() => {
+            const items = this.store.items.filter(item => !item.id);
+            expect(items).toEqual([this.storeData[6], this.storeData[7]]);
+          });
+      });
     });
   });
 });
