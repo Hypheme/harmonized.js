@@ -43,6 +43,7 @@ class ClientStorageStub extends BaseTransporter {
 class Item {
   constructor(arg) {
     this.constructorArg = arg;
+    this._store = arg.store;
   }
   construct(values) {
     this.testId = values.id || values._id;
@@ -191,8 +192,9 @@ describe('Store', function () {
       });
       return this.store.onceLoaded()
       .then(() => {
+        const store = this.store;
         function getItem(values) {
-          const item = new Item();
+          const item = new Item({ store });
           item.construct(values);
           item.constructorArg = undefined;
           return item;
@@ -409,7 +411,7 @@ describe('Store', function () {
           status: PROMISE_STATE.PENDINGm,
         }));
         spyOn(this.store._Item.prototype, 'remove').and.callFake(function () {
-          this.store.remove(this);
+          this._store.remove(this);
         });
       });
       it('should fetch from source and update store', function () {
@@ -439,6 +441,8 @@ describe('Store', function () {
             const items = this.store.items.filter(item =>
               ['2', '3', '4', '5', '6'].find(deletedId => deletedId === item.id));
             expect(items).toEqual([]);
+            expect(Item.prototype.remove).toHaveBeenCalledTimes(5);
+            expect(Item.prototype.remove).toHaveBeenCalledWith(SOURCE.TRANSPORTER);
           });
       });
       it('should update all items that already exist', function () {

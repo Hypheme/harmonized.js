@@ -204,7 +204,7 @@ export default class Store {
     const itemsToRemove = [];
     storeItems.forEach((storeItem) => {
       if (storeItem[identifier]) {
-        const fetchItem = fetchItems.find(entry => storeItem[identifier] === entry[identifier]);
+        const fetchItem = fetchItems.find(item => storeItem[identifier] === item[identifier]);
         // this is kinda bad style but as the array is never used after this
         // i think we should be fine
         if (fetchItem) {
@@ -216,8 +216,8 @@ export default class Store {
       }
     });
     // create all unused fetched items
-    fetchItems.forEach(entry => this.create(entry, source));
+    fetchItems.forEach(item => this.create(item, source));
     // remove all items not known and not being created
-    itemsToRemove.forEach(entry => storeItems.splice(storeItems.indexOf(entry), 1));
+    itemsToRemove.forEach(item => item.remove(source));
   }
 }
