@@ -21,6 +21,7 @@ describe('Item', function () {
 
   const testStore = new (class TestStore {
     remove() {}
+    delete() {}
   })();
   testStore.transporter = new Transporter();
   testStore.clientStorage = new ClientStorage();
@@ -361,6 +362,7 @@ describe('Item', function () {
       beforeEach(function () {
         spyOn(this.item, '_dispose');
         spyOn(testStore, 'remove');
+        spyOn(testStore, 'delete');
       });
       function checkRemove(item) {
         expect(item.removed).toBe(true);
@@ -370,9 +372,13 @@ describe('Item', function () {
       function checkDispose(item) {
         expect(item._dispose).toHaveBeenCalled();
       }
+      function checkDelete() {
+        expect(testStore.delete).toHaveBeenCalled();
+      }
       it('should remove item from state', function () {
         const p = this.item.remove()
           .then(() => {
+            checkDelete(this.item);
             checkDispose(this.item);
             expect(this.item._synchronize)
             .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.BEING_DELETED);
@@ -384,6 +390,7 @@ describe('Item', function () {
         const p = this.item.remove(SOURCE.TRANSPORTER)
           .then(() => {
             checkDispose(this.item);
+            checkDelete(this.item);
             expect(this.item._transporterStates.current).toEqual(STATE.DELETED);
             expect(this.item._synchronize)
             .toHaveBeenCalledWith(STATE.BEING_DELETED, undefined);
@@ -395,6 +402,7 @@ describe('Item', function () {
         const p = this.item.remove(SOURCE.CLIENT_STORAGE)
           .then(() => {
             checkDispose(this.item);
+            checkDelete(this.item);
             expect(this.item._clientStorageStates.current).toEqual(STATE.DELETED);
             expect(this.item._synchronize)
             .toHaveBeenCalledWith(undefined, STATE.BEING_DELETED);

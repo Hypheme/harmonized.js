@@ -3,7 +3,7 @@ import { isObservable, isObservableArray } from 'mobx';
 import Store from './Store';
 import BaseTransporter from './BaseTransporter';
 import Schema from './Schema';
-import { SOURCE } from './constants';
+import { SOURCE, PROMISE_STATE } from './constants';
 
 import OriginalItem from './Item';
 import OriginalEmptyTransporter from './Transporters/EmptyTransporter';
@@ -43,35 +43,63 @@ class ClientStorageStub extends BaseTransporter {
 class Item {
   constructor(arg) {
     this.constructorArg = arg;
+    this._store = arg.store;
   }
   construct(values) {
     this.testId = values.id || values._id;
+    for (const key in values) {
+      if (Object.prototype.hasOwnProperty.call(values, key)) {
+        this[key] = values[key];
+      }
+    }
     return Promise.resolve();
+  }
+  isReadyFor() {
+    return !!this.id;
   }
   remove() {}
   fetch() {}
+  update(values) {
+    for (const key in values) {
+      if (Object.prototype.hasOwnProperty.call(values, key)) {
+        this[key] = values[key];
+      }
+    }
+  }
 }
 
 describe('Store', function () {
   beforeEach(function () {
     this.schema = new SchemaStub();
+    spyOn(OriginalEmptyTransporter.prototype, 'setEnvironment');
+    spyOn(OriginalEmptyTransporter.prototype, 'initialFetch')
+    .and.returnValue(Promise.resolve({
+      status: PROMISE_STATE.RESOLVED,
+      data: { items: [], toDelete: [] },
+    }));
   });
   describe('constructor', function () {
     it('should create a store and populate with fetched data', function () {
       this.clientStorage = new ClientStorageStub();
       spyOn(this.clientStorage, 'initialFetch')
       .and.returnValue(Promise.resolve({
-        items: [
+        status: PROMISE_STATE.RESOLVED,
+        data: {
+          items: [
           { _id: '1', _transporterState: 'BEING_DELETED' },
           { _id: '2', _transporterState: 'BEING_UPDATED' },
           { _id: '3', _transporterState: 'EXISTENT' },
           { _id: '4', _transporterState: 'BEING_CREATED' }],
+        },
       }));
       this.transporter = new TransporterStub();
       spyOn(this.transporter, 'initialFetch')
         .and.returnValue(Promise.resolve({
-          items: [{ id: '5' }, { id: '6' }, { id: '7' }, { id: '8' }],
-          toDelete: [{ id: '1' }, { id: '3' }],
+          status: PROMISE_STATE.RESOLVED,
+          data: {
+            items: [{ id: '5' }, { id: '6' }, { id: '7' }, { id: '8' }],
+            toDelete: [{ id: '1' }, { id: '3' }],
+          },
         }));
       this.items = [new Item(1), new Item(3)];
       spyOn(Store.prototype, 'findOne').and.returnValues(this.items[0], this.items[1]);
@@ -108,16 +136,12 @@ describe('Store', function () {
           checkItem(store.items[4], '6');
           checkItem(store.items[5], '7');
           checkItem(store.items[6], '8');
-          checkItem(store.incompleteItems[0], '1');
           expect(this.items[0].remove).toHaveBeenCalledWith(SOURCE.TRANSPORTER);
           expect(this.items[1].remove).toHaveBeenCalledWith(SOURCE.TRANSPORTER);
         });
     });
 
     it('should switch to defaults if nothing is given', function () {
-      spyOn(OriginalEmptyTransporter.prototype, 'setEnvironment');
-      spyOn(OriginalEmptyTransporter.prototype, 'initialFetch')
-      .and.returnValue(Promise.resolve({ items: [], toDelete: [] }));
       const store = new Store({
         schema: this.schema,
       });
@@ -129,14 +153,93 @@ describe('Store', function () {
     it('should throw if no schema is given', function () {
       expect(() => new Store({})).toThrow(new Error('undefined schema'));
     });
+    it('should reject if client storage is not available', function () {
+      this.clientStorage = new ClientStorageStub();
+      spyOn(this.clientStorage, 'initialFetch')
+      .and.returnValue(Promise.resolve({
+        status: PROMISE_STATE.PENDING,
+      }));
+      const store = new Store({
+        clientStorage: this.clientStorage,
+        schema: this.schema,
+      });
+      return store.onceLoaded()
+        .catch(err => expect(err)
+        .toEqual(new Error('cannot build store if local storage is not available')));
+    });
+    // NOTE: this is to change
+    it('should ignore if transporter is not available', function () {
+      this.transporter = new TransporterStub();
+      spyOn(this.transporter, 'initialFetch')
+      .and.returnValue(Promise.resolve({
+        status: PROMISE_STATE.PENDING,
+      }));
+      const store = new Store({
+        transporter: this.transporter,
+        schema: this.schema,
+      });
+      return store.onceLoaded();
+    });
   });
 
   describe('methods', function () {
     beforeEach(function () {
       this.store = new Store({
         schema: this.schema,
-        transporter: new TransporterStub(),
-        clientStorage: new ClientStorageStub(),
+        Item,
+        // transporter: new TransporterStub(),
+        // clientStorage: new ClientStorageStub(),
+      });
+      return this.store.onceLoaded()
+      .then(() => {
+        const store = this.store;
+        function getItem(values) {
+          const item = new Item({ store });
+          item.construct(values);
+          item.constructorArg = undefined;
+          return item;
+        }
+        this.getItem = getItem;
+        this.storeData = [];
+        this.storeData.push(getItem({
+          id: '1',
+          name: 'hans',
+          lastname: 'wurst',
+        }));
+        this.storeData.push(getItem({
+          id: '2',
+          name: 'hans',
+          lastname: 'pan',
+        }));
+        this.storeData.push(getItem({
+          id: '3',
+          name: 'peter',
+          lastname: 'wurst',
+        }));
+        this.storeData.push(getItem({
+          id: '4',
+          name: 'peter',
+          lastname: 'pan',
+        }));
+        this.storeData.push(getItem({
+          id: '5',
+          name: 'hans',
+          lastname: 'wurst',
+        }));
+        this.storeData.push(getItem({
+          id: '6',
+          name: 'hans',
+          lastname: 'pan',
+        }));
+        this.storeData.push(getItem({
+          name: 'peter',
+          lastname: 'wurst',
+        }));
+        this.storeData.push(getItem({
+          name: 'peter',
+          lastname: 'pan',
+        }));
+        this.storeData.forEach(item => this.store.items.push(item));
       });
     });
 
@@ -152,59 +255,38 @@ describe('Store', function () {
     });
 
     describe('onceLoaded', function () {
+      beforeEach(function () {
+        OriginalEmptyTransporter.prototype.initialFetch
+        .and.returnValue(new Promise((resolve, reject) => {
+          this.resolve = () => resolve({
+            status: PROMISE_STATE.RESOLVED,
+            data: { items: [], toDelete: [] },
+          });
+          this.reject = () => reject(new Error('loading err'));
+        }));
+        this.store = new Store({
+          schema: this.schema,
+        });
+      });
       it('should resolve immediatly', function (done) {
-        this.store._finishLoading();
+        this.resolve();
         this.store.onceLoaded().then(() => done());
       });
       it('should resolve once loaded', function (done) {
-        let loadTrigger = false;
-        this.store.onceLoaded().then(() => {
-          expect(loadTrigger).toBe(true);
+        this.store.onceLoaded().then(() => done());
+        this.resolve();
+      });
+      it('should reject on loading error', function (done) {
+        this.store.onceLoaded().catch((err) => {
+          expect(err).toEqual(new Error('loading err'));
           done();
         });
-        setTimeout(() => {
-          loadTrigger = true;
-          this.store._finishLoading();
-        }, 0);
+        this.reject();
       });
     });
 
     describe('finds', function () {
       beforeEach(function () {
-        this.storeData = [{
-          id: '1',
-          name: 'hans',
-          lastname: 'wurst',
-        }, {
-          id: '2',
-          name: 'hans',
-          lastname: 'pan',
-        }, {
-          id: '3',
-          name: 'peter',
-          lastname: 'wurst',
-        }, {
-          id: '4',
-          name: 'peter',
-          lastname: 'pan',
-        }, {
-          id: '5',
-          name: 'hans',
-          lastname: 'wurst',
-        }, {
-          id: '6',
-          name: 'hans',
-          lastname: 'pan',
-        }, {
-          id: '7',
-          name: 'peter',
-          lastname: 'wurst',
-        }, {
-          id: '8',
-          name: 'peter',
-          lastname: 'pan',
-        }];
-        this.storeData.forEach(item => this.store.items.push(item));
         this.incompleteStoreData = [{
           id: '11',
           name: 'hans',
@@ -240,7 +322,6 @@ describe('Store', function () {
         }];
         this.incompleteStoreData.forEach(item => this.store.incompleteItems.push(item));
       });
-
       describe('find', function () {
         it('should find all items that matches all filters', function () {
           expect(this.store.find({ name: 'hans', lastname: 'wurst' }))
@@ -301,6 +382,130 @@ describe('Store', function () {
             this.store.findOneOrFetch({ noId: 4 });
           }).toThrow(new Error('missing identifier id'));
         });
+      });
+      describe('fetchAndCreate', function () {
+        it('should be the same as findOneOrFetch', function () {
+          spyOn(this.store, 'findOneOrFetch').and.returnValue('sth');
+          expect(this.store.fetchAndCreate()).toEqual('sth');
+          expect(this.store.findOneOrFetch).toHaveBeenCalled();
+        });
+      });
+    });
+
+    describe('fetch', function () {
+      beforeEach(function () {
+        spyOn(this.store.schema, 'getKeyIdentifierFor').and.returnValue('id');
+        spyOn(this.store.transporter, 'fetchAll').and.returnValue(Promise.resolve({
+          status: PROMISE_STATE.RESOLVED,
+          data: [{
+            id: '1',
+            name: 'hans2',
+            lastname: 'wurst',
+          }, {
+            id: '11',
+            name: 'new',
+            lastname: 'pan',
+          }],
+        }));
+        spyOn(this.store.clientStorage, 'fetchAll').and.returnValue(Promise.resolve({
+          status: PROMISE_STATE.PENDINGm,
+        }));
+        spyOn(this.store._Item.prototype, 'remove').and.callFake(function () {
+          this._store.remove(this);
+        });
+      });
+      it('should fetch from source and update store', function () {
+        return this.store.fetch(SOURCE.TRANSPORTER)
+          .then(() => {
+            expect(this.store.items.length).toEqual(4);
+            expect(this.store.transporter.fetchAll).toHaveBeenCalled();
+          });
+      });
+      it('should default to fetch from transporter', function () {
+        return this.store.fetch()
+          .then(() => {
+            expect(this.store.items.length).toEqual(4);
+            expect(this.store.transporter.fetchAll).toHaveBeenCalled();
+          });
+      });
+      it('should reject if service is offline', function () {
+        return this.store.fetch(SOURCE.CLIENT_STORAGE)
+          .catch((err) => {
+            expect(this.store.clientStorage.fetchAll).toHaveBeenCalled();
+            expect(err).toEqual(new Error('clientStorage is currently not available'));
+          });
+      });
+      it('should remove all items that don\'t exist anymore', function () {
+        return this.store.fetch()
+          .then(() => {
+            const items = this.store.items.filter(item =>
+              ['2', '3', '4', '5', '6'].find(deletedId => deletedId === item.id));
+            expect(items).toEqual([]);
+            expect(Item.prototype.remove).toHaveBeenCalledTimes(5);
+            expect(Item.prototype.remove).toHaveBeenCalledWith(SOURCE.TRANSPORTER);
+          });
+      });
+      it('should update all items that already exist', function () {
+        return this.store.fetch()
+          .then(() => {
+            const items = this.store.items.filter(item =>
+              ['1'].find(updatedItemsId => updatedItemsId === item.id));
+            expect(items).toEqual([this.storeData[0]]);
+          });
+      });
+      it('should create non existing items', function () {
+        return this.store.fetch()
+          .then(() => {
+            const newItem = this.store.items[this.store.items.length - 1];
+            newItem.constructorArg = undefined;
+            expect(newItem)
+              .toEqual(this.getItem({
+                id: '11',
+                name: 'new',
+                lastname: 'pan',
+              }));
+          });
+      });
+      it('should not touch not uploaded items', function () {
+        return this.store.fetch()
+          .then(() => {
+            const items = this.store.items.filter(item => !item.id);
+            expect(items).toEqual([this.storeData[6], this.storeData[7]]);
+          });
+      });
+    });
+
+    describe('remove', function () {
+      it('should remove item from item arary and put it into remove array', function () {
+        this.store.items = this.storeData;
+        const item2Remove = this.storeData[1];
+        this.store.remove(item2Remove);
+        expect(this.store.items.find(item => item2Remove === item)).toEqual(undefined);
+        expect(this.store.incompleteItems).toEqual([item2Remove]);
+      });
+      it('should not remove unkown items', function () {
+        const length = this.storeData.length;
+        this.store.items = this.storeData;
+        const item2Remove = 'sth';
+        this.store.remove(item2Remove);
+        expect(this.store.items.length).toEqual(length);
+        expect(this.store.incompleteItems).toEqual([]);
+      });
+    });
+
+    describe('delete', function () {
+      it('should remove an item from removedItem', function () {
+        this.store.incompleteItems = this.storeData;
+        const item2Remove = this.storeData[1];
+        this.store.delete(item2Remove);
+        expect(this.store.incompleteItems.find(item => item2Remove === item)).toEqual(undefined);
+      });
+      it('should not remove unkown items', function () {
+        const length = this.storeData.length;
+        this.store.incompleteItems = this.storeData;
+        const item2Remove = 'sth';
+        this.store.delete(item2Remove);
+        expect(this.store.incompleteItems.length).toEqual(length);
       });
     });
   });

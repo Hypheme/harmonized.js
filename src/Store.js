@@ -4,7 +4,7 @@ import {
 
 import DefaultItem from './Item';
 import EmptyTransporter from './Transporters/EmptyTransporter';
-import { ROLE, SOURCE, STATE } from './constants';
+import { ROLE, SOURCE, STATE, PROMISE_STATE } from './constants';
 
 export default class Store {
 
@@ -38,29 +38,65 @@ export default class Store {
 
     this.clientStorage.initialFetch([])
     .then((csData) => {
-      csData.items.forEach((item) => {
-        item._transporterState = this._castItemTransporterState(item._transporterState);
-      });
-      this._createItems(csData.items, SOURCE.CLIENT_STORAGE);
-      return this.transporter.initialFetch(csData.items);
+      if (csData.status === PROMISE_STATE.RESOLVED) {
+        csData.data.items.forEach((item) => {
+          item._transporterState = this._castItemTransporterState(item._transporterState);
+        });
+        this._createItems(csData.data.items, SOURCE.CLIENT_STORAGE);
+        return this.transporter.initialFetch(csData.data.items);
+      }
+      // for now we just go with a init error
+      throw new Error('cannot build store if local storage is not available');
     })
     .then((tData) => {
-      tData.items.forEach((item) => {
-        item._transporterState = this._castItemTransporterState(item._transporterState);
-      });
-      this._createItems(tData.items, SOURCE.TRANSPORTER);
-      this._removeItems(tData.toDelete, SOURCE.TRANSPORTER);
+      if (tData.status === PROMISE_STATE.RESOLVED) {
+        tData.data.items.forEach((item) => {
+          item._transporterState = this._castItemTransporterState(item._transporterState);
+        });
+        this._createItems(tData.data.items, SOURCE.TRANSPORTER);
+        this._removeItems(tData.data.toDelete, SOURCE.TRANSPORTER);
+      }
+      // if we can't load from transporter we don't care as we get the items
+      // from local storage anyway
+      // NOTE: this part is likly to change, but we want to get the first alpha release outside
+      // to get a bit of a feeling what is best right here.
     })
-    .then(() => this._finishLoading());
+    .then(() => this._finishLoading())
+    .catch(err => this._finishLoading(err));
   }
 
   // ///////////////////
   // PUBLIC METHODS   //
   // ///////////////////
 
-  create() {}
-  fetchAndCreate() {} // same as findOneOrFetch
-  fetch() {} // maybe? fetches again from the given SOURCE, defaults to transporter
+  create(values, source = SOURCE.STATE) {
+    const item = new this._Item({ store: this, autoSave: this._options.autoSave });
+    item.construct(values, { source });
+    this.items.push(item);
+    return item;
+  }
+
+  delete(item) {
+    const index = this.incompleteItems.indexOf(item);
+    if (index !== -1) {
+      this.incompleteItems.splice(index, 1);
+    }
+  }
+
+  fetchAndCreate(key, source) {
+    return this.findOneOrFetch(key, source);
+  }
+
+  fetch(source = SOURCE.TRANSPORTER) {
+    return this[source.NAME].fetchAll()
+    .then((result) => {
+      if (result.status === PROMISE_STATE.RESOLVED) {
+        this._workFetchResult(this.items, result.data, 0, source);
+      } else {
+        throw new Error(`${source.NAME} is currently not available`);
+      }
+    });
+  } // maybe? fetches again from the given SOURCE, defaults to transporter
 
   find(identifiers) {
     return this.items.filter(current => this._itemMatches(current, identifiers))
@@ -87,7 +123,13 @@ export default class Store {
     return this._isLoaded.promise;
   }
 
-  remove() {}
+  remove(item) {
+    const index = this.items.indexOf(item);
+    if (index !== -1) {
+      this.items.splice(index, 1);
+      this.incompleteItems.push(item);
+    }
+  }
 
   // ///////////////////
   // PRIVATE METHODS  //
@@ -129,9 +171,15 @@ export default class Store {
     }));
   }
 
-  _finishLoading() {
-    this.loaded = true;
-    this._isLoaded.resolve();
+  _finishLoading(err) {
+    if (err) {
+      this.errored = true;
+      this.error = err;
+      this._isLoaded.reject(err);
+    } else {
+      this.loaded = true;
+      this._isLoaded.resolve();
+    }
   }
 
   _itemMatches(item, identifiers = {}) {
@@ -149,4 +197,27 @@ export default class Store {
       this.findOne({ [identifier]: itemKey[identifier] }).remove(source)));
   }
 
+  _workFetchResult(storeItems, fetchItems, count, source) {
+    // this is not very performant right now. But as we want to release the first
+    // beta and aren't sure if this behavior stays the same anyway we go with this for now.
+    const identifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
+    const itemsToRemove = [];
+    storeItems.forEach((storeItem) => {
+      if (storeItem[identifier]) {
+        const fetchItem = fetchItems.find(item => storeItem[identifier] === item[identifier]);
+        // this is kinda bad style but as the array is never used after this
+        // i think we should be fine
+        if (fetchItem) {
+          fetchItems.splice(fetchItems.indexOf(fetchItem), 1);
+          storeItem.update(fetchItem, source);
+        } else {
+          itemsToRemove.push(storeItem);
+        }
+      }
+    });
+    // create all unused fetched items
+    fetchItems.forEach(item => this.create(item, source));
+    // remove all items not known and not being created
+    itemsToRemove.forEach(item => item.remove(source));
+  }
 }
