@@ -11,7 +11,7 @@ export default class Item {
     this._establishIsReadyPromises();
     this._syncPromises = {};
   }
-  construct(values = {}, { source }) {
+  construct(values = {}, { source = SOURCE.STATE } = {}) {
     let p;
     switch (source) {
       case SOURCE.TRANSPORTER:
@@ -105,7 +105,7 @@ export default class Item {
     }
     return p.then(() => {
       this._dispose();
-      // TODO (maybe): this._store.delete(this);
+      this._store.delete(this);
       // TODO (planned for version 0.3): this._onDeleteTrigger()
     });
   }

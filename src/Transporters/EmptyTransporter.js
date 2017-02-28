@@ -1,7 +1,6 @@
 import uuid from 'uuid/v4';
 import { PROMISE_STATE } from '../constants';
 
-// TODO include base transporter
 import BaseTransporter from '../BaseTransporter';
 
 export default class EmptyTransporter extends BaseTransporter {
