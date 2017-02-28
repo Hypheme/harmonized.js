@@ -1,4 +1,5 @@
-import { SOURCE } from '../../src/constants';
+import { SOURCE, TARGET } from '../../src/constants';
+import Schema, { NumberKey } from '../../src/Schema';
 
 export default function runCases(setup, connectionState) {
   function callAdditionalExpects(forCase) {
@@ -8,10 +9,36 @@ export default function runCases(setup, connectionState) {
   }
 
   let store;
+  let schema;
 
   describe('Store', function () {
     xit('should be constructed and do initial fetch', function (done) {
-      store = setup.init();
+      schema = new Schema({
+        properties: {
+          name: String,
+          knownFor: String,
+          hobbies: {
+            type: Array,
+            items: {
+              type: NumberKey,
+              key: 'id',
+              _key: '_id',
+
+              // TODO: add ref
+              ref: undefined,
+            },
+          },
+          facts: {
+            type: Object,
+            properties: {
+              birth: Number,
+              death: Number,
+              achivements: Object,
+            },
+          },
+        },
+      });
+      store = setup.init(schema);
 
       store.onceLoaded().then(() => {
         // should have fetched from client storage and create items in store
@@ -63,15 +90,27 @@ export default function runCases(setup, connectionState) {
       expect(createdItem.id).toBeUndefinded();
       expect(createdItem.unknown).toBeUndefinded();
 
+      const readyForCs = createdItem.onceReadyFor(TARGET.CLIENT_STORAGE)
+        .then(() => {
+          // TODO: test if after CS update _id is set
+        });
+
+      const readyForT = createdItem.onceReadyFor(TARGET.TRANSPORTER)
+        .then(() => {
+          // TODO: test if after CS update _id is set
+        });
+
       // TODO: test if data is updated in client storage
       // this should also include hobbies transformed
-      // TODO: test if after CS update _id is set
       // TODO: test if data is updated in transporter
       // this should also include hobbies transformed
       // TODO: test if after T update id is set
-      // TODO: test if after all is set, everything is synced
-      callAdditionalExpects('newItemFromState');
-      done();
+
+      Promise.all([readyForCs, readyForT]).then(() => {
+        // TODO: test if after all is set, everything is synced
+        callAdditionalExpects('newItemFromState');
+        done();
+      });
     });
 
     xit('should findOneOrFetch an item from client storage', function () {
