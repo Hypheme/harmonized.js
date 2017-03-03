@@ -4,13 +4,6 @@
 
 Offline first – state, storage and server manager (optimized for react) based on MobX
 
-## Installation
-
-when using npm do:
-```
-npm install git@github.com:Hypheme/harmonized.js.git --save
-```
-
 ## Why?
 
 Being offline sucks when using a web app! When loosing your connection, you can't create or edit
@@ -57,10 +50,6 @@ only thing you need to do is to add a instance of a `Transporter` and/or `Client
 `Store`. The rest is handled automatically. When you save an `Item`, the app state is synced with
 the connected backend and database endpoint.
 
-Sometimes you want to do something fancy that we haven't added to harmonized (like adding a
-authentication header to your HTTP request, or modifying the state before you send it to the backend
-or when receiving it). For this, you can add middleware to a `Transporter` or `ClientStorage`.
-
 ## Modularity
 
 Harmonized is build with modularity in mind. We know that every backend is a little different, maybe
@@ -71,7 +60,147 @@ Harmonized comes with a simple HTTP REST transporter and a generic IndexedDB cli
 (WIP) build in. But you are free to use any kind of transporter endpoint/protocol/API you like. As
 long as your environment is supporting it, you can build your own Transporter/ClientStorage for it.
 But maybe you want REST, but do something special there: just extend the existing HTTP Transporter
-and add your logic to it. Or a simple middleware for the Transporter/ClientStorage is enough?
+and add your logic to it. Or a simple middleware for the Transporter/ClientStorage is enough (e.g.
+for adding a authentication header to your HTTP request, or modifying the state before you send it
+to the backend or when receiving it)?
+
+## Installation
+
+when using npm do:
+```
+npm install git@github.com:Hypheme/harmonized.js.git --save
+```
+
+## First steps
+
+First you need to create a `Store` with the corresponding `Schema` and additionally a `Transporter`
+and/or `ClientStorage`. When not adding one of those, the `Store` will use a mock implementation
+instead, so both are optional.
+
+### The Schema
+
+The Schema takes two arguments: An object that holds the actual data structure definition and an
+optional lock flag. If the lock flag is set to `false`, you can add stuff to the schema after it's
+creation. If it is `true` no changes can be made. The lock flag is `true` by default. Keep in mind,
+that the Store can't be created when lock is still set to `false`.
+
+The data structure object is loosely based on JSON schema. This way you can easily transform JSON
+schema to a harmonized schema and can share one schema for backend and frontend to have a single
+source of truth. In the schema you need to describe how your data is structured and what type the
+properties have.
+
+The most basic schema is one an empty model, it will look like this:
+
+```js
+import { Schema } from 'harmonized';
+const schema = new Schema({});
+```
+
+Because your model is more complex than just a single value (it needs at lease a key property in
+addition), the upper structural element is an `Object`. Objects have properties that need to be
+described in the *properties* property:
+
+```js
+const schema = new Schema({
+  type: Object,
+  properties: {},
+});
+```
+
+As you can see above, this object is described with it's type which is a direct reference to it's
+container object. Because it is clear that the upper element is an `Object`, you can omit it.
+
+Inside the `properties` property you describe the properties of the described `Object` with their
+keys and types:
+
+```js
+const schema = new Schema({
+  properties: {
+    firstName: String,
+    lastName: String,
+    age: Number,
+    isMarried: Boolean,
+  },
+})
+```
+
+The above example describes a simple model definition with key names defined by the property key and
+the type as the value. The definition above is a shorthand for simple types. You can also write it
+like this:
+
+```js
+const schema = new Schema({
+  properties: {
+    firstName: { type: String },
+    lastName: { type: String },
+    age: { type: Number },
+    isMarried: { type: Boolean },
+  },
+});
+```
+
+You can also describe arrays and more deeply nested objects:
+
+```js
+const schema = new Schema({
+  properties: {
+    firstName: String,
+    lastName: String,
+    hobbies: {
+      type: Array,
+      items: String,
+    },
+    lifeEvents: {
+      type: Object,
+      properties: {
+        birth: Number,
+        firstTeeth: Number,
+        firstKiss: {
+          type: Object,
+          properties: {
+            year: Number,
+            otherKisser: String,
+          },
+        },
+      },
+    },
+  },
+});
+```
+
+You can nest your data as deep as you like. Arrays need a `items` property that describes the type
+of it's items. Arrays items only can be of one type.
+
+Inside the upper object there needs to be a primary key definition. It has to be from the type `Key`
+and needs three properties: `key`, `_key` and `primary`.
+
+**key** describes the key name on the transporter side.
+
+**_key** describes the key name on the client storage side (needs to be different from the
+transporter key name)
+
+**primary** defines if the key is primary. This needs to be `true`.
+
+The actual key name of this key description is ignored (`key` and `_key` are used).
+
+```js
+import { Key } from 'harmonized';
+
+const schema = new Schema({
+  properties: {
+    name: String,
+    uuid: {
+      type: Key,
+      key: 'id',
+      _key: '_id',
+      primary: true,
+    },
+  },
+});
+```
+
+In the example above the described key is a string key (like a hash). If you use number based IDs
+you need to use the type `NumberKey` instead.
 
 ## under construction
 
