@@ -77,6 +77,94 @@ First you need to create a `Store` with the corresponding `Schema` and additiona
 and/or `ClientStorage`. When not adding one of those, the `Store` will use a mock implementation
 instead, so both are optional.
 
+An basic person store that uses a `HttpTransporter` and a `IndexedDbStorage` (not available
+yet) can be created like this:
+
+```js
+import { Store, HttpTransporter, Schema } from 'harmonized';
+const personStore = new Store({
+  schema: new Schema({
+    firstName: String,
+    lastName: String,
+    age: Number,
+  }),
+  transporter: new HttpTransporter({
+    baseUrl: 'https://www.hyphe.me/api',
+    path: 'person',
+  }),
+  clientStorage: new IndexedDbStorage({
+    // TODO: add options here when IndexedDbStorage is implemented
+  }),
+});
+```
+
+To create a new store you need to define a `Schema`. It defines the structure of your data. You can
+find a deeper introduction into that further below. For now this simple example is enough to go on.
+
+After you created the store, it will fetch everything from the backend and local database (and
+initiates the local database if not there yet). To do something with the data, you need to wait for
+it to be fetched. To do this, you use the `onceLoaded()` method of your created store, which returns
+a promise. Then you can access the created items of the store:
+
+```js
+personStore.onceLoaded().then(() => {
+  console.log('a list of all the people:');
+  personStore.items.forEach((item) => {
+    console.log('*', item.firstName, item.lastName, `(${item.age})`);
+  });
+  console.log('---------');
+  console.log('total:', personStore.items.length);
+}, (err) => console.log('Error fetching data!', err));
+```
+
+As you can see in the example above, you can access all the items through the `items` array of your
+created store. It is just a plain array. You can access the properties of the items directly. When
+being synced only the properties described in the schema will be listened to and transmitted. The
+other properties will be ignored, the transporter and client storage won't get them.
+
+You should not manipulate the items array by yourself, otherwise the store can't keep track of the
+changes. To create a new item, you should use the `create()` method of the your store:
+
+```js
+const albert = personStore.create({
+  firstName: 'Albert',
+  lastName: 'Einstein',
+  age: 32,
+});
+```
+
+The newly created item will now be found in the `personStore.items` array.
+
+If you want to fetch your data at a later point (maybe in some polling interval), you can use the
+`fetch()` method. This will fetch the data from your transporter only (and updates the local
+database when there are changes):
+
+```js
+personStore.fetch();
+```
+
+To update properties of an item, just edit these properties directly. When you are ready and want to
+update the data on the local database and your backend, just use the `update()` method of the item:
+
+```js
+albert.age = 33;
+albert.lastName = 'Einstein';
+albert.update().then(() => {
+  console.log('The item was updated');
+});
+```
+
+To delete an item, you just have to use it's `delete()` method:
+
+```js
+albert.delete().then(() => {
+  console.log('The item was successfully everywhere');
+});
+```
+
+Gratulations! You created your first `Store` with client storage and a HTTP backend, created an
+item, updated and deleted it. With this knowledge you can already build a simple app.
+
 ### The Schema
 
 The Schema takes two arguments: An object that holds the actual data structure definition and an
