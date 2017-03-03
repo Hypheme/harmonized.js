@@ -165,17 +165,15 @@ albert.delete().then(() => {
 Gratulations! You created your first `Store` with client storage and a HTTP backend, created an
 item, updated and deleted it. With this knowledge you can already build a simple app.
 
-### The Schema
+## The Schema
 
-The Schema takes two arguments: An object that holds the actual data structure definition and an
-optional lock flag. If the lock flag is set to `false`, you can add stuff to the schema after it's
-creation. If it is `true` no changes can be made. The lock flag is `true` by default. Keep in mind,
-that the Store can't be created when lock is still set to `false`.
+With the `Schema` you describe the data structure of your store. It is basically needed to inform
+the `Store` what data is available and what type the data has. In addition you will also define your
+primary key and relations to other stores here.
 
 The data structure object is loosely based on JSON schema. This way you can easily transform JSON
 schema to a harmonized schema and can share one schema for backend and frontend to have a single
-source of truth. In the schema you need to describe how your data is structured and what type the
-properties have.
+source of truth.
 
 The most basic schema is one an empty model, it will look like this:
 
@@ -184,9 +182,8 @@ import { Schema } from 'harmonized';
 const schema = new Schema({});
 ```
 
-Because your model is more complex than just a single value (it needs at lease a key property in
-addition), the upper structural element is an `Object`. Objects have properties that need to be
-described in the *properties* property:
+Because your model is more complex than just a single value, the upper structural element is an
+`Object`. Objects have properties that need to be described in the *properties* property:
 
 ```js
 const schema = new Schema({
@@ -289,6 +286,19 @@ const schema = new Schema({
 
 In the example above the described key is a string key (like a hash). If you use number based IDs
 you need to use the type `NumberKey` instead.
+
+### Relations and references
+
+// TODO
+
+## Adding middleware to transporters and client storages
+
+// TODO
+
+## Further documentation
+
+You can find more API documentation here:
+// TODO: create API documentation
 
 ## under construction
 
