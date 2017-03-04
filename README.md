@@ -80,9 +80,9 @@ instead, so both are optional.
 An basic person store that uses a `HttpTransporter` and a `IndexedDbStorage` (not available
 yet) can be created like this:
 
-```js
+```JS
 import { Store, HttpTransporter, Schema } from 'harmonized';
-const personStore = new Store({
+const peopleStore = new Store({
   schema: new Schema({
     firstName: String,
     lastName: String,
@@ -90,7 +90,7 @@ const personStore = new Store({
   }),
   transporter: new HttpTransporter({
     baseUrl: 'https://www.hyphe.me/api',
-    path: 'person',
+    path: 'people',
   }),
   clientStorage: new IndexedDbStorage({
     // TODO: add options here when IndexedDbStorage is implemented
@@ -106,14 +106,14 @@ initiates the local database if not there yet). To do something with the data, y
 it to be fetched. To do this, you use the `onceLoaded()` method of your created store, which returns
 a promise. Then you can access the created items of the store:
 
-```js
-personStore.onceLoaded().then(() => {
+```JS
+peopleStore.onceLoaded().then(() => {
   console.log('a list of all the people:');
-  personStore.items.forEach((item) => {
+  peopleStore.items.forEach((item) => {
     console.log('*', item.firstName, item.lastName, `(${item.age})`);
   });
   console.log('---------');
-  console.log('total:', personStore.items.length);
+  console.log('total:', peopleStore.items.length);
 }, (err) => console.log('Error fetching data!', err));
 ```
 
@@ -125,28 +125,28 @@ other properties will be ignored, the transporter and client storage won't get t
 You should not manipulate the items array by yourself, otherwise the store can't keep track of the
 changes. To create a new item, you should use the `create()` method of the your store:
 
-```js
-const albert = personStore.create({
+```JS
+const albert = peopleStore.create({
   firstName: 'Albert',
   lastName: 'Einstein',
   age: 32,
 });
 ```
 
-The newly created item will now be found in the `personStore.items` array.
+The newly created item will now be found in the `peopleStore.items` array.
 
 If you want to fetch your data at a later point (maybe in some polling interval), you can use the
 `fetch()` method. This will fetch the data from your transporter only (and updates the local
 database when there are changes):
 
-```js
-personStore.fetch();
+```JS
+peopleStore.fetch();
 ```
 
 To update properties of an item, just edit these properties directly. When you are ready and want to
 update the data on the local database and your backend, just use the `update()` method of the item:
 
-```js
+```JS
 albert.age = 33;
 albert.lastName = 'Einstein';
 albert.update().then(() => {
@@ -156,7 +156,7 @@ albert.update().then(() => {
 
 To delete an item, you just have to use it's `delete()` method:
 
-```js
+```JS
 albert.delete().then(() => {
   console.log('The item was successfully everywhere');
 });
@@ -177,7 +177,7 @@ source of truth.
 
 The most basic schema is one an empty model, it will look like this:
 
-```js
+```JS
 import { Schema } from 'harmonized';
 const schema = new Schema({});
 ```
@@ -185,7 +185,7 @@ const schema = new Schema({});
 Because your model is more complex than just a single value, the upper structural element is an
 `Object`. Objects have properties that need to be described in the *properties* property:
 
-```js
+```JS
 const schema = new Schema({
   type: Object,
   properties: {},
@@ -198,7 +198,7 @@ container object. Because it is clear that the upper element is an `Object`, you
 Inside the `properties` property you describe the properties of the described `Object` with their
 keys and types:
 
-```js
+```JS
 const schema = new Schema({
   properties: {
     firstName: String,
@@ -213,7 +213,7 @@ The above example describes a simple model definition with key names defined by 
 the type as the value. The definition above is a shorthand for simple types. You can also write it
 like this:
 
-```js
+```JS
 const schema = new Schema({
   properties: {
     firstName: { type: String },
@@ -226,7 +226,7 @@ const schema = new Schema({
 
 You can also describe arrays and more deeply nested objects:
 
-```js
+```JS
 const schema = new Schema({
   properties: {
     firstName: String,
@@ -266,9 +266,10 @@ transporter key name)
 
 **primary** defines if the key is primary. This needs to be `true`.
 
-The actual key name of this key description is ignored (`key` and `_key` are used).
+The actual key name of this key description is ignored if `primary` is `true` (`key` and `_key` are
+used).
 
-```js
+```JS
 import { Key } from 'harmonized';
 
 const schema = new Schema({
@@ -289,7 +290,216 @@ you need to use the type `NumberKey` instead.
 
 ### Relations and references
 
-// TODO
+All the examples above are little silos that don't have any relation to other resources, models or
+stores. But you will most likely have at least one of those relations. A car has a driver and
+multiple possible passengers. A book can reference other books for further reading. Or, like in the
+example above, a person can have multiple hobbies. In the above example with the hobbies array we
+have used simple strings as content of that array. But maybe you want to find people with the same
+hobbies, and that is harder with just simple strings.
+
+So you have an extra endpoint for hobbies. A full list of all hobbies with `GET /hobbies/` and a
+single hobby with `GET /hobbies/123`. When receiving people with `GET /people/` you will return the
+list of people, and each person holds a hobbies array with the ids of the hobbies the person has.
+Lets say a person looks like this:
+
+```JSON
+{
+  "firstName": "Albert",
+  "lastName": "Einstein",
+  "hobbies": [123, 422, 2, 530, 9001]
+}
+```
+
+The hobby IDs refer to the IDs of the hobbies stored at your backend database.
+
+Now when you pull these without relations in a simple `Store`, you will only see these backend IDs.
+But what you want is to see the hobbies. You can change your backend to send the full hobbies
+objects instead of just IDs. But then you will have multiple copies of that information inside many
+person items. Also when editing a hobby information in the client, this information won't be updated
+directly in the person objects without fetching them again.
+
+So, how to solve this? You need to describe the relations between your *people* and your *hobbies*
+store. For this you first need to have two stores:
+
+```JS
+import {
+  Store,
+  HttpTransporter,
+  IndexedDbStorage,
+  Schema,
+  NumberKey,
+} from 'harmonized';
+
+const baseUrl = 'https://www.hyphe.me/api';
+
+const hobbiesSchema = new Schema({
+  properties: {
+    name: String,
+    type: String,
+    difficulty: Number,
+    id: {
+      type: NumberKey,
+      key: 'id',
+      _key: '_id',
+      primary: true,
+    },
+  },
+});
+
+const hobbiesStore = new Store({
+  schema: peopleSchema,
+  transporter: new HttpTransporter({
+    baseUrl,
+    path: 'hobbies',
+  }),
+  clientStorage: new IndexedDbStorage({/* some options */}),
+});
+
+const peopleSchema = new Schema({
+  properties: {
+    firstName: String,
+    lastName: String,
+    hobbies: {
+      type: Array,
+      items: Number,
+    },
+    id: {
+      type: NumberKey,
+      key: 'id',
+      _key: '_id',
+      primary: true,
+    },
+  },
+});
+
+const peopleStore = new Store({
+  schema: peopleSchema,
+  transporter: new HttpTransporter({
+    baseUrl,
+    path: 'people',
+  }),
+  clientStorage: new IndexedDbStorage({/* some options */}),
+});
+```
+
+As you see we still have a hobbies array with `Number` items in the people schema. Now we want to
+change that. So, what do we need for that?
+
+* The name of the property in your person item (in this case `hobbies`)
+* The keys of the hobbies store of the backend and the local database
+* The actual store, where to find the hobbies referenced
+
+With all this in mind, let's change the people schema:
+
+```JS
+const peopleSchema = new Schema({
+  properties: {
+    // ...
+    hobbies: {
+      type: Array,
+      items: {
+        type: NumberKey,
+        key: 'id',
+        key: '_id',
+        ref: hobbiesStore,
+      },
+    },
+    // ...
+  },
+});
+```
+
+// COMMENT: is key really needed? Should we make the key definable for everything so you can have
+different names for state, API, local DB? The key in the hobbies schema is already known.
+
+Now we have a `NumberKey` type instead of a `Number` type. We defined the keys of the hobbies, and
+we now have added a `ref` property that holds a reference to the store, where to get the hobbies
+items.
+
+Now when we fetch people from the backend, the backend IDs will automatically be replaced with the
+hobbies `Item` objects. When certain hobby items are not fetched yet, they will be fetched
+automatically. Also the promise of the `peopleStore.onceLoaded()` method only will be resolve when
+all item relations are also resolved, so you can be certain that you have everything available when
+you access your items inside the `then()` callback.
+
+If you have one to one relations you can define it the same way in the schema:
+```JS
+const peopleSchema = new Schema({
+  properties: {
+    // ...
+    spouse: {
+      type: NumberKey,
+      key: 'id',
+      key: '_id',
+      ref: spouseStore,
+    },
+    // ...
+  },
+});
+```
+
+// COMMENT: we need a self reference!!! Maybe with `this`?
+
+Currently self referencing is not working, but that is a thing we will definitely add in the near
+future.
+
+Now when you access a single the reference item (like a hobby inside a person), you can handle them
+like the items in the reference store (hobby store in this example). So you can update them and even
+delete them from the hobbies list. Harmonized automatically detects items that you put inside a
+reference property. That means, when you are adding a hobby item from the hobbies store to the
+hobbies array of a person, it will automatically be transformed to the corresponding IDs of the
+backend and the local database, when the data is synced. Here is an example how to work with
+references when manipulating your items:
+
+```JS
+// Get the Albert Einstein people item
+const albert = peopleStore.findOne({
+  firstName: 'Albert',
+  lastName: 'Einstein',
+});
+
+// Get the science hobby
+const scienceHobby = hobbiesStore.findOne({
+  name: 'Science',
+});
+
+// Add the science hobby to Alberts hobby list
+albert.hobbies.push(scienceHobby);
+
+// Find and set Alberts spouse
+albert.spouse = spouseStore.findOne({
+  firstName: 'Mileva',
+  lastName: 'Marić',
+});
+
+// sync the albert state with the local db and the backend
+albert.update();
+```
+
+It is also easy to change and update the data of relation:
+
+```JS
+const steve = peopleStore.findOne({
+  firstName: 'Steve',
+  lastName: 'Jobs',
+});
+
+const stevesSpouse = spouseStore.findOne({
+  firstName: 'Laurene',
+  lastName: 'Powell',
+});
+
+// Steve's spouse's spouse wasn't set.
+// So we need to update this and change it to steve
+steve.spouse.spouse = steve;
+steve.spouse.update();
+
+// This returns true, because it references the same object
+console.log(steve.spouse === stevesSpouse);
+```
+
+That's it! Now you are a pro at defining references to other stores and working with this
+references. Wasn't that hard, right?
 
 ## Adding middleware to transporters and client storages
 
