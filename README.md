@@ -2,29 +2,27 @@
 
 # harmonized.js
 
-Offline first – state, storage and server manager (optimized for react) based on MobX
+Offline first – state, storage and server manager (for react) based on MobX
 
 ## Why?
 
-Being offline sucks when using a web app! When loosing your connection, you can't create or edit
-items  to your liking, because the web app can't handle unsent requests after connecting again. And
-even if it does: One crash, accidental browser reload or closed tab and all done changes are gone.
+Being offline sucks! Your web app is not reachable. Or you accidentally closed the tab, and the state
+is gone. The only thing left to do is to play the chrome offline T-Rex game.
 
-Handling this by just storing unsent requests persistently to send them on connection also isn't
-solving the issue that you can't see your app state when accessing your web app offline. Even when
-you use a Progressive Web App to cache the static files.
+![Bill Murray](https://media.giphy.com/media/Bzxeif0cR11ny/giphy.gif)
+
+Here's when harmonized comes in. Use your web app offline – as if it was online!
 
 ### What harmonized can do for you
 
-To solve this, harmonized is storing your state offline persistently and keeps it in sync with the
-data your web app is getting from your (or even third party) backend. When using a Progressive Web
-App offline, Harmonized serves the locally stored data, even when the backend is unreachable. When
-being online, it speeds up display of the data, because the app can display the local state before
-it receives the state from your backend. When receiving just updates from the backend you can even
-keep network traffic at a minimum.
+Harmonized is storing your state offline persistently and keeps it in sync with your backend. When
+using a Progressive Web App offline, Harmonized serves the locally stored data, even when the
+backend is unreachable. When being online, it speeds up display of the data, because the app can
+display the local state before it receives the state from your backend. When receiving just updates
+from the backend you can even keep network traffic at a minimum.
 
-But it can do more: Be it a flakey internet connection or your backend having some issue, your
-client app will (almost) work like before. Creating or editing items of the state is no problem.
+But it can do more: Be it a flaky internet connection or your backend having some issue. Your client
+app will (almost) work like before. Creating or editing items of the state is no problem.
 When the connection is established again, it will sync all the changes with the backend.
 
 ## How harmonized works
@@ -503,7 +501,67 @@ references. Wasn't that hard, right?
 
 ## Adding middleware to transporters and client storages
 
-// TODO
+Every backend API is different! Sometimes the structure in your backend completely differs from what
+you want to display in the frontend. Sometimes you want to send special headers (the most used
+case for this is probably the authentication header). Or you want to keep track of the
+client-server-time drift.
+
+For this you can use transporter and client storage middleware. With middleware you can:
+
+* read/manipulate the body and request of received requests before they hit the store
+* read/manipulate the body and request metadata of requests before they are are sent
+* catch transmission errors (like a 500 or 404 HTTP response or failed connection) and handle them
+
+To add middleware to a transporter, you need to use the static `add()` method of the corresponding
+Transporter or ClientStorage class:
+
+```JS
+HttpTransporter.add(new MyAwesomeHttpMiddleware('some', 'configuration'));
+```
+
+This middleware will apply to all created instances of the HttpTransporter.
+
+So how do we write our own middleware you ask? Let's have a look how to create a simple auth header
+middleware for the HttpTransporter:
+
+```JS
+import {
+  TransporterMiddleware,
+  HttpTransporter,
+} from 'harmonized';
+
+class MyAuthHttpMiddleware extends TransporterMiddleware {
+  constructor(authTokenKey, refreshTokenKey) {
+    // You can add configuration possibilities for your middleware in the constructor
+    this.authToken = localStorage.get(authTokenKey);
+    this.refreshToken = localStorage.get(refreshTokenKey);
+  }
+
+  send(req) {
+    // Add the token to the 'Authentication' header
+    req.headers['Authentication'] = `Bearer ${authToken}`;
+    return req;
+  }
+
+  transmissionError({res}) {
+    // When unauthorized token is returned, refresh the token
+    if (res.status === 401) {
+      return this.refreshToken();
+    }
+
+    return res;
+  }
+
+  refreshToken() {
+    // refresh logic
+  }
+}
+
+MyAuthHttpMiddleware.uniqueName = 'my-auth-middleware';
+
+// Add the your middleware to the HttpTransporter
+HttpTransporter.add(new MyAuthHttpMiddleware('authToken', 'refreshToken'));
+```
 
 ## Further documentation
 
