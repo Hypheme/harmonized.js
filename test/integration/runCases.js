@@ -2,28 +2,46 @@ import { SOURCE, TARGET } from '../../src/constants';
 import Schema, { NumberKey } from '../../src/Schema';
 
 export default function runCases(setup, connectionState) {
-  const after = (forCase) => {
-    if (setup.cases && setup.cases[forCase] && setup.cases[forCase].after) {
+  const after = (block, forCase) => {
+    if (
+      setup[block] &&
+      setup[block].cases &&
+      setup[block].cases[forCase] &&
+      setup[block].cases[forCase].after
+    ) {
       return setup.expects[forCase].after();
     }
 
     return Promise.resolve();
   };
 
-  const before = (forCase) => {
-    if (setup.cases && setup.cases[forCase] && setup.cases[forCase].before) {
+  const before = (block, forCase) => {
+    if (
+      setup[block] &&
+      setup[block].cases &&
+      setup[block].cases[forCase] &&
+      setup[block].cases[forCase].before
+    ) {
       return setup.expects[forCase].before();
     }
 
     return Promise.resolve();
   };
 
-  const wrapBeforeAfter = (forCase, cb) => before(forCase).then(cb).then(() => after(forCase));
+  const wrapBeforeAfterGenerator = block =>
+    (forCase, cb) => before(block, forCase).then(cb).then(() => after(block, forCase),
+  );
 
   let store;
   let schema;
 
-  describe('Store', function () {
+  describe('Store Constructor', function () {
+    const wrapBeforeAfter = wrapBeforeAfterGenerator('storeConstructor');
+  });
+
+  describe('Store Methods', function () {
+    const wrapBeforeAfter = wrapBeforeAfterGenerator('storeMethods');
+
     xit('should be constructed and do initial fetch', function () {
       return wrapBeforeAfter('constructInitialFetch', () => {
         schema = new Schema({
@@ -161,6 +179,7 @@ export default function runCases(setup, connectionState) {
   });
 
   describe('Item', function () {
+    const wrapBeforeAfter = wrapBeforeAfterGenerator('item');
     xit('should be updated from client storage', function () {
       return wrapBeforeAfter('itemUpdatedFromClientStorage', () => {});
     });
