@@ -44,8 +44,11 @@ export default function runCases(setup, connectionState) {
 
   describe('Store Constructor', function () {
     const wrapBeforeAfter = wrapBeforeAfterGenerator('storeConstructor');
-
     setupGeneratorForBlock('storeConstructor');
+
+    if (setup.storeConstructor && setup.storeConstructor.customSpecs) {
+      setup.storeConstructor.customSpecs();
+    }
 
     xit('should be constructed and do initial fetch', function () {
       return wrapBeforeAfter('constructInitialFetch', () => {
@@ -91,8 +94,12 @@ export default function runCases(setup, connectionState) {
 
     beforeEach(function () {
       // create new store out of environment
-      // this.store = new Store(setup.StoreMethods.environment)
+      // this.store = new Store(setup.StoreMethods.environment) stub initialFetch, pollute with xample data
     });
+
+    if (setup.storeMethods && setup.storeMethods.customSpecs) {
+      setup.storeMethods.customSpecs();
+    }
 
     xit('should create a new item from client storage', function () {
       return wrapBeforeAfter('newItemFromClientStorage', () => {
@@ -198,39 +205,43 @@ export default function runCases(setup, connectionState) {
     setupGeneratorForBlock('itemMethods');
 
     beforeEach(function () {
-      // this.item=  new item
+      // this.item=  new item, polute store without data
     });
 
+    if (setup.itemMethods && setup.itemMethods.customSpecs) {
+      setup.itemMethods.customSpecs();
+    }
+
     xit('should be updated from client storage', function () {
-      return wrapBeforeAfter('itemUpdatedFromClientStorage', () => {});
+      return wrapBeforeAfter('updatedFromClientStorage', () => {});
     });
 
     xit('should be updated from transporter', function () {
-      return wrapBeforeAfter('itemUpdatedFromTransporter', () => {});
+      return wrapBeforeAfter('updatedFromTransporter', () => {});
     });
 
     xit('should be updated from state', function () {
-      return wrapBeforeAfter('itemUpdatedFromState', () => {});
+      return wrapBeforeAfter('updatedFromState', () => {});
     });
 
     xit('should be deleted from client storage', function () {
-      return wrapBeforeAfter('itemDeletedFromClientStorage', () => {});
+      return wrapBeforeAfter('deletedFromClientStorage', () => {});
     });
 
     xit('should be deleted from transporter', function () {
-      return wrapBeforeAfter('itemDeletedFromTransporter', () => {});
+      return wrapBeforeAfter('deletedFromTransporter', () => {});
     });
 
     xit('should be deleted from state', function () {
-      return wrapBeforeAfter('itemDeletedFromState', () => {});
+      return wrapBeforeAfter('deletedFromState', () => {});
     });
 
     xit('should fetch from client storage', function () {
-      return wrapBeforeAfter('itemFetchFromClientStorage', () => {});
+      return wrapBeforeAfter('fetchFromClientStorage', () => {});
     });
 
     xit('should fetch from transporter', function () {
-      return wrapBeforeAfter('itemFetchFromTransporter', () => {});
+      return wrapBeforeAfter('fetchFromTransporter', () => {});
     });
   });
 }
