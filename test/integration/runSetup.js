@@ -2,8 +2,8 @@ import runCases from './runCases';
 
 export default function runSetup(setup) {
   describe(setup.name, function () {
-    if (setup.bfe) {
-      beforeEach(setup.bfe);
+    if (setup.beforeEach) {
+      beforeEach(setup.beforeEach);
     }
 
     describe('Transporter ❌ - ClientStorage ❌', function () {
@@ -12,8 +12,8 @@ export default function runSetup(setup) {
         clientStorage: false,
       };
 
-      if (setup.before) {
-        beforeAll(setup.before);
+      if (setup.beforeAll) {
+        beforeAll(setup.beforeAll);
       }
 
       runCases(setup, connectionState);
@@ -25,8 +25,8 @@ export default function runSetup(setup) {
         clientStorage: false,
       };
 
-      if (setup.before) {
-        beforeAll(setup.before);
+      if (setup.beforeAll) {
+        beforeAll(setup.beforeAll);
       }
 
       runCases(setup, connectionState);
@@ -38,8 +38,8 @@ export default function runSetup(setup) {
         clientStorage: true,
       };
 
-      if (setup.before) {
-        beforeAll(setup.before);
+      if (setup.beforeAll) {
+        beforeAll(setup.beforeAll);
       }
 
       runCases(setup, connectionState);
@@ -51,8 +51,8 @@ export default function runSetup(setup) {
         clientStorage: true,
       };
 
-      if (setup.before) {
-        beforeAll(setup.before);
+      if (setup.beforeAll) {
+        beforeAll(setup.beforeAll);
       }
 
       runCases(setup, connectionState);
