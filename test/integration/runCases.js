@@ -32,15 +32,20 @@ export default function runCases(setup, connectionState) {
     (forCase, cb) => before(block, forCase).then(cb).then(() => after(block, forCase),
   );
 
+  const setupGeneratorForBlock = block =>
+    ['beforeEach, beforeAll', 'afterEach', 'afterAll'].forEach((method) => {
+      window[method](function () {
+        return setup[block][method];
+      });
+    });
+
   let store;
   let schema;
 
   describe('Store Constructor', function () {
     const wrapBeforeAfter = wrapBeforeAfterGenerator('storeConstructor');
-  });
 
-  describe('Store Methods', function () {
-    const wrapBeforeAfter = wrapBeforeAfterGenerator('storeMethods');
+    setupGeneratorForBlock('storeConstructor');
 
     xit('should be constructed and do initial fetch', function () {
       return wrapBeforeAfter('constructInitialFetch', () => {
@@ -77,6 +82,16 @@ export default function runCases(setup, connectionState) {
           // should handled overlapping data from T and CS accordingly
         });
       });
+    });
+  });
+
+  describe('Store Methods', function () {
+    const wrapBeforeAfter = wrapBeforeAfterGenerator('storeMethods');
+    setupGeneratorForBlock('storeMethods');
+
+    beforeEach(function () {
+      // create new store out of environment
+      // this.store = new Store(setup.StoreMethods.environment)
     });
 
     xit('should create a new item from client storage', function () {
@@ -179,7 +194,13 @@ export default function runCases(setup, connectionState) {
   });
 
   describe('Item', function () {
-    const wrapBeforeAfter = wrapBeforeAfterGenerator('item');
+    const wrapBeforeAfter = wrapBeforeAfterGenerator('itemMethods');
+    setupGeneratorForBlock('itemMethods');
+
+    beforeEach(function () {
+      // this.item=  new item
+    });
+
     xit('should be updated from client storage', function () {
       return wrapBeforeAfter('itemUpdatedFromClientStorage', () => {});
     });
