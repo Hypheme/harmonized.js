@@ -1,6 +1,6 @@
 import HttpTransporter from '../../src/Transporters/HttpTransporter';
 
-import runSetup from './runSetup';
+import runSetup from './suite/index';
 
 runSetup({
   global: {
@@ -15,10 +15,8 @@ runSetup({
     beforeAll() {
     },
     afterEach() {
-
     },
     afterAll() {
-
     },
     cases: {
       constructInitialFetch: {

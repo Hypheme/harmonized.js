@@ -70,6 +70,7 @@ export default class Store {
   // ///////////////////
 
   create(values, source = SOURCE.STATE) {
+    // TODO block this methods while store hasnt loaded yet
     const item = new this._Item({ store: this, autoSave: this._options.autoSave });
     item.construct(values, { source });
     this.items.push(item);

@@ -2,6 +2,17 @@ import ClientStorages from './ClientStorages';
 import Transporters from './Transporters';
 import Item from './Item';
 import Store from './Store';
+import Schema, { Key, NumberKey } from './Schema';
+import constants from './constants';
 
-export default { ClientStorages, Transporters, Item, Store };
-export { ClientStorages, Transporters, Item, Store };
+const customTypes = { Key, NumberKey };
+
+export {
+  ClientStorages,
+  constants,
+  customTypes,
+  Item,
+  Schema,
+  Store,
+  Transporters,
+};
