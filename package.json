@@ -5,6 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "codecov": "cat coverage/*/lcov.info | codecov",
+    "integration": "NODE_ENV=test ./node_modules/karma/bin/karma start integration.karma.conf.js --auto-watch --no-single-run",
+    "integration:travis": "NODE_ENV=test ./node_modules/karma/bin/karma start integration.karma.conf.js",
     "test:travis": "NODE_ENV=test ./node_modules/karma/bin/karma start",
     "test": "NODE_ENV=test ./node_modules/karma/bin/karma start --auto-watch --no-single-run",
     "eslint": "./node_modules/.bin/eslint src/**",

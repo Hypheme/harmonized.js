@@ -1,10 +1,12 @@
 import { constants, Store } from '../../../src/index';
 
+import { itemMethods as data } from './data';
 import getSchema from './schema';
 
 const { SOURCE } = constants;
 
 export default (setup, {
+  connectionState,
   setupGeneratorForBlock,
   wrapBeforeAfterGenerator,
 }) => {
@@ -22,7 +24,7 @@ export default (setup, {
       });
       return this.store.onceLoaded()
         .then(() => {
-          this.item = this.store.create(/*TODO initial item data*/);
+          this.item = this.store.create(data.item());
           return this.item.onceLoaded();
         });
     });
@@ -31,11 +33,12 @@ export default (setup, {
       setup.itemMethods.customSpecs();
     }
 
-    xit('should be updated from client storage', function () {
+    it('should be updated from client storage', function () {
       return wrapBeforeAfter('updateFromClientStorage', () =>
-        this.item.update(' TODO item data', SOURCE.CLIENT_STORAGE)
+        this.item.update(data.itemUpdates(), SOURCE.CLIENT_STORAGE)
           .then(() => {
             // TODO expects item data
+            expect(this.item.name).toEqual('hans');
             // expects transporter data (needs to be in emtpy-http.run.js)
           }),
       );

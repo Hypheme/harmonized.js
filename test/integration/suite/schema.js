@@ -6,17 +6,17 @@ export default () => new Schema({
   properties: {
     name: String,
     knownFor: String,
-    hobbies: {
-      type: Array,
-      items: {
-        type: NumberKey,
-        key: 'id',
-        _key: '_id',
-
-      // TODO: add ref
-        ref: undefined,
-      },
-    },
+    // hobbies: {
+    //   type: Array,
+    //   items: {
+    //     type: NumberKey,
+    //     key: 'id',
+    //     _key: '_id',
+    //
+    //   // TODO: add ref
+    //     ref: undefined,
+    //   },
+    // },
     facts: {
       type: Object,
       properties: {

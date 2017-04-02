@@ -2,8 +2,9 @@ import storeConstructor from './store-constructor';
 import storeMethods from './store-methods';
 import itemMethods from './item-methods';
 
-export default function runCases(setup) {
+export default function runCases(setup, connectionState) {
   const helper = {
+    connectionState,
     after: (block, forCase) => {
       if (
         setup[block] &&
@@ -36,12 +37,16 @@ export default function runCases(setup) {
         .then(() => helper.after(block, forCase),
     ),
 
-    setupGeneratorForBlock: block =>
-      ['beforeEach, beforeAll', 'afterEach', 'afterAll'].forEach((method) => {
-        window[method](function () {
+    setupGeneratorForBlock: (block) => {
+      const globals = {
+        beforeEach, beforeAll, afterEach, afterAll,
+      };
+      ['beforeEach', 'beforeAll', 'afterEach', 'afterAll'].forEach((method) => {
+        globals[method](function () {
           return setup[block][method];
         });
-      }),
+      });
+    },
   };
 
   storeConstructor(setup, helper);
