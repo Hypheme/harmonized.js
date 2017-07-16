@@ -37,12 +37,13 @@ class Schema {
 
     // If not available add default one
     if (!this._primaryKey) {
-      this._primaryKey = properties.id = {
+      this._primaryKey = {
         type: Key,
         key: 'id',
         _key: '_id',
         primary: true,
       };
+      properties.id = this._setPrimaryKey;
     }
 
     this._createObservableKeyList(this._definition);
@@ -383,4 +384,4 @@ class Schema {
 }
 
 export default Schema;
-export { Key, NumberKey } ;
+export { Key, NumberKey };
