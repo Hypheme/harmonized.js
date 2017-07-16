@@ -2,8 +2,9 @@ import { constants, Store } from '../../../src/index';
 
 import { itemMethods as data } from './data';
 import getSchema from './schema';
+import { expectItem } from './utils';
 
-const { SOURCE } = constants;
+const { SOURCE, TARGET } = constants;
 
 export default (setup, {
   connectionState,
@@ -12,6 +13,7 @@ export default (setup, {
 }) => {
   describe('Item', function () {
     const wrapBeforeAfter = wrapBeforeAfterGenerator('itemMethods');
+    const cases = setup.itemMethods.cases;
     setupGeneratorForBlock('itemMethods');
 
     beforeEach(function () {
@@ -25,7 +27,11 @@ export default (setup, {
       return this.store.onceLoaded()
         .then(() => {
           this.item = this.store.create(data.item());
-          return this.item.onceLoaded();
+          //
+          return Promise.all([
+            this.item.onceReadyFor(TARGET.TRANSPORTER),
+            this.item.onceReadyFor(TARGET.CLIENT_STORAGE),
+          ]);
         });
     });
 
@@ -37,28 +43,41 @@ export default (setup, {
       return wrapBeforeAfter('updateFromClientStorage', () =>
         this.item.update(data.itemUpdates(), SOURCE.CLIENT_STORAGE)
           .then(() => {
-            // TODO expects item data
-            expect(this.item.name).toEqual('hans');
+            expectItem(this.item, data.expectedItemUpdates());
             // expects transporter data (needs to be in emtpy-http.run.js)
           }),
       );
     });
 
-    xit('should be updated from transporter', function () {
-      return wrapBeforeAfter('updateFromTransporter', () => {});
-    });
-
-    xit('should be updated from state', function () {
-      return wrapBeforeAfter('updateFromState', () =>
-        this.item.update(' TODO item data')
+    it('should be updated from transporter', function () {
+      return wrapBeforeAfter('updateFromTransporter', () =>
+        this.item.update(data.itemUpdates(), SOURCE.TRANSPORTER)
           .then(() => {
-            // TODO expects item data
+            expectItem(this.item, data.expectedItemUpdates());
+            // expects client storage data
           }),
       );
     });
 
-    xit('should be deleted from client storage', function () {
-      return wrapBeforeAfter('deleteFromClientStorage', () => {});
+    it('should be updated from state', function () {
+      return wrapBeforeAfter('updateFromState', () =>
+        this.item.update(data.itemUpdates())
+          .then(() => {
+            expectItem(this.item, data.expectedItemUpdates());
+            // expects client storage data
+            // expects transporter storage data
+          }),
+      );
+    });
+
+    it('should be deleted from client storage', function () {
+      return wrapBeforeAfter('deleteFromClientStorage', () =>
+        this.item.delete(SOURCE.CLIENT_STORAGE)
+          .then(() =>
+            // expects client storage data
+            // expects transporter storage data
+             this.item),
+      );
     });
 
     xit('should be deleted from transporter', function () {

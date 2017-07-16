@@ -128,7 +128,7 @@ export default class Item {
         return {
           current: undefined,
           inProgress: undefined,
-          next: STATE.BEING_CREATED,
+          next: undefined,
         };
       case STATE.BEING_DELETED:
       case STATE.BEING_UPDATED:
@@ -166,7 +166,13 @@ export default class Item {
     this._computeInitialStates(STATE.EXISTENT);
     this.removed = (this._transporterStates.next === STATE.BEING_DELETED);
     this.stored = true;
-    this.synced = (this._transporterStates.next === undefined);
+    // note undefined, undefined, undefined is a state for a newly created item so we have to
+    // take this one in account as a new created item is never synced
+    this.synced = (this._transporterStates.next === undefined && !(
+      this._transporterStates.next === undefined &&
+      this._transporterStates.inProgress === undefined &&
+      this._transporterStates.current === undefined
+    ));
     this._setPrimaryKey(SOURCE.CLIENT_STORAGE, values);
     return this._store.schema.setFrom(SOURCE.CLIENT_STORAGE, this, values,
       { establishObservables: true });
@@ -256,9 +262,14 @@ export default class Item {
       case STATE.DELETED: // pretty much the same as BEING_DELETED.
         return undefined;
       case undefined:
+        if (next === undefined && newState === undefined) {
+          return STATE.BEING_CREATED;
+        }
+
         if (next !== STATE.BEING_CREATED) {
           return newState === STATE.BEING_CREATED ? STATE.BEING_CREATED : undefined;
         }
+
         allowedNewStates = [STATE.BEING_UPDATED, STATE.BEING_DELETED];
         break;
       default: // we don't change anything
@@ -441,9 +452,12 @@ export default class Item {
   }
 
   _synchronizeFor(target, state) {
+    // we need information if a snyc is already happening before overwriting state
     const syncInProgress = this[target.STATES].inProgress
       || this[target.STATES].next;
     this._setNextStateFor(target, state);
+    // we only call _triggerSync if a sync is not already happening AND the new merged state
+    // needs a sync
     if (!syncInProgress && this[target.STATES].next) {
       this[target.STATUS_KEY] = false;
       this._syncPromises[target.NAME] = this._triggerSync(target)

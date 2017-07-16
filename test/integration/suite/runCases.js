@@ -17,6 +17,18 @@ export default function runCases(setup, connectionState) {
 
       return Promise.resolve();
     },
+    test: (block, forCase, data) => {
+      if (
+        setup[block] &&
+        setup[block].cases &&
+        setup[block].cases[forCase] &&
+        setup[block].cases[forCase].test
+      ) {
+        return setup[block].cases[forCase].test(data);
+      }
+
+      return Promise.resolve();
+    },
 
     before: (block, forCase) => {
       if (
@@ -25,15 +37,17 @@ export default function runCases(setup, connectionState) {
         setup[block].cases[forCase] &&
         setup[block].cases[forCase].before
       ) {
-        return setup.expects[forCase].before();
+        return setup[block].cases[forCase].before();
       }
 
       return Promise.resolve();
     },
 
     wrapBeforeAfterGenerator: block =>
-      (forCase, cb) => helper.before(block, forCase)
+      (forCase, cb) => Promise.resolve()
+        .then(() => helper.before(block, forCase))
         .then(cb)
+        .then(data => helper.test(block, forCase, data))
         .then(() => helper.after(block, forCase),
     ),
 

@@ -26,8 +26,11 @@ export default class EmptyTransporter extends BaseTransporter {
 
   initialFetch(/* baseData*/) {
     return Promise.resolve({
-      items: [],
-      toDelete: [],
+      status: PROMISE_STATE.RESOLVED,
+      data: {
+        items: [],
+        toDelete: [],
+      },
     });
   }
 

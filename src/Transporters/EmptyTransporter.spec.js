@@ -57,8 +57,11 @@ describe('EmptyTransporter', function () {
   it('should do fake "initialFetch" request', function (done) {
     this.emptyTransporter.initialFetch([{ some: 'input' }]).then((outputData) => {
       expect(outputData).toEqual({
-        items: [],
-        toDelete: [],
+        status: PROMISE_STATE.RESOLVED,
+        data: {
+          items: [],
+          toDelete: [],
+        },
       });
       done();
     });

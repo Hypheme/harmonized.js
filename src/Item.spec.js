@@ -98,12 +98,12 @@ describe('Item', function () {
       expect(myItem._transporterStates).toEqual({
         current: undefined,
         inProgress: undefined,
-        next: STATE.BEING_CREATED,
+        next: undefined,
       });
       expect(myItem._clientStorageStates).toEqual({
         current: undefined,
         inProgress: undefined,
-        next: STATE.BEING_CREATED,
+        next: undefined,
       });
       expect(myItem.stored).toBe(false);
       expect(myItem.synced).toBe(false);
@@ -136,7 +136,7 @@ describe('Item', function () {
       expect(myItem._transporterStates).toEqual({
         current: undefined,
         inProgress: undefined,
-        next: STATE.BEING_CREATED,
+        next: undefined,
       });
       expect(myItem._clientStorageStates).toEqual({
         current: STATE.EXISTENT,
@@ -217,7 +217,7 @@ describe('Item', function () {
       expect(myItem._clientStorageStates).toEqual({
         current: undefined,
         inProgress: undefined,
-        next: STATE.BEING_CREATED,
+        next: undefined,
       });
       expect(myItem.stored).toBe(false);
       expect(myItem.synced).toBe(true);
@@ -256,7 +256,7 @@ describe('Item', function () {
       expect(myItem._clientStorageStates).toEqual({
         current: undefined,
         inProgress: undefined,
-        next: STATE.BEING_CREATED,
+        next: undefined,
       });
       expect(myItem.stored).toBe(false);
       expect(myItem.synced).toBe(true);

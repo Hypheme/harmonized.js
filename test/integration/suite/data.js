@@ -29,4 +29,14 @@ export const itemMethods = {
       death: 666,
     },
   }),
+  expectedItemUpdates: () => ({
+    name: 'hans',
+    knownFor: 'sth else',
+      // hobbies: [''] // for the first iteration we ignore relations
+    facts: {
+      birth: 1234,
+      death: 666,
+      archievments: {},
+    },
+  }),
 };
