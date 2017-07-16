@@ -34,7 +34,6 @@ export default class BaseTransporter {
   }
 
   create(data: Object) {
-    console.log('i shall create');
     return this._sendRequest(new BaseTransporter.TransactionItem('create', data));
   }
 

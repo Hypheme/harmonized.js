@@ -57,7 +57,7 @@ export default function runCases(setup, connectionState) {
       };
       ['beforeEach', 'beforeAll', 'afterEach', 'afterAll'].forEach((method) => {
         globals[method](function () {
-          return setup[block][method];
+          setup[block][method]();
         });
       });
     },

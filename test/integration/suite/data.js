@@ -30,6 +30,7 @@ export const itemMethods = {
     },
   }),
   expectedItemUpdates: () => ({
+    id: '123',
     name: 'hans',
     knownFor: 'sth else',
       // hobbies: [''] // for the first iteration we ignore relations

@@ -25,7 +25,7 @@ export default class Store {
     this.transporter = transporter;
     this.transporter.setEnvironment({ store: this, role: ROLE.TRANSPORTER });
     this.clientStorage = clientStorage;
-    this.transporter.setEnvironment({ store: this, role: ROLE.CLIENT_STORAGE });
+    this.clientStorage.setEnvironment({ store: this, role: ROLE.CLIENT_STORAGE });
     this.schema = schema;
     this._options = options;
     this._Item = Item;

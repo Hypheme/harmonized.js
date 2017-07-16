@@ -466,6 +466,7 @@ export default class Item {
         })
         .catch(err => this._lock(target, err));
     }
+
     return this._syncPromises[target.NAME];
   }
 

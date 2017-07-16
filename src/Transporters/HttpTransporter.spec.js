@@ -355,18 +355,20 @@ describe('HttpTransporter', function () {
       };
 
       httpTransporter._request({
-        baseUrl: 'https://www.hyphe.me',
-        path: 'users',
-        payload: {
-          id: 123,
-          hello: 'server',
+        req: {
+          baseUrl: 'https://www.hyphe.me',
+          path: 'users',
+          payload: {
+            id: 123,
+            hello: 'server',
+          },
+          pathTemplate: ':basePath/:id',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
         },
-        templatePath: ':basePath/:id',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        mode: 'cors',
       }).then(({ res, req, data, status }) => {
         expect(data).toEqual({
           hello: 'back',
@@ -408,18 +410,20 @@ describe('HttpTransporter', function () {
       };
 
       httpTransporter._request({
-        baseUrl: 'https://www.hyphe.me',
-        path: 'users',
-        payload: {
-          id: 123,
-          hello: 'server',
+        req: {
+          baseUrl: 'https://www.hyphe.me',
+          path: 'users',
+          payload: {
+            id: 123,
+            hello: 'server',
+          },
+          pathTemplate: ':basePath/:id',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
         },
-        templatePath: ':basePath/:id',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        mode: 'cors',
       }).catch(({ res, req }) => {
         expect(res.status).toBe(500);
         expect(req).toEqual({
@@ -466,18 +470,20 @@ describe('HttpTransporter', function () {
 
       expect(httpTransporter.offlineChecker.setOffline).toHaveBeenCalledTimes(0);
       httpTransporter._request({
-        baseUrl: 'https://www.hyphe.me',
-        path: 'users',
-        payload: {
-          id: 123,
-          hello: 'server',
+        req: {
+          baseUrl: 'https://www.hyphe.me',
+          path: 'users',
+          payload: {
+            id: 123,
+            hello: 'server',
+          },
+          pathTemplate: ':basePath/:id',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
         },
-        templatePath: ':basePath/:id',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        mode: 'cors',
       }).then(({ error, req, data, status }) => {
         expect(data).toEqual({});
         expect(status).toBe(PROMISE_STATE.PENDING);

@@ -26,10 +26,10 @@ export default class HttpTransporter extends Transporter {
     }
   }
 
-  createPath(path: string, pathTemplate: string, payload: Object) {
+  createPath(path: string, pathTemplate: string, payload: Object = {}) {
     const key = this._store.schema.getKeyIdentifierFor(this._role.AS_TARGET);
     let constructedPath = pathTemplate.replace(':basePath', path);
-    constructedPath = constructedPath.replace(':id', payload[key]);
+    constructedPath = constructedPath.replace(':id', payload[key] || '');
     return constructedPath;
   }
 
@@ -80,16 +80,12 @@ export default class HttpTransporter extends Transporter {
     }
   }
 
-  _request({ baseUrl, path, payload, templatePath, method, headers, mode }:
-    { baseUrl: string,
-      path: string,
-      payload: Object,
-      templatePath: string,
-      method: string,
-      headers: Object,
-      mode: string }) {
-    const url: string = `${baseUrl}/${this.createPath(path, templatePath, payload)}`;
-
+  _request(input: {
+    req: Object,
+    mode: string,
+  }) {
+    const { baseUrl, path, payload, pathTemplate, method, headers, mode } = input.req;
+    const url: string = `${baseUrl}/${this.createPath(path, pathTemplate, payload)}`;
     // Build request
     const req = {};
     req.method = method;

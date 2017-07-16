@@ -13,21 +13,20 @@ export default (setup, {
 }) => {
   describe('Item', function () {
     const wrapBeforeAfter = wrapBeforeAfterGenerator('itemMethods');
-    const cases = setup.itemMethods.cases;
     setupGeneratorForBlock('itemMethods');
 
     beforeEach(function () {
+      const env = setup.storeConstructor.environment;
       this.store = new Store({
         schema: getSchema(setup),
-        clientStorage: setup.ClientStorage &&
-          new setup.ClientStorage(...setup.clienStorageArgs),
-        transporter: setup.Transporter &&
-          new setup.Transporter(...setup.transporterArgs),
+        clientStorage: env.ClientStorage &&
+          new env.ClientStorage(...env.clienStorageArgs),
+        transporter: env.Transporter &&
+          new env.Transporter(...env.transporterArgs),
       });
       return this.store.onceLoaded()
         .then(() => {
           this.item = this.store.create(data.item());
-          //
           return Promise.all([
             this.item.onceReadyFor(TARGET.TRANSPORTER),
             this.item.onceReadyFor(TARGET.CLIENT_STORAGE),
@@ -71,21 +70,18 @@ export default (setup, {
     });
 
     it('should be deleted from client storage', function () {
-      return wrapBeforeAfter('deleteFromClientStorage', () =>
-        this.item.delete(SOURCE.CLIENT_STORAGE)
-          .then(() =>
-            // expects client storage data
-            // expects transporter storage data
-             this.item),
-      );
+      return wrapBeforeAfter('deleteFromClientStorage', () => this.item.delete(SOURCE.CLIENT_STORAGE)
+        .then(() => this.item));
     });
 
-    xit('should be deleted from transporter', function () {
-      return wrapBeforeAfter('deleteFromTransporter', () => {});
+    it('should be deleted from transporter', function () {
+      return wrapBeforeAfter('deleteFromTransporter', () => this.item.delete(SOURCE.TRANSPORTER)
+        .then(() => this.item));
     });
 
-    xit('should be deleted from state', function () {
-      return wrapBeforeAfter('deleteFromState', () => {});
+    it('should be deleted from state', function () {
+      return wrapBeforeAfter('deleteFromState', () => this.item.delete(SOURCE.STATE)
+        .then(() => this.item));
     });
 
     xit('should fetch from client storage', function () {

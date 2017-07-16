@@ -1,5 +1,7 @@
 import fetchMock from 'fetch-mock';
 import HttpTransporter from '../../src/Transporters/HttpTransporter';
+import HttpOfflineChecker from '../../src/Transporters/HttpOfflineChecker';
+
 
 import runSetup from './suite/index';
 
@@ -72,21 +74,43 @@ runSetup({
       // like initial fetch
       // stub(fetch).andReturnValue(data.storeMethods.transporter.items());
       fetchMock.mock({
+        name: 'fetch',
+        matcher: 'https://www.hyphe.me/a-route/',
+        method: 'GET',
+        response: () => [],
+      });
+
+      fetchMock.mock({
         name: 'itemCreate',
-        matcher: 'www.hyphe.me/a-route',
+        matcher: 'https://www.hyphe.me/a-route',
         method: 'POST',
-        response() {
-          console.log('POST ASLHLHFLSHAHL');
-          return {
-            body: {
-              id: '123',
-            },
-            status: 201,
-          };
-        },
+        response: (url, options) => ({
+          body: {
+            ...JSON.parse(options.body),
+            id: '123',
+          },
+          status: 201,
+        }),
+      });
+
+      fetchMock.mock({
+        name: 'item_123_put',
+        matcher: 'https://www.hyphe.me/a-route/123',
+        method: 'PUT',
+        response: (url, options) => ({
+          body: {
+            ...JSON.parse(options.body),
+            put: true,
+          },
+          status: 200,
+        }),
       });
     },
     beforeAll() {
+      HttpTransporter.addOfflineChecker(new HttpOfflineChecker({
+        pattern: /https:\/\/www.hyphe.me\/.*?/,
+        checkUrl: 'https://www.hyphe.me/status',
+      }));
     },
     afterEach() {
     },
@@ -102,20 +126,65 @@ runSetup({
           // stub(fetch).andReturnValue(data.storeMethods.transporter.items(2));
         },
       },
+      updateFromClientStorage: {
+        test: () => {
+          expect(fetchMock.called('item_123_put')).toBe(true);
+        },
+      },
+      updateFromState: {
+        test: () => {
+          expect(fetchMock.called('item_123_put')).toBe(true);
+        },
+      },
       deleteFromClientStorage: {
         before: () => {
           fetchMock.mock({
             name: 'deleteFromClientStorage',
-            matcher: 'www.hyphe.me/a-route/dang',
+            matcher: 'https://www.hyphe.me/a-route/123',
             method: 'DELETE',
-            response: {
+            response: () => ({
               status: 204,
               body: {},
-            },
+            }),
           });
         },
-        test: (item) => {
-
+        test: () => {
+          expect(fetchMock.called('item_123_put')).toBe(true);
+          expect(fetchMock.called('deleteFromClientStorage')).toBe(true);
+        },
+      },
+      deleteFromTransporter: {
+        before: () => {
+          fetchMock.mock({
+            name: 'deleteFromTransporter',
+            matcher: 'https://www.hyphe.me/a-route/123',
+            method: 'DELETE',
+            response: () => ({
+              status: 204,
+              body: {},
+            }),
+          });
+        },
+        test: () => {
+          expect(fetchMock.called('item_123_put')).toBe(true);
+          expect(fetchMock.called('deleteFromTransporter')).toBe(false);
+        },
+      },
+      deleteFromState: {
+        before: () => {
+          fetchMock.mock({
+            name: 'deleteFromState',
+            matcher: 'https://www.hyphe.me/a-route/123',
+            method: 'DELETE',
+            response: () => ({
+              status: 204,
+              body: {},
+            }),
+          });
+        },
+        test: () => {
+          expect(fetchMock.called('item_123_put')).toBe(true);
+          expect(fetchMock.called('deleteFromState')).toBe(true);
         },
       },
     },
