@@ -43,7 +43,7 @@ class Schema {
         _key: '_id',
         primary: true,
       };
-      properties.id = this._setPrimaryKey;
+      properties.id = this._primaryKey;
     }
 
     this._createObservableKeyList(this._definition);
