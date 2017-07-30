@@ -71,7 +71,6 @@ export default (setup, {
     });
 
     it('should be deleted from client storage', function () {
-      console.log('LETS GO \n\n\n');
       return wrapBeforeAfter('deleteFromClientStorage', () => this.item.delete(SOURCE.CLIENT_STORAGE)
         .then(() => this.item));
     });

@@ -77,7 +77,8 @@ describe('Item', function () {
         autoSave: true,
         store: testStore,
       });
-      expect(myItem._syncPromises).toEqual({});
+      expect(myItem._syncPromises.transporter).toBeDefined();
+      expect(myItem._syncPromises.clientStorage).toBeDefined();
       expect(myItem.__id).toBeDefined();
       expect(myItem._store).toEqual(testStore);
       expect(myItem._isReady.transporter).toBeDefined();
@@ -91,7 +92,8 @@ describe('Item', function () {
         autoSave: true,
         store: testStore,
       });
-      expect(myItem._syncPromises).toEqual({});
+      expect(myItem._syncPromises.transporter).toBeDefined();
+      expect(myItem._syncPromises.clientStorage).toBeDefined();
       expect(myItem.__id).toBeDefined();
       expect(myItem._store).toEqual(testStore);
       const construction = myItem.construct(input, { source: SOURCE.STATE });
@@ -110,6 +112,7 @@ describe('Item', function () {
       expect(myItem.removed).toBe(false);
       expect(myItem.autoSave).toEqual(true);
       return construction.then(() => {
+        expect(myItem._synchronize).toHaveBeenCalledWith();
         expect(testStore.schema.setFrom)
           .toHaveBeenCalledWith(SOURCE.STATE, myItem, input, { establishObservables: true });
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
@@ -443,10 +446,10 @@ describe('Item', function () {
         this.item._synchronize.calls.reset();
       });
 
-      it('should always sync on first call', function () {
+      it('should never sync on first call', function () {
         this.item._stateHandler(0);
         expect(testStore.schema.getObservables).toHaveBeenCalled();
-        expect(this.item._synchronize).toHaveBeenCalledWith();
+        expect(this.item._synchronize).not.toHaveBeenCalled();
       });
 
       it('should synchronize when autoSave is on', function () {

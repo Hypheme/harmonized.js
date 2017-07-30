@@ -35,7 +35,8 @@ module.exports = function (config) {
     // available reporters: https://npmjs.org/browse/keyword/karma-reporter
     // reporters: ['progress'],
     // reporters: ['spec', 'jasmine-diff'],
-    reporters: ['jasmine-diff'],
+    // reporters: ['jasmine-diff'],
+    reporters: ['spec'],
 
 
     // web server port

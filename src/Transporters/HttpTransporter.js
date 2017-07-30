@@ -95,10 +95,8 @@ export default class HttpTransporter extends Transporter {
     if (method !== 'GET') {
       req.body = JSON.stringify(payload);
     }
-    console.log('MAKING REQUEST', url, req.method);
     return fetch(url, req)
     .then((res) => {
-      console.log('FETCH RESPONSE', res.ok);
       if (res.ok) {
         return res.json()
           .catch(() => {})
@@ -111,7 +109,6 @@ export default class HttpTransporter extends Transporter {
       }
       return Promise.reject({ res, req });
     }, (error) => {
-      console.log('FETCH REJECT');
       this.offlineChecker.setOffline();
       return Promise.resolve({
         error,
