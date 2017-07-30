@@ -95,19 +95,23 @@ export default class HttpTransporter extends Transporter {
     if (method !== 'GET') {
       req.body = JSON.stringify(payload);
     }
-
-    return fetch(url, req).then((res) => {
+    console.log('MAKING REQUEST', url, req.method);
+    return fetch(url, req)
+    .then((res) => {
+      console.log('FETCH RESPONSE', res.ok);
       if (res.ok) {
-        return res.json().then(data => ({
-          res,
-          req,
-          data,
-          status: PROMISE_STATE.RESOLVED,
-        }));
+        return res.json()
+          .catch(() => {})
+          .then(data => ({
+            res,
+            req,
+            data,
+            status: PROMISE_STATE.RESOLVED,
+          }));
       }
-
       return Promise.reject({ res, req });
     }, (error) => {
+      console.log('FETCH REJECT');
       this.offlineChecker.setOffline();
       return Promise.resolve({
         error,

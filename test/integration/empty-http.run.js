@@ -5,6 +5,17 @@ import HttpOfflineChecker from '../../src/Transporters/HttpOfflineChecker';
 
 import runSetup from './suite/index';
 
+const mockGenerators = {
+  deleteItem: () => fetchMock.mock({
+    name: 'deleteItem',
+    matcher: 'https://www.hyphe.me/a-route/123',
+    method: 'DELETE',
+    response: () => ({
+      status: 204,
+    }),
+  }),
+};
+
 runSetup({
   global: {
 
@@ -113,6 +124,7 @@ runSetup({
       }));
     },
     afterEach() {
+      afterEach(fetchMock.restore);
     },
     afterAll() {
     },
@@ -138,53 +150,29 @@ runSetup({
       },
       deleteFromClientStorage: {
         before: () => {
-          fetchMock.mock({
-            name: 'deleteFromClientStorage',
-            matcher: 'https://www.hyphe.me/a-route/123',
-            method: 'DELETE',
-            response: () => ({
-              status: 204,
-              body: {},
-            }),
-          });
+          mockGenerators.deleteItem();
         },
         test: () => {
-          expect(fetchMock.called('item_123_put')).toBe(true);
-          expect(fetchMock.called('deleteFromClientStorage')).toBe(true);
+          expect(fetchMock.called('itemCreate')).toBe(true);
+          expect(fetchMock.called('deleteItem')).toBe(true);
         },
       },
       deleteFromTransporter: {
         before: () => {
-          fetchMock.mock({
-            name: 'deleteFromTransporter',
-            matcher: 'https://www.hyphe.me/a-route/123',
-            method: 'DELETE',
-            response: () => ({
-              status: 204,
-              body: {},
-            }),
-          });
+          mockGenerators.deleteItem();
         },
         test: () => {
-          expect(fetchMock.called('item_123_put')).toBe(true);
-          expect(fetchMock.called('deleteFromTransporter')).toBe(false);
+          expect(fetchMock.called('itemCreate')).toBe(true);
+          expect(fetchMock.called('deleteItem')).toBe(false);
         },
       },
       deleteFromState: {
         before: () => {
-          fetchMock.mock({
-            name: 'deleteFromState',
-            matcher: 'https://www.hyphe.me/a-route/123',
-            method: 'DELETE',
-            response: () => ({
-              status: 204,
-              body: {},
-            }),
-          });
+          mockGenerators.deleteItem();
         },
         test: () => {
-          expect(fetchMock.called('item_123_put')).toBe(true);
-          expect(fetchMock.called('deleteFromState')).toBe(true);
+          expect(fetchMock.called('itemCreate')).toBe(true);
+          expect(fetchMock.called('deleteItem')).toBe(true);
         },
       },
     },

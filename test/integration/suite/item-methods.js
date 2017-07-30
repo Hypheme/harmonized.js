@@ -26,10 +26,11 @@ export default (setup, {
       });
       return this.store.onceLoaded()
         .then(() => {
+          console.log('creating new item for test');
           this.item = this.store.create(data.item());
           return Promise.all([
-            this.item.onceReadyFor(TARGET.TRANSPORTER),
-            this.item.onceReadyFor(TARGET.CLIENT_STORAGE),
+            this.item.onceSynced(),
+            this.item.onceStored(),
           ]);
         });
     });
@@ -70,6 +71,7 @@ export default (setup, {
     });
 
     it('should be deleted from client storage', function () {
+      console.log('LETS GO \n\n\n');
       return wrapBeforeAfter('deleteFromClientStorage', () => this.item.delete(SOURCE.CLIENT_STORAGE)
         .then(() => this.item));
     });

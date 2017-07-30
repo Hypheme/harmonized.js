@@ -2,6 +2,15 @@ import { observable, autorun/* , computed*/ } from 'mobx';
 import uuid from 'uuid/v4';
 import { STATE, SOURCE, PROMISE_STATE, TARGET } from './constants';
 
+function genPromise() {
+  const result = {};
+  result.promise = new Promise((resolve, reject) => {
+    result.resolve = resolve;
+    result.reject = reject;
+  });
+  return result;
+}
+
 export default class Item {
 
   constructor({ store, autoSave }) {
@@ -9,9 +18,10 @@ export default class Item {
     this._store = store;
     this._createRunTimeId();
     this._establishIsReadyPromises();
-    this._syncPromises = {};
+    this._establishStatePromises();
   }
   construct(values = {}, { source = SOURCE.STATE } = {}) {
+    console.log('lets construct ya');
     let p;
     switch (source) {
       case SOURCE.TRANSPORTER:
@@ -26,9 +36,11 @@ export default class Item {
     }
     let call = 0;
     return p.then(() => {
+      console.log('setting up autohandler');
       this._dispose = autorun(() => {
         this._stateHandler(call++);
       });
+      return this._synchronize();
     }).catch((err) => {
       this._lock(undefined, err);
       this.removed = true;
@@ -46,6 +58,17 @@ export default class Item {
 
   onceReadyFor(target) {
     return this._isReady[target.NAME].promise;
+  }
+
+  onceSynced() {
+    console.log('once synced?', this.synced);
+    return this.synced ? Promise.resolve() : this._syncPromises.transporter.promise
+      .then(() => console.log('all set', this.synced));
+  }
+
+  onceStored() {
+    console.log('once stored?', this.stored);
+    return this.stored ? Promise.resolve() : this._syncPromises.clientStorage.promise;
   }
 
   isReadyFor(target) {
@@ -201,15 +224,14 @@ export default class Item {
   }
 
   _establishIsReadyPromises() {
-    function genPromise() {
-      const result = {};
-      result.promise = new Promise((resolve, reject) => {
-        result.resolve = resolve;
-        result.reject = reject;
-      });
-      return result;
-    }
     this._isReady = {
+      transporter: genPromise(),
+      clientStorage: genPromise(),
+    };
+  }
+
+  _establishStatePromises() {
+    this._syncPromises = {
       transporter: genPromise(),
       clientStorage: genPromise(),
     };
@@ -294,6 +316,7 @@ export default class Item {
   }
 
   _lock(origin, err) {
+    console.log('an error occured', err, err.stack);
     this._transporterStates = {
       current: STATE.LOCKED,
       inProgress: undefined,
@@ -311,6 +334,8 @@ export default class Item {
     if (this._dispose) {
       this._dispose();
     }
+    console.log('rejecting');
+    return Promise.reject(err);
   }
 
   _mergeNextState(next, newState) {
@@ -385,6 +410,7 @@ export default class Item {
    * => never resolved
    */
   _removeSingle(source) {
+    console.log('remove single ', source.SOURCE, this._clientStorageStates.current);
     this.removed = true;
     this._store.remove(this);
     let p;
@@ -393,8 +419,10 @@ export default class Item {
       case SOURCE.TRANSPORTER:
         this._transporterStates.current = STATE.DELETED;
         if (this._clientStorageStates.current === STATE.DELETED) {
+          console.log('ALREADY DONE');
           return Promise.resolve();
         }
+        console.log('triggering another sync');
         p = this._synchronizeFor(
           TARGET.CLIENT_STORAGE,
           STATE.BEING_DELETED,
@@ -426,6 +454,7 @@ export default class Item {
   }
 
   _setPrimaryKey(source, data) {
+    console.log('setting primary key for', source.SOURCE);
     this._store.schema.setPrimaryKey(source, this, data);
     this._isReady[source.NAME].resolve();
     this._isReady[source.NAME].resolve = undefined;
@@ -433,9 +462,10 @@ export default class Item {
   }
 
   _stateHandler(call) {
+    console.log('SOMETHING CHANGED, TRIGGERING');
     this._store.schema.getObservables(this); // we need this for mobx
-    if (call === 0) {
-      this._synchronize();
+    if (call === 0) { // first call is only for registering observables
+      return;
     }
     if (this.autoSave) {
       this._synchronize(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
@@ -443,6 +473,7 @@ export default class Item {
   }
 
   _synchronize(clientStorageState, transporterState) {
+    console.log('_synchronize', clientStorageState && clientStorageState.STATE, transporterState && transporterState.STATE);
     return Promise.all([
       // the order matters as we need to make sure the transporterState is set before
       // getFor(clientStorage) is called.
@@ -452,6 +483,7 @@ export default class Item {
   }
 
   _synchronizeFor(target, state) {
+    console.log('_synchronizeFor target', target.TARGET, state && state.STATE);
     // we need information if a snyc is already happening before overwriting state
     const syncInProgress = this[target.STATES].inProgress
       || this[target.STATES].next;
@@ -460,14 +492,23 @@ export default class Item {
     // needs a sync
     if (!syncInProgress && this[target.STATES].next) {
       this[target.STATUS_KEY] = false;
-      this._syncPromises[target.NAME] = this._triggerSync(target)
+      console.log('starting new sync process for target', target.TARGET, this[target.STATES].next.STATE);
+      this._triggerSync(target)
         .then(() => {
+          console.log('finish sync status for target', target.TARGET);
           this[target.STATUS_KEY] = true;
+          // we resolve the finish sync routine and prepare a new one
+          this._syncPromises[target.NAME].resolve();
+          this._syncPromises[target.NAME] = genPromise();
         })
-        .catch(err => this._lock(target, err));
+        .catch((err) => {
+          this._syncPromises[target.NAME].reject(err);
+          this._syncPromises[target.NAME] = genPromise();
+          return this._lock(target, err);
+        });
     }
 
-    return this._syncPromises[target.NAME];
+    return this._syncPromises[target.NAME].promise;
   }
 
   _triggerSync(target) {
@@ -492,6 +533,7 @@ export default class Item {
       // this is the actual call to the outside world
       return this._store[target.PROCESSOR][workingState.ACTION](itemData)
         .then((result) => {
+          console.log('result for', target.TARGET, workingState.STATE, workingState.ACTION, result.status);
           if (result.status === PROMISE_STATE.PENDING) {
             this[target.STATES].next = this._getNextActionState(
               this[target.STATES].current,
