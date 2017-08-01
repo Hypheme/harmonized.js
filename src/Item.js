@@ -1,49 +1,17 @@
 import { observable, autorun/* , computed*/ } from 'mobx';
 import uuid from 'uuid/v4';
 import { STATE, SOURCE, PROMISE_STATE, TARGET } from './constants';
-
-function genPromise() {
-  const result = {};
-  result.promise = new Promise((resolve, reject) => {
-    result.resolve = resolve;
-    result.reject = reject;
-  });
-  return result;
-}
+import { genPromise } from './utils';
 
 export default class Item {
 
-  constructor({ store, autoSave }) {
+  constructor({ store, autoSave, source = SOURCE.STATE, values = {} }) {
     this.autoSave = !(autoSave === false);
     this._store = store;
     this._createRunTimeId();
     this._establishIsReadyPromises();
     this._establishStatePromises();
-  }
-  construct(values = {}, { source = SOURCE.STATE } = {}) {
-    let p;
-    switch (source) {
-      case SOURCE.TRANSPORTER:
-        p = this._createFromTransporter(values);
-        break;
-      case SOURCE.CLIENT_STORAGE:
-        p = this._createFromClientStorage(values);
-        break;
-      default:
-        p = this._createFromState(values);
-        break;
-    }
-    let call = 0;
-    return p.then(() => {
-      this._dispose = autorun(() => {
-        this._stateHandler(call++);
-      });
-      return this._synchronize();
-    }).catch((err) => {
-      this._lock(undefined, err);
-      this.removed = true;
-      throw err;
-    });
+    this._populateWithValues(values, source);
   }
 
   @observable removed = false;
@@ -71,12 +39,13 @@ export default class Item {
   }
 
   update(values, source = SOURCE.STATE) {
-    return this._store.schema.setFrom(source, this, values)
+    this._store.schema.setFrom(source, this, values)
       .then(() => this._synchronize(
         source === SOURCE.CLIENT_STORAGE ? STATE.EXISTENT : STATE.BEING_UPDATED,
         source === SOURCE.TRANSPORTER ? STATE.EXISTENT : STATE.BEING_UPDATED,
       ),
     );
+    return this;
   }
 
   delete(source) {
@@ -86,7 +55,6 @@ export default class Item {
   remove(source) {
     this.removed = true;
     this._store.remove(this);
-    let p;
     switch (source) {
       case SOURCE.TRANSPORTER:
         this._transporterStates = {
@@ -94,7 +62,7 @@ export default class Item {
           inProgress: undefined,
           next: undefined,
         };
-        p = this._synchronize(
+        this._synchronize(
           STATE.BEING_DELETED,
           undefined,
         );
@@ -105,13 +73,13 @@ export default class Item {
           inProgress: undefined,
           next: undefined,
         };
-        p = this._synchronize(
+        this._synchronize(
           undefined,
           STATE.BEING_DELETED,
         );
         break;
       default:
-        p = this._synchronize(
+        this._synchronize(
           // we mark it in clientStorage as being updated as it gets deleted after the
           // transporter deleted it. We need this to save our current wish (to delete)
           // in our clientStorage in case the app closes before the transporter is done
@@ -121,18 +89,23 @@ export default class Item {
         );
         break;
     }
-    return p.then(() => {
+    Promise.all([
+      this.onceStored(),
+      this.onceSynced(),
+    ]).then(() => {
       this._dispose();
       this._store.delete(this);
       // TODO (planned for version 0.3): this._onDeleteTrigger()
     });
+    return this;
   }
 
   fetch(source = SOURCE.TRANSPORTER) {
-    return this._synchronize(
+    this._synchronize(
       source === SOURCE.CLIENT_STORAGE ? STATE.BEING_FETCHED : undefined,
       source === SOURCE.TRANSPORTER ? STATE.BEING_FETCHED : undefined,
     );
+    return this;
   }
 
   // ///////////////////
@@ -328,7 +301,8 @@ export default class Item {
     if (this._dispose) {
       this._dispose();
     }
-    return Promise.reject(err);
+    this._syncPromises.transporter.reject(err);
+    this._syncPromises.clientStorage.reject(err);
   }
 
   _mergeNextState(next, newState) {
@@ -366,6 +340,31 @@ export default class Item {
       default:
         throw new Error('invalid merge parameters');
     }
+  }
+
+  _populateWithValues(values, source) {
+    let p;
+    switch (source) {
+      case SOURCE.TRANSPORTER:
+        p = this._createFromTransporter(values);
+        break;
+      case SOURCE.CLIENT_STORAGE:
+        p = this._createFromClientStorage(values);
+        break;
+      default:
+        p = this._createFromState(values);
+        break;
+    }
+    let call = 0;
+    return p.then(() => {
+      this._dispose = autorun(() => {
+        this._stateHandler(call++);
+      });
+      this._synchronize();
+    }).catch((err) => {
+      this._lock(undefined, err);
+      this.removed = true;
+    });
   }
 
   _postSyncClientStorage() {
@@ -461,12 +460,14 @@ export default class Item {
   }
 
   _synchronize(clientStorageState, transporterState) {
-    return Promise.all([
+    // we dont return a promise as we could be offline and the promise would never resolved anyway.
+    // if you want to listen to a promise of sth done call this.onceStored or onceSynced
+    Promise.all([
       // the order matters as we need to make sure the transporterState is set before
       // getFor(clientStorage) is called.
       this._synchronizeFor(TARGET.TRANSPORTER, transporterState),
       this._synchronizeFor(TARGET.CLIENT_STORAGE, clientStorageState),
-    ]);
+    ]).catch(err => this._lock(null, err));
   }
 
   _synchronizeFor(target, state) {
@@ -480,15 +481,11 @@ export default class Item {
       this[target.STATUS_KEY] = false;
       this._triggerSync(target)
         .then(() => {
+          console.log('resolving for ', target.TARGET);
           this[target.STATUS_KEY] = true;
           // we resolve the finish sync routine and prepare a new one
           this._syncPromises[target.NAME].resolve();
           this._syncPromises[target.NAME] = genPromise();
-        })
-        .catch((err) => {
-          this._syncPromises[target.NAME].reject(err);
-          this._syncPromises[target.NAME] = genPromise();
-          return this._lock(target, err);
         });
       return this._syncPromises[target.NAME].promise;
     }

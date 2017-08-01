@@ -26,7 +26,6 @@ export default (setup, {
       });
       return this.store.onceLoaded()
         .then(() => {
-          console.log('creating new item for test');
           this.item = this.store.create(data.item());
           return Promise.all([
             this.item.onceSynced(),
