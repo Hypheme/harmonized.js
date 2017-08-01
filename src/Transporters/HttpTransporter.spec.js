@@ -87,13 +87,13 @@ describe('HttpTransporter', function () {
       },
     };
 
-    httpTransporter.fetch = jasmine.createSpy('fetch').and.returnValue(Promise.resolve([
-      status: "superstatus",
-      data: {
+    httpTransporter.fetch = jasmine.createSpy('fetch').and.returnValue(Promise.resolve({
+      status: 'superstatus',
+      data: [
         { superid: 123 },
         { superid: 126 },
-      }
-    ]));
+      ],
+    }));
 
     httpTransporter.initialFetchStrategy([
       {
@@ -117,7 +117,7 @@ describe('HttpTransporter', function () {
       },
     ]).then((items) => {
       expect(items).toEqual({
-        status: "superstatus",
+        status: 'superstatus',
         data: {
           items: [
             { superid: 123 },

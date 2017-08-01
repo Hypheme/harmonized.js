@@ -124,7 +124,7 @@ export default class HttpTransporter extends Transporter {
     return this.fetch().then((items) => {
       const toDelete = differenceWith(
         (val: Object, otherVal: Object) => val[key] === otherVal[key],
-      )(inputArray)(items)
+      )(inputArray)(items.data)
         .filter(item => item._transporterState !== STATE.BEING_CREATED &&
           item._transporterState !== STATE.BEING_DELETED);
       return {
