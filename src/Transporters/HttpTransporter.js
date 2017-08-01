@@ -127,7 +127,10 @@ export default class HttpTransporter extends Transporter {
       )(inputArray)(items)
         .filter(item => item._transporterState !== STATE.BEING_CREATED &&
           item._transporterState !== STATE.BEING_DELETED);
-      return { items, toDelete };
+      return {
+        status: items.status,
+        data: { items: items.data, toDelete },
+      };
     });
   }
 
