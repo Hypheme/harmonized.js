@@ -26,7 +26,6 @@ export default (setup, {
       });
       return this.store.onceLoaded()
         .then(() => {
-          console.log('creating new item for test');
           this.item = this.store.create(data.item());
           return Promise.all([
             this.item.onceSynced(),
@@ -85,12 +84,14 @@ export default (setup, {
         .then(() => this.item));
     });
 
-    xit('should fetch from client storage', function () {
-      return wrapBeforeAfter('fetchFromClientStorage', () => {});
+    it('should fetch from client storage', function () {
+      return wrapBeforeAfter('fetchFromClientStorage', () => this.item.fetch(SOURCE.CLIENT_STORAGE)
+        .then(() => this.item));
     });
 
-    xit('should fetch from transporter', function () {
-      return wrapBeforeAfter('fetchFromTransporter', () => {});
+    it('should fetch from transporter', function () {
+      return wrapBeforeAfter('fetchFromTransporter', () => this.item.fetch()
+        .then(() => this.item));
     });
   });
 };

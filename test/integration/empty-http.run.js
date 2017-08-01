@@ -14,6 +14,18 @@ const mockGenerators = {
       status: 204,
     }),
   }),
+  fetchItem: () => fetchMock.mock({
+    name: 'fetchItem',
+    matcher: 'https://www.hyphe.me/a-route/123',
+    method: 'GET',
+    response: () => ({
+      status: 200,
+      body: {
+        id: '123',
+        name: 'Franzi',
+      },
+    }),
+  }),
 };
 
 runSetup({
@@ -173,6 +185,29 @@ runSetup({
         test: () => {
           expect(fetchMock.called('itemCreate')).toBe(true);
           expect(fetchMock.called('deleteItem')).toBe(true);
+        },
+      },
+      fetchFromClientStorage: {
+        before: () => {
+          mockGenerators.fetchItem();
+        },
+        test: (item) => {
+          expect(fetchMock.called('itemCreate')).toBe(true);
+          expect(fetchMock.called('fetchItem')).toBe(false);
+          expect(item.name).toBe('hans');
+          expect(item.id).toBe('123');
+          expect(item._id).toBeUndefined();
+        },
+      },
+      fetchFromTransporter: {
+        before: () => {
+          mockGenerators.fetchItem();
+        },
+        test: (item) => {
+          expect(fetchMock.called('itemCreate')).toBe(true);
+          expect(fetchMock.called('fetchItem')).toBe(true);
+          expect(item.name).toBe('Franzi');
+          expect(item.id).toBe('123');
         },
       },
     },
