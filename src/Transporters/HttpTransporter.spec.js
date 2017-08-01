@@ -88,8 +88,11 @@ describe('HttpTransporter', function () {
     };
 
     httpTransporter.fetch = jasmine.createSpy('fetch').and.returnValue(Promise.resolve([
-      { superid: 123 },
-      { superid: 126 },
+      status: "superstatus",
+      data: {
+        { superid: 123 },
+        { superid: 126 },
+      }
     ]));
 
     httpTransporter.initialFetchStrategy([
@@ -114,16 +117,19 @@ describe('HttpTransporter', function () {
       },
     ]).then((items) => {
       expect(items).toEqual({
-        items: [
-          { superid: 123 },
-          { superid: 126 },
-        ],
-        toDelete: [
-          {
-            superid: 124,
-            _transporterState: STATE.EXISTENT,
-          },
-        ],
+        status: "superstatus",
+        data: {
+          items: [
+            { superid: 123 },
+            { superid: 126 },
+          ],
+          toDelete: [
+            {
+              superid: 124,
+              _transporterState: STATE.EXISTENT,
+            },
+          ],
+        },
       });
       done();
     });
