@@ -26,10 +26,12 @@ const SOURCE = {
   TRANSPORTER: {
     SOURCE: 'TRANSPORTER',
     NAME: 'transporter',
+    ONCE_DONE: 'onceSynced',
   },
   CLIENT_STORAGE: {
     SOURCE: 'CLIENT_STORAGE',
     NAME: 'clientStorage',
+    ONCE_DONE: 'onceStored',
   },
 };
 
