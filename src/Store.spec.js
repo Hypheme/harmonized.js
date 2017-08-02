@@ -7,6 +7,7 @@ import { SOURCE, PROMISE_STATE } from './constants';
 
 import OriginalItem from './Item';
 import OriginalEmptyTransporter from './Transporters/EmptyTransporter';
+import { genPromise } from './utils';
 
 
 class SchemaStub extends Schema {
@@ -41,19 +42,32 @@ class ClientStorageStub extends BaseTransporter {
   }
 }
 class Item {
-  constructor(arg) {
+  constructor(arg = {}) {
     this.constructorArg = arg;
     this._store = arg.store;
+    this.testPromise = genPromise();
+
+    arg.values = arg.values || {};
+    this._set(arg.values);
   }
-  construct(values) {
+
+  _set(values) {
     this.testId = values.id || values._id;
     for (const key in values) {
       if (Object.prototype.hasOwnProperty.call(values, key)) {
         this[key] = values[key];
       }
     }
-    return Promise.resolve();
   }
+
+  onceStored() {
+    return this.testPromise.promise;
+  }
+
+  onceSynced() {
+    return this.testPromise.promise;
+  }
+
   isReadyFor() {
     return !!this.id;
   }
@@ -78,6 +92,7 @@ describe('Store', function () {
       data: { items: [], toDelete: [] },
     }));
   });
+
   describe('constructor', function () {
     it('should create a store and populate with fetched data', function () {
       this.clientStorage = new ClientStorageStub();
@@ -101,11 +116,10 @@ describe('Store', function () {
             toDelete: [{ id: '1' }, { id: '3' }],
           },
         }));
-      this.items = [new Item(1), new Item(3)];
+      this.items = [new Item({ values: 1 }), new Item({ values: 3 })];
       spyOn(Store.prototype, 'findOne').and.returnValues(this.items[0], this.items[1]);
       spyOn(this.items[0], 'remove').and.returnValue(Promise.resolve());
       spyOn(this.items[1], 'remove').and.returnValue(Promise.resolve());
-      spyOn(Item.prototype, 'construct').and.callThrough();
 
       const store = new Store({
         Item,
@@ -124,10 +138,10 @@ describe('Store', function () {
       return store.onceLoaded()
         .then(() => {
           function checkItem(item, id) {
-            expect(item.testId).toBe(id);
-            expect(item.constructorArg).toEqual({ store, autoSave: true });
+            expect(item.constructorArg.store).toEqual(store);
+            expect(item.constructorArg.autoSave).toEqual(true);
+            expect(item.testId).toEqual(id);
           }
-          expect(Item.prototype.construct).toHaveBeenCalledTimes(8);
           expect(store.items.length).toBe(7);
           checkItem(store.items[0], '2');
           checkItem(store.items[1], '3');
@@ -194,8 +208,7 @@ describe('Store', function () {
       .then(() => {
         const store = this.store;
         function getItem(values) {
-          const item = new Item({ store });
-          item.construct(values);
+          const item = new Item({ store, values });
           item.constructorArg = undefined;
           return item;
         }
@@ -355,28 +368,29 @@ describe('Store', function () {
         beforeEach(function () {
           spyOn(this.store.schema, 'getKeyIdentifierFor').and.returnValue('id');
         });
+
         it('should return the first item that matches the primary key', function () {
           expect(this.store.findOneOrFetch({ id: '4' }))
             .toEqual(this.storeData[3]);
           expect(this.store.findOneOrFetch({ id: '11' }))
             .toEqual(this.incompleteStoreData[0]);
         });
+
         it('should fetch and create an item if no item matches and add it to the store as soon as it arrives', function (done) {
-          let triggerResolve;
-          spyOn(this.store._Item.prototype, 'construct');
-          spyOn(this.store._Item.prototype, 'fetch').and
-            .returnValue(new Promise((resolve) => { triggerResolve = resolve; }));
+          spyOn(this.store._Item.prototype, 'fetch');
           const item = this.store.findOneOrFetch({ id: '10' });
-          expect(item.construct).toHaveBeenCalledWith({ id: '10' }, { source: SOURCE.TRANSPORTER });
+          expect(item.constructorArg.values).toEqual({ id: '10' });
+          expect(item.constructorArg.source).toEqual(SOURCE.TRANSPORTER);
           expect(item.fetch).toHaveBeenCalledWith(SOURCE.TRANSPORTER);
           expect(this.store.incompleteItems[8]).toEqual(item);
-          triggerResolve();
-          setTimeout(() => {
+          item.testPromise.resolve();
+          item.onceSynced().then(() => {
             expect(this.store.incompleteItems[8]).toBe(undefined);
             expect(this.store.items[8]).toEqual(item);
             done();
-          }, 0);
+          });
         });
+
         it('should throw if given filter is not a primary key', function () {
           expect(() => {
             this.store.findOneOrFetch({ noId: 4 });
@@ -458,12 +472,17 @@ describe('Store', function () {
           .then(() => {
             const newItem = this.store.items[this.store.items.length - 1];
             newItem.constructorArg = undefined;
+            newItem._store = undefined;
+            newItem.testPromise = undefined;
+            const expectedItem = this.getItem({
+              id: '11',
+              name: 'new',
+              lastname: 'pan',
+            });
+            expectedItem._store = undefined;
+            expectedItem.testPromise = undefined;
             expect(newItem)
-              .toEqual(this.getItem({
-                id: '11',
-                name: 'new',
-                lastname: 'pan',
-              }));
+              .toEqual(expectedItem);
           });
       });
       it('should not touch not uploaded items', function () {
