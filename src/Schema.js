@@ -111,7 +111,13 @@ class Schema {
     }
   }
 
+  establishObservables(item: Item, data: Object) {
+    const { allObservables } = this._getPickedData(data);
+    Schema.setAsObservables(item, allObservables);
+  }
+
   static extendObservable(item, key, value) {
+    // console.log(item, key, value);
     const extendObj = {};
     extendObj[key] = value;
     extendObservable(item, extendObj);
@@ -131,6 +137,7 @@ class Schema {
       if (!_.isPlainObject(obsValue)) {
         Schema.extendObservable(item, key, obsValue);
       } else {
+        item[key] = {};
         Schema.setAsObservables(item[key], obsValue);
       }
     });
