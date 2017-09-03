@@ -31,32 +31,12 @@ describe('Item', function () {
   };
 
   testStore.schema = {
+    establishObservables: () => {},
     getObservables: () => {},
     setPrimaryKey: () => {},
     setFrom: () => {},
     getPrimaryKey: () => {},
     getFor: () => {},
-  // [
-  //   'name', {
-  //     name: 'id',
-  //     primary: true,
-  //     key: 'id',
-  //     _key: '_id',
-  //   }, {
-  //     name: 'foreignEntry',
-  //     key: 'foreignId',
-  //     _key: '_foreignId',
-  //     store: foreignStore,
-  //     storeKey: 'id',
-  //     _storeKey: '_id',
-  //   },
-    // TODO
-    // [{
-    //   name: 'internalEntry',
-    //   key: 'internalId',
-    //   _key: '_internalId',
-    //   store: this.InternalStore,
-    // }],
   };
 
   beforeEach(function () {
@@ -79,8 +59,8 @@ describe('Item', function () {
     });
 
     it('should create item from state', function () {
-      spyOn(testStore.schema, 'setFrom').and
-        .returnValue(Promise.resolve('setFromStateResponse'));
+      spyOn(testStore.schema, 'establishObservables').and
+        .returnValue('establishObservablesFromStateResponse');
       const myItem = new TestItem({
         autoSave: true,
         store: testStore,
@@ -107,8 +87,8 @@ describe('Item', function () {
         myItem.onceSynced(),
       ]).then(() => {
         expect(myItem._synchronize).toHaveBeenCalledWith();
-        expect(testStore.schema.setFrom)
-          .toHaveBeenCalledWith(SOURCE.STATE, myItem, input, { establishObservables: true });
+        expect(testStore.schema.establishObservables)
+          .toHaveBeenCalledWith(myItem, input);
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
         expect(myItem._synchronize).toHaveBeenCalledWith();
       }).then(() => {
@@ -123,8 +103,8 @@ describe('Item', function () {
     it('should create item from client storage', function () {
       spyOn(testStore.schema, 'setPrimaryKey').and
         .returnValue('setPrimaryKeyResponse');
-      spyOn(testStore.schema, 'setFrom').and
-        .returnValue(Promise.resolve('setFromClientStorageResponse'));
+      spyOn(testStore.schema, 'establishObservables').and
+        .returnValue('establishObservablesClientStorageResponse');
       const myItem = new TestItem({
         autoSave: true,
         store: testStore,
@@ -152,9 +132,8 @@ describe('Item', function () {
       ]).then(() => {
         expect(testStore.schema.setPrimaryKey)
           .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, myItem, input);
-        expect(testStore.schema.setFrom)
-          .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, myItem, input,
-            { establishObservables: true });
+        expect(testStore.schema.establishObservables)
+          .toHaveBeenCalledWith(myItem, input);
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
         expect(myItem._synchronize).toHaveBeenCalledWith();
       }).then(() => {
@@ -166,8 +145,8 @@ describe('Item', function () {
     it('should create item from client storage thats marked as removed', function () {
       spyOn(testStore.schema, 'setPrimaryKey').and
         .returnValue('setPrimaryKeyResponse');
-      spyOn(testStore.schema, 'setFrom').and
-        .returnValue(Promise.resolve('setFromClientStorageResponse'));
+      spyOn(testStore.schema, 'establishObservables').and
+        .returnValue('establishObservablesClientStorageResponse');
       input._transporterState = STATE.BEING_DELETED;
       const myItem = new TestItem({
         autoSave: true,
@@ -196,9 +175,8 @@ describe('Item', function () {
       ]).then(() => {
         expect(testStore.schema.setPrimaryKey)
           .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, myItem, input);
-        expect(testStore.schema.setFrom)
-          .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, myItem, input,
-            { establishObservables: true });
+        expect(testStore.schema.establishObservables)
+          .toHaveBeenCalledWith(myItem, input);
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
         expect(myItem._synchronize).toHaveBeenCalledWith();
       });
@@ -207,8 +185,8 @@ describe('Item', function () {
     it('should create item from transporter', function () {
       spyOn(testStore.schema, 'setPrimaryKey').and
         .returnValue('setPrimaryKeyResponse');
-      spyOn(testStore.schema, 'setFrom').and
-        .returnValue(Promise.resolve('setFromTransporterResponse'));
+      spyOn(testStore.schema, 'establishObservables').and
+        .returnValue(Promise.resolve('establishObservablesTransporterResponse'));
       const myItem = new TestItem({
         autoSave: true,
         store: testStore,
@@ -236,62 +214,14 @@ describe('Item', function () {
       ]).then(() => {
         expect(testStore.schema.setPrimaryKey)
           .toHaveBeenCalledWith(SOURCE.TRANSPORTER, myItem, input);
-        expect(testStore.schema.setFrom)
-          .toHaveBeenCalledWith(SOURCE.TRANSPORTER, myItem, input, { establishObservables: true });
+        expect(testStore.schema.establishObservables)
+          .toHaveBeenCalledWith(myItem, input);
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
         expect(myItem._synchronize).toHaveBeenCalledWith();
       }).then(() => myItem.onceReadyFor(TARGET.TRANSPORTER))
       .then(() => {
         myItem._isReady.clientStorage.resolve();
         return myItem.onceReadyFor(TARGET.CLIENT_STORAGE);
-      });
-    });
-
-    it('should error if error in set method occurs', function () {
-      spyOn(testStore.schema, 'setPrimaryKey').and
-        .returnValue('setPrimaryKeyResponse');
-      spyOn(testStore.schema, 'setFrom').and
-        .returnValue(Promise.reject(new Error('some error')));
-      const myItem = new TestItem({
-        autoSave: true,
-        store: testStore,
-        values: input,
-        source: SOURCE.TRANSPORTER,
-      });
-      expect(myItem._transporterStates).toEqual({
-        current: STATE.EXISTENT,
-        inProgress: undefined,
-        next: undefined,
-      });
-      expect(myItem._clientStorageStates).toEqual({
-        current: undefined,
-        inProgress: undefined,
-        next: undefined,
-      });
-      expect(myItem.stored).toBe(false);
-      expect(myItem.synced).toBe(true);
-      expect(myItem.removed).toBe(false);
-      expect(myItem.autoSave).toEqual(true);
-
-      expect(myItem.__id).toBeDefined();
-      expect(myItem._store).toEqual(testStore);
-      return Promise.all([
-        myItem.onceStored(),
-        myItem.onceSynced(),
-      ]).catch((err) => {
-        expect(myItem._transporterStates).toEqual({
-          current: STATE.LOCKED,
-          inProgress: undefined,
-          next: undefined,
-        });
-        expect(myItem._clientStorageStates).toEqual({
-          current: STATE.LOCKED,
-          inProgress: undefined,
-          next: undefined,
-        });
-        expect(myItem.removed).toBe(true);
-        expect(err).toEqual(new Error('some error'));
-        expect(myItem._synchronize).not.toHaveBeenCalled();
       });
     });
   });
@@ -308,8 +238,10 @@ describe('Item', function () {
           this._syncPromises.clientStorage = genPromise();
         }, 0);
       });
+      spyOn(testStore.schema, 'establishObservables').and
+        .returnValue('establishObservablesConstructorResponse');
       spyOn(testStore.schema, 'setFrom').and
-        .returnValue(Promise.resolve('setFromConstructorResponse'));
+        .returnValue(Promise.resolve('setFromResponse'));
       this.item = new TestItem({
         autoSave: true,
         store: testStore,
@@ -322,7 +254,7 @@ describe('Item', function () {
         this.item.onceStored(),
         this.item.onceSynced(),
       ]).then(() => {
-        testStore.schema.setFrom.calls.reset();
+        testStore.schema.establishObservables.calls.reset();
       });
     });
 
