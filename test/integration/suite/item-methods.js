@@ -15,6 +15,13 @@ export default (setup, {
     const wrapBeforeAfter = wrapBeforeAfterGenerator('itemMethods');
     setupGeneratorForBlock('itemMethods');
 
+    function itemDone(item) {
+      return Promise.all([
+        item.onceSynced(),
+        item.onceStored(),
+      ]);
+    }
+
     beforeEach(function () {
       const env = setup.storeConstructor.environment;
       this.store = new Store({
@@ -27,10 +34,7 @@ export default (setup, {
       return this.store.onceLoaded()
         .then(() => {
           this.item = this.store.create(data.item());
-          return Promise.all([
-            this.item.onceSynced(),
-            this.item.onceStored(),
-          ]);
+          return itemDone(this.item);
         });
     });
 
@@ -40,7 +44,7 @@ export default (setup, {
 
     it('should be updated from client storage', function () {
       return wrapBeforeAfter('updateFromClientStorage', () =>
-        this.item.update(data.itemUpdates(), SOURCE.CLIENT_STORAGE)
+        itemDone(this.item.update(data.itemUpdates(), SOURCE.CLIENT_STORAGE))
           .then(() => {
             expectItem(this.item, data.expectedItemUpdates());
             // expects transporter data (needs to be in emtpy-http.run.js)
@@ -50,7 +54,7 @@ export default (setup, {
 
     it('should be updated from transporter', function () {
       return wrapBeforeAfter('updateFromTransporter', () =>
-        this.item.update(data.itemUpdates(), SOURCE.TRANSPORTER)
+        itemDone(this.item.update(data.itemUpdates(), SOURCE.TRANSPORTER))
           .then(() => {
             expectItem(this.item, data.expectedItemUpdates());
             // expects client storage data
@@ -60,7 +64,7 @@ export default (setup, {
 
     it('should be updated from state', function () {
       return wrapBeforeAfter('updateFromState', () =>
-        this.item.update(data.itemUpdates())
+        itemDone(this.item.update(data.itemUpdates()))
           .then(() => {
             expectItem(this.item, data.expectedItemUpdates());
             // expects client storage data
@@ -70,27 +74,32 @@ export default (setup, {
     });
 
     it('should be deleted from client storage', function () {
-      return wrapBeforeAfter('deleteFromClientStorage', () => this.item.delete(SOURCE.CLIENT_STORAGE)
+      return wrapBeforeAfter('deleteFromClientStorage', () =>
+        itemDone(this.item.delete(SOURCE.CLIENT_STORAGE))
         .then(() => this.item));
     });
 
     it('should be deleted from transporter', function () {
-      return wrapBeforeAfter('deleteFromTransporter', () => this.item.delete(SOURCE.TRANSPORTER)
+      return wrapBeforeAfter('deleteFromTransporter', () =>
+        itemDone(this.item.delete(SOURCE.TRANSPORTER))
         .then(() => this.item));
     });
 
     it('should be deleted from state', function () {
-      return wrapBeforeAfter('deleteFromState', () => this.item.delete(SOURCE.STATE)
+      return wrapBeforeAfter('deleteFromState', () =>
+        itemDone(this.item.delete(SOURCE.STATE))
         .then(() => this.item));
     });
 
     it('should fetch from client storage', function () {
-      return wrapBeforeAfter('fetchFromClientStorage', () => this.item.fetch(SOURCE.CLIENT_STORAGE)
+      return wrapBeforeAfter('fetchFromClientStorage', () =>
+        itemDone(this.item.fetch(SOURCE.CLIENT_STORAGE))
         .then(() => this.item));
     });
 
     it('should fetch from transporter', function () {
-      return wrapBeforeAfter('fetchFromTransporter', () => this.item.fetch()
+      return wrapBeforeAfter('fetchFromTransporter', () =>
+        itemDone(this.item.fetch())
         .then(() => this.item));
     });
   });
