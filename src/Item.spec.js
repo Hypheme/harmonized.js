@@ -86,11 +86,10 @@ describe('Item', function () {
         myItem.onceStored(),
         myItem.onceSynced(),
       ]).then(() => {
-        expect(myItem._synchronize).toHaveBeenCalledWith();
+        expect(myItem._synchronize).toHaveBeenCalledWith(undefined, undefined, SOURCE.STATE, input);
         expect(testStore.schema.establishObservables)
           .toHaveBeenCalledWith(myItem, input);
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
-        expect(myItem._synchronize).toHaveBeenCalledWith();
       }).then(() => {
         myItem._isReady.transporter.resolve();
         return myItem.onceReadyFor(TARGET.TRANSPORTER);
@@ -135,7 +134,9 @@ describe('Item', function () {
         expect(testStore.schema.establishObservables)
           .toHaveBeenCalledWith(myItem, input);
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
-        expect(myItem._synchronize).toHaveBeenCalledWith();
+        expect(myItem._synchronize).toHaveBeenCalledWith(
+          undefined, undefined, SOURCE.CLIENT_STORAGE, input,
+        );
       }).then(() => {
         myItem._isReady.transporter.resolve();
         return myItem.onceReadyFor(TARGET.TRANSPORTER);
@@ -178,7 +179,9 @@ describe('Item', function () {
         expect(testStore.schema.establishObservables)
           .toHaveBeenCalledWith(myItem, input);
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
-        expect(myItem._synchronize).toHaveBeenCalledWith();
+        expect(myItem._synchronize).toHaveBeenCalledWith(
+          undefined, undefined, SOURCE.CLIENT_STORAGE, input,
+        );
       });
     });
 
@@ -217,7 +220,9 @@ describe('Item', function () {
         expect(testStore.schema.establishObservables)
           .toHaveBeenCalledWith(myItem, input);
         expect(testStore.schema.getObservables).toHaveBeenCalledWith(myItem);
-        expect(myItem._synchronize).toHaveBeenCalledWith();
+        expect(myItem._synchronize).toHaveBeenCalledWith(
+          undefined, undefined, SOURCE.TRANSPORTER, input,
+        );
       }).then(() => myItem.onceReadyFor(TARGET.TRANSPORTER))
       .then(() => {
         myItem._isReady.clientStorage.resolve();
@@ -240,8 +245,6 @@ describe('Item', function () {
       });
       spyOn(testStore.schema, 'establishObservables').and
         .returnValue('establishObservablesConstructorResponse');
-      spyOn(testStore.schema, 'setFrom').and
-        .returnValue(Promise.resolve('setFromResponse'));
       this.item = new TestItem({
         autoSave: true,
         store: testStore,
@@ -310,10 +313,8 @@ describe('Item', function () {
           this.item.onceStored(),
           this.item.onceSynced(),
         ]).then(() => {
-          expect(testStore.schema.setFrom)
-            .toHaveBeenCalledWith(SOURCE.STATE, this.item, 'some data');
           expect(this.item._synchronize)
-            .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
+            .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.BEING_UPDATED, SOURCE.STATE, 'some data');
         });
       });
 
@@ -323,10 +324,8 @@ describe('Item', function () {
           this.item.onceStored(),
           this.item.onceSynced(),
         ]).then(() => {
-          expect(testStore.schema.setFrom)
-            .toHaveBeenCalledWith(SOURCE.TRANSPORTER, this.item, 'some data');
           expect(this.item._synchronize)
-            .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.EXISTENT);
+            .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.EXISTENT, SOURCE.TRANSPORTER, 'some data');
         });
       });
 
@@ -336,10 +335,8 @@ describe('Item', function () {
           this.item.onceStored(),
           this.item.onceSynced(),
         ]).then(() => {
-          expect(testStore.schema.setFrom)
-            .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, this.item, 'some data');
           expect(this.item._synchronize)
-            .toHaveBeenCalledWith(STATE.EXISTENT, STATE.BEING_UPDATED);
+            .toHaveBeenCalledWith(STATE.EXISTENT, STATE.BEING_UPDATED, SOURCE.CLIENT_STORAGE, 'some data');
         });
       });
     });
@@ -376,7 +373,7 @@ describe('Item', function () {
           checkDelete(this.item);
           checkDispose(this.item);
           expect(this.item._synchronize)
-          .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.BEING_DELETED);
+          .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.BEING_DELETED, SOURCE.STATE);
         });
       });
 
@@ -391,7 +388,7 @@ describe('Item', function () {
           checkDelete(this.item);
           expect(this.item._transporterStates.current).toEqual(STATE.DELETED);
           expect(this.item._synchronize)
-            .toHaveBeenCalledWith(STATE.BEING_DELETED, undefined);
+            .toHaveBeenCalledWith(STATE.BEING_DELETED, undefined, SOURCE.TRANSPORTER);
         });
       });
 
@@ -406,7 +403,7 @@ describe('Item', function () {
           checkDelete(this.item);
           expect(this.item._clientStorageStates.current).toEqual(STATE.DELETED);
           expect(this.item._synchronize)
-            .toHaveBeenCalledWith(undefined, STATE.BEING_DELETED);
+            .toHaveBeenCalledWith(undefined, STATE.BEING_DELETED, SOURCE.CLIENT_STORAGE);
         });
       });
     });
@@ -427,7 +424,7 @@ describe('Item', function () {
           this.item.onceSynced(),
         ]).then(() => {
           expect(this.item._synchronize)
-            .toHaveBeenCalledWith(undefined, STATE.BEING_FETCHED);
+            .toHaveBeenCalledWith(undefined, STATE.BEING_FETCHED, SOURCE.TRANSPORTER);
         });
       });
       it('should fetch from clientStorage', function () {
@@ -437,7 +434,7 @@ describe('Item', function () {
           this.item.onceSynced(),
         ]).then(() => {
           expect(this.item._synchronize)
-            .toHaveBeenCalledWith(STATE.BEING_FETCHED, undefined);
+            .toHaveBeenCalledWith(STATE.BEING_FETCHED, undefined, SOURCE.CLIENT_STORAGE);
         });
       });
     });
@@ -458,7 +455,7 @@ describe('Item', function () {
         this.item._stateHandler(1);
         expect(testStore.schema.getObservables).toHaveBeenCalled();
         expect(this.item._synchronize)
-          .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.BEING_UPDATED);
+          .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.BEING_UPDATED, SOURCE.STATE);
       });
 
       it('should not synchronize when autoSave is off', function () {
@@ -471,6 +468,7 @@ describe('Item', function () {
     });
 
     describe('_synchronize', function () {
+      const input = 'someInput';
       // const stubs = {
       //   transporter: {},
       //   clientStorage: {},
@@ -496,6 +494,8 @@ describe('Item', function () {
               { id: 123 } : { _id: 456 };
             return result;
           });
+        spyOn(testStore.schema, 'setFrom')
+          .and.returnValue(Promise.resolve());
         spyOn(testStore.schema, 'getFor')
           .and.callFake((target, item, data) => {
             const result = Object.assign({}, data);
@@ -511,7 +511,7 @@ describe('Item', function () {
           .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: { _id: 456 } }));
         this.item._clientStorageStates.current = undefined;
 
-        this.item._synchronize(STATE.BEING_CREATED, STATE.EXISTENT);
+        this.item._synchronize(STATE.BEING_CREATED, STATE.EXISTENT, SOURCE.TRANSPORTER, input);
 
         return Promise.all([
           this.item.onceStored(),
@@ -531,7 +531,7 @@ describe('Item', function () {
           expect(testStore.schema.setPrimaryKey)
           .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, this.item, { _id: 456 });
           expect(testStore.schema.setFrom)
-          .not.toHaveBeenCalled();
+          .toHaveBeenCalledWith(SOURCE.TRANSPORTER, this.item, input);
           expect(this.item._clientStorageStates).toEqual({
             current: STATE.EXISTENT,
             inProgress: undefined,
@@ -544,7 +544,7 @@ describe('Item', function () {
         spyOn(testStore.clientStorage, 'update')
           .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
 
-        this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
+        this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT, SOURCE.TRANSPORTER, input);
 
         return Promise.all([
           this.item.onceStored(),
@@ -565,7 +565,7 @@ describe('Item', function () {
           expect(testStore.schema.setPrimaryKey)
             .not.toHaveBeenCalled();
           expect(testStore.schema.setFrom)
-            .not.toHaveBeenCalled();
+            .toHaveBeenCalledWith(SOURCE.TRANSPORTER, this.item, input);
           expect(this.item._clientStorageStates).toEqual({
             current: STATE.EXISTENT,
             inProgress: undefined,
@@ -642,7 +642,7 @@ describe('Item', function () {
           .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
         this.item._transporterStates.current = undefined;
 
-        this.item._synchronize(STATE.EXISTENT, STATE.BEING_CREATED);
+        this.item._synchronize(STATE.EXISTENT, STATE.BEING_CREATED, SOURCE.CLIENT_STORAGE, input);
 
         return Promise.all([
           this.item.onceStored(),
@@ -656,7 +656,7 @@ describe('Item', function () {
           expect(testStore.schema.setPrimaryKey)
             .toHaveBeenCalledWith(SOURCE.TRANSPORTER, this.item, { id: 123 });
           expect(testStore.schema.setFrom)
-            .not.toHaveBeenCalled();
+            .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, this.item, input);
           expect(this.item._transporterStates).toEqual({
             current: STATE.EXISTENT,
             inProgress: undefined,
@@ -682,7 +682,7 @@ describe('Item', function () {
         spyOn(testStore.clientStorage, 'update')
           .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
 
-        this.item._synchronize(STATE.EXISTENT, STATE.BEING_UPDATED);
+        this.item._synchronize(STATE.EXISTENT, STATE.BEING_UPDATED, SOURCE.CLIENT_STORAGE, input);
 
         return Promise.all([
           this.item.onceStored(),
@@ -698,7 +698,7 @@ describe('Item', function () {
           expect(testStore.schema.setPrimaryKey)
             .not.toHaveBeenCalled();
           expect(testStore.schema.setFrom)
-            .not.toHaveBeenCalled();
+            .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, this.item, input);
           expect(this.item._transporterStates).toEqual({
             current: STATE.EXISTENT,
             inProgress: undefined,
@@ -1111,7 +1111,7 @@ describe('Item', function () {
         spyOn(testStore.clientStorage, 'update')
           .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
 
-        this.item._synchronize(STATE.EXISTENT, STATE.BEING_UPDATED);
+        this.item._synchronize(STATE.EXISTENT, STATE.BEING_UPDATED, SOURCE.CLIENT_STORAGE, input);
 
         return Promise.all([
           this.item.onceStored(),
@@ -1127,7 +1127,7 @@ describe('Item', function () {
           expect(testStore.schema.setPrimaryKey)
             .not.toHaveBeenCalled();
           expect(testStore.schema.setFrom)
-            .not.toHaveBeenCalled();
+            .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, this.item, input);
           expect(this.item._transporterStates).toEqual({
             current: STATE.EXISTENT,
             inProgress: undefined,
