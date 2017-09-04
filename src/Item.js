@@ -284,9 +284,9 @@ export default class Item {
     }
   }
 
-  _handleTargetResponse(workingState, target, source, response) {
+  _handleTargetResponse(workingState, target, response) {
     if (response.status === PROMISE_STATE.PENDING) {
-      return this._waitForTargetToComeBackOnline(target, source);
+      return this._waitForTargetToComeBackOnline(target);
     }
       // the item was deleted by another client
     if (response.status === PROMISE_STATE.NOT_FOUND && workingState !== STATE.BEING_DELETED) {
@@ -303,10 +303,10 @@ export default class Item {
     return (workingState === STATE.BEING_FETCHED ?
       this._store.schema.setFrom(target.AS_SOURCE, this, response.data) :
       Promise.resolve())
-      .then(() => this[target.POST_SYNC_PROCESSOR](workingState, source))
+      .then(() => this[target.POST_SYNC_PROCESSOR](workingState))
       .then(() => {
         if (this[target.STATES].next) {
-          return this._triggerSync(target, source);
+          return this._triggerSync(target);
         }
         return Promise.resolve();
       });
@@ -394,14 +394,14 @@ export default class Item {
     return Promise.resolve();
   }
 
-  _postSyncTransporter(workingState, source) {
+  _postSyncTransporter(workingState) {
     if (workingState === STATE.BEING_DELETED) {
       return this._removeSingle(SOURCE.TRANSPORTER);
     }
-    return this._synchronizeFor(TARGET.CLIENT_STORAGE, STATE.BEING_UPDATED, source);
+    return this._synchronizeFor(TARGET.CLIENT_STORAGE, STATE.BEING_UPDATED);
   }
 
-  _preparePayload(workingState, target, source) {
+  _preparePayload(workingState, target) {
     const itemKeys = workingState === STATE.BEING_CREATED ? {} :
       this._store.schema.getPrimaryKey(target, this);
 
@@ -411,7 +411,7 @@ export default class Item {
         return Promise.resolve(itemKeys);
       case STATE.BEING_CREATED:
       case STATE.BEING_UPDATED:
-        return this._store.schema.setFrom(source, this, this._values)
+        return this._store.schema.setFrom(this._source, this, this._values)
         .then(() => this[target.GET_FOR](target, itemKeys));
       default:
         return Promise.reject(new Error(`unkown working state ${workingState}`));
@@ -512,19 +512,20 @@ export default class Item {
 
   _synchronize(clientStorageState, transporterState, source, values) {
     this._values = values;
+    this._source = source;
     // we dont return a promise as we could be offline and the promise would never resolved anyway.
     // if you want to listen to a promise of sth done call this.onceStored or onceSynced
     Promise.all([
       // the order matters as we need to make sure the transporterState is set before
       // getFor(clientStorage) is called.
-      this._synchronizeFor(TARGET.TRANSPORTER, transporterState, source),
-      this._synchronizeFor(TARGET.CLIENT_STORAGE, clientStorageState, source),
+      this._synchronizeFor(TARGET.TRANSPORTER, transporterState),
+      this._synchronizeFor(TARGET.CLIENT_STORAGE, clientStorageState),
     ])
     .then(() => { this._values = undefined; })
     .catch(err => this._lock(null, err));
   }
 
-  _synchronizeFor(target, state, source) {
+  _synchronizeFor(target, state) {
     // we need information if a snyc is already happening before overwriting state
     const syncInProgress = this[target.STATES].inProgress
       || this[target.STATES].next;
@@ -533,7 +534,7 @@ export default class Item {
     // needs a sync
     if (!syncInProgress && this[target.STATES].next) {
       this[target.STATUS_KEY] = false;
-      this._triggerSync(target, source)
+      this._triggerSync(target)
         .then(() => {
           this[target.STATUS_KEY] = true;
           // we resolve the finish sync routine and prepare a new one
@@ -545,9 +546,9 @@ export default class Item {
     return syncInProgress ? this._syncPromises[target.NAME].promise : Promise.resolve();
   }
 
-  _triggerSync(target, source) {
+  _triggerSync(target) {
     const workingState = this[target.STATES].next;
-    return this._preparePayload(workingState, target, source)
+    return this._preparePayload(workingState, target)
     .then((payload) => {
       if (!this[target.STATES].next) {
         // if next is no longer set due to merging create and delete action together
@@ -555,17 +556,17 @@ export default class Item {
       }
       if (workingState !== this[target.STATES].next) {
         // redo everything if sth has changed in the meantime
-        return this._triggerSync(target, source);
+        return this._triggerSync(target);
       }
       this[target.STATES].inProgress = workingState;
       this[target.STATES].next = undefined;
       // this is the actual call to the outside world
       return this._store[target.PROCESSOR][workingState.ACTION](payload)
-        .then(result => this._handleTargetResponse(workingState, target, source, result));
+        .then(result => this._handleTargetResponse(workingState, target, result));
     });
   }
 
-  _waitForTargetToComeBackOnline(target, source) {
+  _waitForTargetToComeBackOnline(target) {
     this[target.STATES].next = this._getNextActionState(
       this[target.STATES].current,
       this[target.STATES].inProgress,
@@ -575,7 +576,7 @@ export default class Item {
     return this._store[target.PROCESSOR].onceAvailable()
     .then(() => {
       if (this[target.STATES].next) { // need that bc create + delete response in undefined
-        return this._triggerSync(target, source);
+        return this._triggerSync(target);
       }
       return Promise.resolve();
     });
