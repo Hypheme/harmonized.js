@@ -137,7 +137,7 @@ class Schema {
       if (!_.isPlainObject(obsValue)) {
         Schema.extendObservable(item, key, obsValue);
       } else {
-        item[key] = {};
+        item[key] = item[key] || {};
         Schema.setAsObservables(item[key], obsValue);
       }
     });

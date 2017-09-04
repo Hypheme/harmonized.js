@@ -158,7 +158,7 @@ export default class Item {
     this._transporterStates =
       this._computeInitialStates(values._transporterState || STATE.BEING_CREATED);
     this._clientStorageStates =
-    this._computeInitialStates(STATE.EXISTENT);
+      this._computeInitialStates(STATE.EXISTENT);
     this.removed = (this._transporterStates.next === STATE.BEING_DELETED);
     this.stored = true;
     // note undefined, undefined, undefined is a state for a newly created item so we have to
@@ -286,7 +286,7 @@ export default class Item {
 
   _handleTargetResponse(workingState, target, source, response) {
     if (response.status === PROMISE_STATE.PENDING) {
-      return this._waitForTargetToComeBackOnline(target);
+      return this._waitForTargetToComeBackOnline(target, source);
     }
       // the item was deleted by another client
     if (response.status === PROMISE_STATE.NOT_FOUND && workingState !== STATE.BEING_DELETED) {
@@ -306,7 +306,7 @@ export default class Item {
       .then(() => this[target.POST_SYNC_PROCESSOR](workingState, source))
       .then(() => {
         if (this[target.STATES].next) {
-          return this._triggerSync(target);
+          return this._triggerSync(target, source);
         }
         return Promise.resolve();
       });
@@ -555,7 +555,7 @@ export default class Item {
       }
       if (workingState !== this[target.STATES].next) {
         // redo everything if sth has changed in the meantime
-        return this._triggerSync(target);
+        return this._triggerSync(target, source);
       }
       this[target.STATES].inProgress = workingState;
       this[target.STATES].next = undefined;
@@ -565,7 +565,7 @@ export default class Item {
     });
   }
 
-  _waitForTargetToComeBackOnline(target) {
+  _waitForTargetToComeBackOnline(target, source) {
     this[target.STATES].next = this._getNextActionState(
       this[target.STATES].current,
       this[target.STATES].inProgress,
@@ -575,7 +575,7 @@ export default class Item {
     return this._store[target.PROCESSOR].onceAvailable()
     .then(() => {
       if (this[target.STATES].next) { // need that bc create + delete response in undefined
-        return this._triggerSync(target);
+        return this._triggerSync(target, source);
       }
       return Promise.resolve();
     });
