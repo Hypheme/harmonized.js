@@ -500,12 +500,12 @@ describe('Schema', function () {
 
 
     schema.establishObservables(item);
-    expect(isObservable(item, 'brand')).toBe(true);
-    expect(isObservable(item, 'price')).toBe(true);
-    expect(isObservable(item.seats, 'front')).toBe(true);
-    expect(isObservable(item.seats.deeper, 'test')).toBe(true);
-    expect(isObservable(item.seats.deeper.evenDeeper, 'property1')).toBe(true);
-    expect(isObservable(item.seats.deeper.evenDeeper, 'property2')).toBe(true);
+    expect(isObservable(item.brand)).toBe(true);
+    expect(isObservable(item.price)).toBe(false);
+    expect(isObservable(item.seats.front)).toBe(false);
+    expect(isObservable(item.seats.deeper.test)).toBe(true);
+    expect(isObservable(item.seats.deeper.evenDeeper.property1)).toBe(false);
+    expect(isObservable(item.seats.deeper.evenDeeper.property2)).toBe(true);
     done();
   });
 

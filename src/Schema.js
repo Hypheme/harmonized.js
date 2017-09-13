@@ -1,5 +1,5 @@
 // @flow
-import { extendObservable } from 'mobx';
+import { extendObservable, observable } from 'mobx';
 import _ from 'lodash';
 import Item from './Item';
 import { SOURCE, TARGET } from './constants';
@@ -91,36 +91,54 @@ class Schema {
     }
   }
 
-  _setFromState(item: Object, data: Object, options: Object): Promise {
+  _setFromState(item: Object, data: Object): Promise {
     const { allObservables, filteredData } = this._getPickedData(data);
 
-    Schema._mergeFromSet({ item, filteredData, options }, allObservables);
+    Schema._mergeFromSet({ item, filteredData }, allObservables);
     return Promise.resolve(item);
   }
 
-  setFrom(source: DataSource, item: Item, data: Object, options = {}): Promise {
+  setFrom(source: DataSource, item: Item, data: Object): Promise {
     switch (source) {
       case SOURCE.TRANSPORTER:
-        return this._setFromOutside('', item, data, options);
+        return this._setFromOutside('', item, data);
       case SOURCE.CLIENT_STORAGE:
-        return this._setFromOutside('_', item, data, options);
+        return this._setFromOutside('_', item, data);
       case SOURCE.STATE:
-        return this._setFromState(item, data, options);
+        return this._setFromState(item, data);
       default:
         throw new Error('source type is not known');
     }
   }
 
-  establishObservables(item: Item, data: Object) {
-    const { allObservables } = this._getPickedData(data);
-    Schema.setAsObservables(item, allObservables);
+  static createObservableItem(itemBranch: Object, definition: Object) {
+    if (!_.isPlainObject(definition.properties)) return;
+
+    Object.keys(definition.properties)
+      .filter(key => !Schema.isPrimaryKey(definition.properties[key]))
+      .forEach((key) => {
+        const property = definition.properties[key];
+        if (property.type !== Object) {
+          if (property.observable === false) {
+            return;
+          }
+
+          if (property.type === Array) {
+            itemBranch[key] = observable.array();
+            return;
+          }
+
+          itemBranch[key] = observable();
+          return;
+        }
+
+        itemBranch[key] = observable({});
+        Schema.createObservableItem(itemBranch[key], property);
+      });
   }
 
-  static extendObservable(item, key, value) {
-    // console.log(item, key, value);
-    const extendObj = {};
-    extendObj[key] = value;
-    extendObservable(item, extendObj);
+  establishObservables(item: Item) {
+    Schema.createObservableItem(item, this._definition);
   }
 
   static isKey(property) {
@@ -129,18 +147,6 @@ class Schema {
 
   static isPrimaryKey(property) {
     return Schema.isKey(property) && property.primary;
-  }
-
-  static setAsObservables(item, observables) {
-    Object.keys(observables).forEach((key) => {
-      const obsValue = observables[key];
-      if (!_.isPlainObject(obsValue)) {
-        Schema.extendObservable(item, key, obsValue);
-      } else {
-        item[key] = item[key] || {};
-        Schema.setAsObservables(item[key], obsValue);
-      }
-    });
   }
 
   _createObservableKeyList(definition: Object, parentPath : string = '') {
@@ -186,12 +192,10 @@ class Schema {
     path: string,
     item: Object,
     prefix: string,
-    options: Object,
   ) {
     const def = definition.type === Array ? definition.items : definition;
     const refOptions: Object = {
       definition,
-      options,
       key: def[`${prefix}key`],
     };
 
@@ -214,7 +218,7 @@ class Schema {
     return refOptions;
   }
 
-  _setForeignValues(item: Item, data: Object, prefix: string, options: Object) {
+  _setForeignValues(item: Item, data: Object, prefix: string) {
     let promises:Array<Promise> = [];
     this.references.forEach((definition, path) => {
       const thisValue = _.get(data, path);
@@ -225,18 +229,13 @@ class Schema {
         path,
         item,
         prefix,
-        options,
       );
 
       if (definition.type === Array) {
         const oldAutosaveValue = item.autoSave;
         item.autoSave = false;
 
-        if (options.establishObservables) {
-          Schema.extendObservable(item, refOptions.propertyKey, []);
-        } else {
-          refOptions.parentObj[refOptions.propertyKey] = [];
-        }
+        refOptions.parentObj[refOptions.propertyKey] = [];
 
         item.autoSave = oldAutosaveValue;
         promises = promises.concat(thisValue.map(
@@ -254,28 +253,23 @@ class Schema {
     keyPrefix: string,
     item: Item,
     data: Object,
-    options: Object,
   ): Promise {
     const { observables, filteredData } = this._getPickedData(data);
-    Schema._mergeFromSet({ item, filteredData, options }, observables);
-    const promises = this._setForeignValues(item, data, keyPrefix, options);
+    Schema._mergeFromSet({ item, filteredData }, observables);
+    const promises = this._setForeignValues(item, data, keyPrefix);
     return Promise.all(promises).then(() => item);
   }
 
-  static _mergeFromSet({ item, filteredData, options }, observables) {
-    const { establishObservables } = options;
+  static _mergeFromSet({ item, filteredData }) {
     const oldAutosaveValue = item.autoSave;
     item.autoSave = false;
     _.merge(item, filteredData);
-    if (establishObservables) {
-      Schema.setAsObservables(item, observables);
-    }
 
     item.autoSave = oldAutosaveValue;
   }
 
   static _resolveForeignValues(
-    { definition, key, propertyKey, parentObj, options },
+    { definition, key, propertyKey, parentObj },
     foreignKey: string|Number,
     item: Item,
     index: ?Number,
@@ -288,9 +282,7 @@ class Schema {
 
       const oldAutosaveValue = item.autoSave;
       item.autoSave = false;
-      if (options.establishObservables && index === undefined) {
-        Schema.extendObservable(parentObj, propertyKey, newValue);
-      } else if (index === undefined) {
+      if (index === undefined) {
         parentObj[propertyKey] = newValue;
       } else {
         parentObj[propertyKey][index] = newValue;
