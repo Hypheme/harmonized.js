@@ -341,7 +341,7 @@ describe('HttpTransporter', function () {
           }),
         });
 
-        expect(opts.headers.getAll('Content-Type')[0]).toBe('application/json');
+        expect(opts.headers.get('Content-Type')).toBe('application/json');
 
         return {
           hello: 'back',
