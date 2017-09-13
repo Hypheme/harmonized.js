@@ -1,6 +1,7 @@
 import {
   observable,
   autorun,
+  isObservable,
 } from 'mobx';
 
 import Schema, { Key, NumberKey } from './Schema';
@@ -452,9 +453,10 @@ describe('Schema', function () {
     });
   });
 
-  it('should set item from state without establishing observables', function () {
+  it('should establishObservables', function (done) {
     const inputDefinition = {
       properties: {
+        // TODO foreign keys
         brand: String,
         price: {
           type: String,
@@ -495,68 +497,19 @@ describe('Schema', function () {
     const schema = new Schema(inputDefinition);
 
     const item = new TestItemClass();
-    const data = {
-      brand: 'testbrand',
-      price: '9001€',
-      seats: {
-        front: 2,
-        deeper: {
-          test: 123,
-          evenDeeper: {
-            property1: 'hello',
-            property2: true,
-          },
-        },
-      },
-    };
 
-    schema.setFrom(SOURCE.STATE, item, data, false);
-    expect(item.brand).toBe('testbrand');
-    expect(item.price).toBe('9001€');
-    expect(item.seats).toEqual({
-      front: 2,
-      deeper: {
-        test: 123,
-        evenDeeper: {
-          property1: 'hello',
-          property2: true,
-        },
-      },
-    });
-    expect(item.autosaveSetHistory).toEqual([false, 'old autosave value']);
 
-    schema.setFrom(SOURCE.STATE, item, {
-      brand: 'newname',
-      seats: {
-        deeper: {
-          evenDeeper: {
-            property2: false,
-          },
-        },
-      },
-    }, false);
-
-    expect(item.brand).toBe('newname');
-    expect(item.price).toBe('9001€');
-    expect(item.seats).toEqual({
-      front: 2,
-      deeper: {
-        test: 123,
-        evenDeeper: {
-          property1: 'hello',
-          property2: false,
-        },
-      },
-    });
-    expect(item.autosaveSetHistory).toEqual([
-      false,
-      'old autosave value',
-      false,
-      'old autosave value',
-    ]);
+    schema.establishObservables(item);
+    expect(isObservable(item, 'brand')).toBe(true);
+    expect(isObservable(item, 'price')).toBe(true);
+    expect(isObservable(item.seats, 'front')).toBe(true);
+    expect(isObservable(item.seats.deeper, 'test')).toBe(true);
+    expect(isObservable(item.seats.deeper.evenDeeper, 'property1')).toBe(true);
+    expect(isObservable(item.seats.deeper.evenDeeper, 'property2')).toBe(true);
+    done();
   });
 
-  it('should set item from state with establishing observables', function (done) {
+  it('should set item from state', function (done) {
     const inputDefinition = {
       properties: {
         brand: String,
@@ -614,32 +567,22 @@ describe('Schema', function () {
       },
     };
 
-    schema.setFrom(SOURCE.STATE, item, data, {
-      establishObservables: true,
-    });
-    expect(item.brand).toBe('testbrand');
-    expect(item.price).toBe('9001€');
-    expect(item.seats.front).toBe(2);
-    expect(item.seats.deeper.test).toBe(123);
-    expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
-    expect(item.seats.deeper.evenDeeper.property2).toBe(true);
-    expect(item.autosaveSetHistory).toEqual([
-      false,
-      'old autosave value',
-    ]);
-
-    let autorunCount = 0;
-    const dispose = autorun(() => {
-      let blub = '';
-      blub = item.brand;
-      blub = item.price;
-      blub = item.seats.deeper.evenDeeper.property1;
-      blub = item.seats.deeper.evenDeeper.property2;
-      autorunCount += 1;
-      return blub;
-    });
-    detach(() => {
-      schema.setFrom(SOURCE.STATE, item, {
+    schema.setFrom(SOURCE.STATE, item, data, false)
+      .then(() => {
+        expect(item.brand).toBe('testbrand');
+        expect(item.price).toBe('9001€');
+        expect(item.seats).toEqual({
+          front: 2,
+          deeper: {
+            test: 123,
+            evenDeeper: {
+              property1: 'hello',
+              property2: true,
+            },
+          },
+        });
+      })
+      .then(() => schema.setFrom(SOURCE.STATE, item, {
         brand: 'newname',
         seats: {
           deeper: {
@@ -648,60 +591,27 @@ describe('Schema', function () {
             },
           },
         },
-      }, {
-        establishObservables: false,
-      });
-
-      expect(item.brand).toBe('newname');
-      expect(item.price).toBe('9001€');
-      expect(item.seats.front).toBe(2);
-      expect(item.seats.deeper.test).toBe(123);
-      expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
-      expect(item.seats.deeper.evenDeeper.property2).toBe(false);
-      expect(item.autosaveSetHistory).toEqual([
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-      ]);
-
-      expect(autorunCount).toBe(3);
-
-      schema.setFrom(SOURCE.STATE, item, {
-        brand: 'supernewname',
-        seats: {
-          front: 3,
-          newProp: 1000,
+      }, false))
+      .then(() => {
+        expect(item.brand).toBe('newname');
+        expect(item.price).toBe('9001€');
+        expect(item.seats).toEqual({
+          front: 2,
           deeper: {
+            test: 123,
             evenDeeper: {
-              property1: 'hahaha',
+              property1: 'hello',
+              property2: false,
             },
           },
-        },
-      }, {
-        establishObservables: false,
-      });
-
-      expect(autorunCount).toBe(4);
-      expect(item.seats.front).toBe(3);
-      expect(item.seats.newProp).toBe(undefined);
-      expect(item.seats.front).toBe(3);
-      expect(item.seats.deeper.evenDeeper.property1).toBe('hahaha');
-      expect(item.autosaveSetHistory).toEqual([
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-      ]);
-
-      detach(dispose);
-      detach(done);
-    });
+        });
+        done();
+      })
+      .catch(done);
   });
 
-  it('should item set from transporter without establishing observables', function (done) {
+
+  it('should set item from transporter', function (done) {
     const passengerStoreInstance = {
       onceLoaded: jasmine.createSpy('once loaded').and.returnValues(
         Promise.resolve(),
@@ -798,9 +708,7 @@ describe('Schema', function () {
       },
     };
 
-    schema.setFrom(SOURCE.TRANSPORTER, item, data, {
-      establishObservables: false,
-    }).then(() => {
+    schema.setFrom(SOURCE.TRANSPORTER, item, data).then(() => {
       expect(item.brand).toBe('testbrand');
       expect(item.price).toBe('9001€');
       expect(item.seats.oneToOne).toBe('over 9000');
@@ -829,283 +737,14 @@ describe('Schema', function () {
         pid: 200,
       });
 
-      expect(item.autosaveSetHistory).toEqual([
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-      ]);
-      item.autosaveSetHistory = [];
-
       data.passengers = [1];
-      schema.setFrom(SOURCE.TRANSPORTER, item, data, {
-        establishObservables: false,
-      });
-
-      setTimeout(() => {
-        expect(item.passengers).toEqual(['item one']);
-        expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(5);
-        expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-          pid: 1,
-        });
-        expect(item.autosaveSetHistory).toEqual([
-          false,
-          'old autosave value',
-          false,
-          'old autosave value',
-          false,
-          'old autosave value',
-          false,
-          'old autosave value',
-        ]);
-
-        done();
-      });
-    });
-  });
-
-  it('should item set from transporter with establishing observables', function (done) {
-    const passengerStoreInstance = {
-      onceLoaded: jasmine.createSpy('once loaded').and.returnValues(
-        Promise.resolve(),
-        Promise.resolve(),
-        Promise.resolve(),
-        Promise.resolve(),
-        Promise.resolve(),
-      ),
-      findOne: jasmine.createSpy('find one').and.returnValues(
-        'item 123',
-        'item 124',
-        'item 125',
-        'item 200',
-        'item one',
-      ),
-    };
-
-    const oneToOneStoreInstance = {
-      onceLoaded: jasmine.createSpy('once loaded').and.returnValue(Promise.resolve()),
-      findOne: jasmine.createSpy('find one').and.returnValue('over 9000'),
-    };
-
-    const inputDefinition = {
-      properties: {
-        brand: String,
-        price: {
-          type: String,
-          observable: false,
-        },
-        passengers: {
-          type: Array,
-          items: {
-            type: NumberKey,
-            key: 'pid',
-            _key: '_pid',
-            ref: passengerStoreInstance,
-          },
-        },
-        onlyOneChild: {
-          type: Object,
-          properties: {
-            oneToOne: {
-              type: NumberKey,
-              key: 'pid',
-              _key: '_pid',
-              ref: oneToOneStoreInstance,
-            },
-          },
-        },
-        seats: {
-          type: Object,
-          properties: {
-            front: {
-              observable: false,
-              type: Number,
-            },
-            back: Number,
-            deeper: {
-              type: Object,
-              properties: {
-                test: Number,
-                evenDeeper: {
-                  type: Object,
-                  properties: {
-                    property1: {
-                      type: String,
-                      observable: false,
-                    },
-                    property2: Boolean,
-                  },
-                },
-              },
-            },
-          },
-        },
-        empty: {
-          type: Object,
-        },
-      },
-    };
-
-    const schema = new Schema(inputDefinition);
-
-    const item = new TestItemClass();
-    const data = {
-      brand: 'testbrand',
-      price: '9001€',
-      onlyOneChild: {
-        oneToOne: 9001,
-      },
-      passengers: [123, 124, 125, 200],
-      seats: {
-        front: 2,
-        deeper: {
-          test: 123,
-          evenDeeper: {
-            property1: 'hello',
-            property2: true,
-          },
-        },
-      },
-    };
-
-    schema.setFrom(SOURCE.TRANSPORTER, item, data, {
-      establishObservables: true,
-    });
-
-    setTimeout(() => {
-      expect(item.brand).toBe('testbrand');
-      expect(item.price).toBe('9001€');
-      expect(item.seats.front).toBe(2);
-      expect(item.seats.deeper.test).toBe(123);
-      expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
-      expect(item.seats.deeper.evenDeeper.property2).toBe(true);
-      expect(item.onlyOneChild.oneToOne).toBe('over 9000');
-      expect(item.passengers.length).toBe(4);
-      expect(item.passengers[0]).toBe('item 123');
-      expect(item.passengers[1]).toBe('item 124');
-      expect(item.passengers[2]).toBe('item 125');
-      expect(item.passengers[3]).toBe('item 200');
-
-      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledTimes(1);
-      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledWith({
-        pid: 9001,
-      });
-
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(4);
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        pid: 123,
-      });
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        pid: 124,
-      });
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        pid: 125,
-      });
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        pid: 200,
-      });
-
-      // Following leads to this amount of autosave sets:
-      // * 1x synchronous set of all non foreign values
-      // * 1x setting array of foreign values before it's values are resolvedItem
-      // * 4x setting of values of this array
-      // * 1x setting of foreign value in onlyOneChild.oneToOne
-      expect(item.autosaveSetHistory).toEqual([
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-      ]);
-      item.autosaveSetHistory = [];
-
-      let autorunCount = 0;
-      const dispose = autorun(() => {
-        let blub = '';
-        blub = item.brand;
-        blub = item.price;
-        blub = item.passengers;
-        blub = item.seats.deeper.evenDeeper.property1;
-        blub = item.seats.deeper.evenDeeper.property2;
-        autorunCount += 1;
-        return blub;
-      });
-      detach(() => {
-        schema.setFrom(SOURCE.TRANSPORTER, item, {
-          brand: 'newname',
-          seats: {
-            deeper: {
-              evenDeeper: {
-                property2: false,
-              },
-            },
-          },
-        });
-
-        expect(item.brand).toBe('newname');
-        expect(item.price).toBe('9001€');
-        expect(item.seats.front).toBe(2);
-        expect(item.seats.deeper.test).toBe(123);
-        expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
-        expect(item.seats.deeper.evenDeeper.property2).toBe(false);
-
-        expect(autorunCount).toBe(3);
-
-        expect(item.autosaveSetHistory).toEqual([
-          false,
-          'old autosave value',
-        ]);
-        item.autosaveSetHistory = [];
-
-        schema.setFrom(SOURCE.TRANSPORTER, item, {
-          brand: 'supernewname',
-          passengers: [1],
-          seats: {
-            front: 3,
-            newProp: 1000,
-            deeper: {
-              evenDeeper: {
-                property1: 'hahaha',
-              },
-            },
-          },
-        }, {
-          establishObservables: false,
-        });
-
-        expect(autorunCount).toBe(5);
-        expect(item.seats.front).toBe(3);
-        expect(item.seats.newProp).toBe(undefined);
-        expect(item.seats.front).toBe(3);
-        expect(item.seats.deeper.evenDeeper.property1).toBe('hahaha');
-
-        setTimeout(() => {
+      schema.setFrom(SOURCE.TRANSPORTER, item, data)
+        .then(() => {
+          expect(item.passengers).toEqual(['item one']);
           expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(5);
           expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
             pid: 1,
           });
-          expect(item.passengers.length).toBe(1);
-          expect(item.passengers[0]).toBe('item one');
-
           expect(item.autosaveSetHistory).toEqual([
             false,
             'old autosave value',
@@ -1113,12 +752,11 @@ describe('Schema', function () {
             'old autosave value',
             false,
             'old autosave value',
+            false,
+            'old autosave value',
           ]);
-
-          detach(dispose);
-          detach(done);
+          done();
         });
-      });
     });
   });
 
@@ -1248,29 +886,6 @@ describe('Schema', function () {
         _pid: 200,
       });
 
-      // Following leads to this amount of autosave sets:
-      // * 1x synchronous set of all non foreign values
-      // * 1x setting array of foreign values before it's values are resolvedItem
-      // * 4x setting of values of this array
-      // * 1x setting of foreign value in onlyOneChild.oneToOne
-      expect(item.autosaveSetHistory).toEqual([
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-      ]);
-      item.autosaveSetHistory = [];
-
       data.passengers = [1];
       schema.setFrom(SOURCE.CLIENT_STORAGE, item, data).then(() => {
         expect(item.passengers).toEqual(['item one']);
@@ -1279,191 +894,8 @@ describe('Schema', function () {
           _pid: 1,
         });
 
-        expect(item.autosaveSetHistory).toEqual([
-          false,
-          'old autosave value',
-          false,
-          'old autosave value',
-          false,
-          'old autosave value',
-          false,
-          'old autosave value',
-        ]);
-
         done();
       });
-    });
-  });
-
-  it('should item set from client storage with establishing observables', function (done) {
-    const passengerStoreInstance = {
-      onceLoaded: jasmine.createSpy('once loaded').and.returnValues(
-        Promise.resolve(),
-        Promise.resolve(),
-        Promise.resolve(),
-        Promise.resolve(),
-        Promise.resolve(),
-      ),
-      findOne: jasmine.createSpy('find one').and.returnValues(
-        'item 123',
-        'item 124',
-        'item 125',
-        'item 200',
-        'item one',
-      ),
-    };
-
-    const oneToOneStoreInstance = {
-      onceLoaded: jasmine.createSpy('once loaded').and.returnValue(Promise.resolve()),
-      findOne: jasmine.createSpy('find one').and.returnValue('over 9000'),
-    };
-
-    const inputDefinition = {
-      properties: {
-        brand: String,
-        price: {
-          type: String,
-          observable: false,
-        },
-        passengers: {
-          type: Array,
-          items: {
-            type: NumberKey,
-            key: 'pid',
-            _key: '_pid',
-            ref: passengerStoreInstance,
-          },
-        },
-        onlyOneChild: {
-          type: Object,
-          properties: {
-            oneToOne: {
-              type: NumberKey,
-              key: 'pid',
-              _key: '_pid',
-              ref: oneToOneStoreInstance,
-            },
-          },
-        },
-        seats: {
-          type: Object,
-          properties: {
-            front: {
-              observable: false,
-              type: Number,
-            },
-            back: Number,
-            deeper: {
-              type: Object,
-              properties: {
-                test: Number,
-                evenDeeper: {
-                  type: Object,
-                  properties: {
-                    property1: {
-                      type: String,
-                      observable: false,
-                    },
-                    property2: Boolean,
-                  },
-                },
-              },
-            },
-          },
-        },
-        empty: {
-          type: Object,
-        },
-      },
-    };
-
-    const schema = new Schema(inputDefinition);
-
-    const item = new TestItemClass();
-    const data = {
-      brand: 'testbrand',
-      price: '9001€',
-      onlyOneChild: {
-        oneToOne: 9001,
-      },
-      passengers: [123, 124, 125, 200],
-      seats: {
-        front: 2,
-        deeper: {
-          test: 123,
-          evenDeeper: {
-            property1: 'hello',
-            property2: true,
-          },
-        },
-      },
-    };
-
-    schema.setFrom(SOURCE.CLIENT_STORAGE, item, data, {
-      establishObservables: true,
-    });
-
-    setTimeout(() => {
-      expect(item.brand).toBe('testbrand');
-      expect(item.price).toBe('9001€');
-      expect(item.seats.front).toBe(2);
-      expect(item.seats.deeper.test).toBe(123);
-      expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
-      expect(item.seats.deeper.evenDeeper.property2).toBe(true);
-      expect(item.onlyOneChild.oneToOne).toBe('over 9000');
-      expect(item.passengers.length).toBe(4);
-      expect(item.passengers[0]).toBe('item 123');
-      expect(item.passengers[1]).toBe('item 124');
-      expect(item.passengers[2]).toBe('item 125');
-      expect(item.passengers[3]).toBe('item 200');
-
-      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledTimes(1);
-      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledWith({
-        _pid: 9001,
-      });
-
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(4);
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        _pid: 123,
-      });
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        _pid: 124,
-      });
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        _pid: 125,
-      });
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        _pid: 200,
-      });
-
-      expect(item.autosaveSetHistory).toEqual([
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-        false,
-        'old autosave value',
-      ]);
-
-      const dispose = autorun(() => { // what does this even do??
-        let blub = '';
-        blub = item.brand;
-        blub = item.price;
-        blub = item.passengers;
-        blub = item.seats.deeper.evenDeeper.property1;
-        blub = item.seats.deeper.evenDeeper.property2;
-        return blub;
-      });
-      detach(dispose);
-      detach(done);
     });
   });
 
