@@ -745,16 +745,6 @@ describe('Schema', function () {
           expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
             pid: 1,
           });
-          expect(item.autosaveSetHistory).toEqual([
-            false,
-            'old autosave value',
-            false,
-            'old autosave value',
-            false,
-            'old autosave value',
-            false,
-            'old autosave value',
-          ]);
           done();
         });
     });
