@@ -75,16 +75,8 @@ export default (setup, {
 
     it('should be deleted from client storage', function () {
       return wrapBeforeAfter('deleteFromClientStorage', () =>
-<<<<<<< Updated upstream
         itemDone(this.item.delete(SOURCE.CLIENT_STORAGE))
         .then(() => this.item));
-=======
-        this.item.delete(SOURCE.CLIENT_STORAGE)
-          .then(() =>
-              // check if item is no longer in store
-             this.item),
-      );
->>>>>>> Stashed changes
     });
 
     it('should be deleted from transporter', function () {

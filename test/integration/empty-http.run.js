@@ -305,7 +305,6 @@ runSetup({
           mockGenerators.fetchItem();
         },
         test: (item) => {
-<<<<<<< Updated upstream
           expect(fetchMock.called('itemCreate')).toBe(true);
           expect(fetchMock.called('fetchItem')).toBe(false);
           expect(item.name).toBe('hans');
@@ -322,9 +321,6 @@ runSetup({
           expect(fetchMock.called('fetchItem')).toBe(true);
           expect(item.name).toBe('Franzi');
           expect(item.id).toBe('123');
-=======
-          // TODO check if the mock has been called
->>>>>>> Stashed changes
         },
       },
     },
