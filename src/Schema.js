@@ -1,5 +1,5 @@
 // @flow
-import { extendObservable, observable } from 'mobx';
+import { observable } from 'mobx';
 import _ from 'lodash';
 import Item from './Item';
 import { SOURCE, TARGET } from './constants';

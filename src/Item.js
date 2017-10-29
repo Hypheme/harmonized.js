@@ -1,4 +1,4 @@
-import { observable, autorun/* , computed*/ } from 'mobx';
+import { observable, autorun/* , computed */ } from 'mobx';
 import uuid from 'uuid/v4';
 import { STATE, SOURCE, PROMISE_STATE, TARGET } from './constants';
 import { genPromise } from './utils';

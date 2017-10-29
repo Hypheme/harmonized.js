@@ -847,7 +847,7 @@ describe('Schema', function () {
       },
     };
 
-    schema.setFrom(SOURCE.CLIENT_STORAGE, item, data).then((/* resolvedItem*/) => {
+    schema.setFrom(SOURCE.CLIENT_STORAGE, item, data).then((/* resolvedItem */) => {
       expect(item.brand).toBe('testbrand');
       expect(item.price).toBe('9001€');
       expect(item.seats.oneToOne).toBe('over 9000');

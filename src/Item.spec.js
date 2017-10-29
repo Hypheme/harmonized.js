@@ -1,7 +1,7 @@
 // import * as _ from 'lodash';
 import {
   // observable,
-  autorun,
+  // autorun,
 } from 'mobx';
 
 import Item from './Item';
@@ -9,7 +9,7 @@ import Item from './Item';
 import Transporter from '../test/unit/helpers/Test.Transporter';
 import ClientStorage from '../test/unit/helpers/Test.ClientStorage';
 
-import { /* ACTION,*/ STATE, SOURCE, TARGET, PROMISE_STATE } from './constants';
+import { /* ACTION, */ STATE, SOURCE, TARGET, PROMISE_STATE } from './constants';
 
 import { genPromise } from './utils';
 
