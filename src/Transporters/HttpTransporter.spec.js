@@ -87,10 +87,13 @@ describe('HttpTransporter', function () {
       },
     };
 
-    httpTransporter.fetch = jasmine.createSpy('fetch').and.returnValue(Promise.resolve([
-      { superid: 123 },
-      { superid: 126 },
-    ]));
+    httpTransporter.fetch = jasmine.createSpy('fetch').and.returnValue(Promise.resolve({
+      status: 'superstatus',
+      data: [
+        { superid: 123 },
+        { superid: 126 },
+      ],
+    }));
 
     httpTransporter.initialFetchStrategy([
       {
@@ -114,16 +117,19 @@ describe('HttpTransporter', function () {
       },
     ]).then((items) => {
       expect(items).toEqual({
-        items: [
-          { superid: 123 },
-          { superid: 126 },
-        ],
-        toDelete: [
-          {
-            superid: 124,
-            _transporterState: STATE.EXISTENT,
-          },
-        ],
+        status: 'superstatus',
+        data: {
+          items: [
+            { superid: 123 },
+            { superid: 126 },
+          ],
+          toDelete: [
+            {
+              superid: 124,
+              _transporterState: STATE.EXISTENT,
+            },
+          ],
+        },
       });
       done();
     });
@@ -335,7 +341,7 @@ describe('HttpTransporter', function () {
           }),
         });
 
-        expect(opts.headers.getAll('Content-Type')[0]).toBe('application/json');
+        expect(opts.headers.get('Content-Type')).toBe('application/json');
 
         return {
           hello: 'back',
@@ -355,18 +361,20 @@ describe('HttpTransporter', function () {
       };
 
       httpTransporter._request({
-        baseUrl: 'https://www.hyphe.me',
-        path: 'users',
-        payload: {
-          id: 123,
-          hello: 'server',
+        req: {
+          baseUrl: 'https://www.hyphe.me',
+          path: 'users',
+          payload: {
+            id: 123,
+            hello: 'server',
+          },
+          pathTemplate: ':basePath/:id',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
         },
-        templatePath: ':basePath/:id',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        mode: 'cors',
       }).then(({ res, req, data, status }) => {
         expect(data).toEqual({
           hello: 'back',
@@ -408,18 +416,20 @@ describe('HttpTransporter', function () {
       };
 
       httpTransporter._request({
-        baseUrl: 'https://www.hyphe.me',
-        path: 'users',
-        payload: {
-          id: 123,
-          hello: 'server',
+        req: {
+          baseUrl: 'https://www.hyphe.me',
+          path: 'users',
+          payload: {
+            id: 123,
+            hello: 'server',
+          },
+          pathTemplate: ':basePath/:id',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
         },
-        templatePath: ':basePath/:id',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        mode: 'cors',
       }).catch(({ res, req }) => {
         expect(res.status).toBe(500);
         expect(req).toEqual({
@@ -466,18 +476,20 @@ describe('HttpTransporter', function () {
 
       expect(httpTransporter.offlineChecker.setOffline).toHaveBeenCalledTimes(0);
       httpTransporter._request({
-        baseUrl: 'https://www.hyphe.me',
-        path: 'users',
-        payload: {
-          id: 123,
-          hello: 'server',
+        req: {
+          baseUrl: 'https://www.hyphe.me',
+          path: 'users',
+          payload: {
+            id: 123,
+            hello: 'server',
+          },
+          pathTemplate: ':basePath/:id',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
         },
-        templatePath: ':basePath/:id',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        mode: 'cors',
       }).then(({ error, req, data, status }) => {
         expect(data).toEqual({});
         expect(status).toBe(PROMISE_STATE.PENDING);

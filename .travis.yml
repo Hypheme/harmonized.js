@@ -16,6 +16,7 @@ install:
 - npm install
 script:
 - npm run test:travis
+- npm run integration:travis
 - npm run eslint
 after_success:
 - npm run codecov

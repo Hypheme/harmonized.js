@@ -25,7 +25,7 @@ export default class Store {
     this.transporter = transporter;
     this.transporter.setEnvironment({ store: this, role: ROLE.TRANSPORTER });
     this.clientStorage = clientStorage;
-    this.transporter.setEnvironment({ store: this, role: ROLE.CLIENT_STORAGE });
+    this.clientStorage.setEnvironment({ store: this, role: ROLE.CLIENT_STORAGE });
     this.schema = schema;
     this._options = options;
     this._Item = Item;
@@ -70,8 +70,8 @@ export default class Store {
   // ///////////////////
 
   create(values, source = SOURCE.STATE) {
-    const item = new this._Item({ store: this, autoSave: this._options.autoSave });
-    item.construct(values, { source });
+    // TODO block this methods while store hasnt loaded yet
+    const item = new this._Item({ store: this, autoSave: this._options.autoSave, values, source });
     this.items.push(item);
     return item;
   }
@@ -102,10 +102,12 @@ export default class Store {
     return this.items.filter(current => this._itemMatches(current, identifiers))
       .concat(this.incompleteItems.filter(current => this._itemMatches(current, identifiers)));
   }
+
   findOne(identifiers) {
     return this.items.find(current => this._itemMatches(current, identifiers))
      || this.incompleteItems.find(current => this._itemMatches(current, identifiers));
   }
+
   findOneOrFetch(key, source = SOURCE.TRANSPORTER) {
     const keyIdentifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
     if (!key[keyIdentifier]) {
@@ -147,9 +149,9 @@ export default class Store {
   }
 
   _createAndFetchFrom(values, source) {
-    const item = new this._Item({ store: this, autoSave: this._options.autoSave });
-    item.construct(values, { source });
-    item.fetch(source).then(() => {
+    const item = new this._Item({ store: this, autoSave: this._options.autoSave, values, source });
+    item.fetch(source);
+    item[source.ONCE_DONE]().then(() => {
       this.items.push(item);
       this.incompleteItems = this.incompleteItems.filter(incompleteItem => incompleteItem !== item);
     });
@@ -159,7 +161,12 @@ export default class Store {
 
   _createItems(rawItems, source) {
     return Promise.all(rawItems.map((rawItem) => {
-      const item = new this._Item({ store: this, autoSave: this._options.autoSave });
+      const item = new this._Item({
+        store: this,
+        autoSave: this._options.autoSave,
+        values: rawItem,
+        source,
+      });
       if (rawItem._transporterState === STATE.BEING_DELETED ||
         rawItem._transporterState === STATE.DELETED ||
         rawItem._transporterState === STATE.LOCKED) {
@@ -167,7 +174,7 @@ export default class Store {
       } else {
         this.items.push(item);
       }
-      return item.construct(rawItem, { source });
+      return item;
     }));
   }
 
@@ -193,8 +200,8 @@ export default class Store {
 
   _removeItems(itemKeys, source) {
     const identifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
-    return Promise.all(itemKeys.map(itemKey =>
-      this.findOne({ [identifier]: itemKey[identifier] }).remove(source)));
+    return itemKeys.map(itemKey =>
+      this.findOne({ [identifier]: itemKey[identifier] }).remove(source));
   }
 
   _workFetchResult(storeItems, fetchItems, count, source) {

@@ -5,6 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "codecov": "cat coverage/*/lcov.info | codecov",
+    "integration": "NODE_ENV=test ./node_modules/karma/bin/karma start integration.karma.conf.js --auto-watch --no-single-run",
+    "integration:travis": "NODE_ENV=test ./node_modules/karma/bin/karma start integration.karma.conf.js",
     "test:travis": "NODE_ENV=test ./node_modules/karma/bin/karma start",
     "test": "NODE_ENV=test ./node_modules/karma/bin/karma start --auto-watch --no-single-run",
     "eslint": "./node_modules/.bin/eslint src/**",
@@ -52,7 +54,7 @@
     "eslint-plugin-jsx-a11y": "3.0.2",
     "eslint-plugin-react": "^6.9.0",
     "express": "^4.13.4",
-    "fetch-mock": "^5.5.0",
+    "fetch-mock": "^5.12.1",
     "flow-bin": "^0.37.4",
     "jasmine-ajax": "^3.2.0",
     "jasmine-core": "^2.5.2",

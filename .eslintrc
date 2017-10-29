@@ -14,7 +14,7 @@
     "func-names": 0,
     "prefer-arrow-callback": 0,
     "default-case": 0,
-
+    "import/prefer-default-export": 0,
     "import/no-extraneous-dependencies": ["error", {"devDependencies": true, "optionalDependencies": false, "peerDependencies": true}],
     "class-methods-use-this": 0
   },

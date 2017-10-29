@@ -24,10 +24,13 @@ export default class EmptyTransporter extends BaseTransporter {
     return Promise.resolve([]);
   }
 
-  initialFetch(/* baseData*/) {
+  initialFetch(/* baseData */) {
     return Promise.resolve({
-      items: [],
-      toDelete: [],
+      status: PROMISE_STATE.RESOLVED,
+      data: {
+        items: [],
+        toDelete: [],
+      },
     });
   }
 
