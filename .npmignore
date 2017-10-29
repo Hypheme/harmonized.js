@@ -1,0 +1,12 @@
+src
+node_modules
+test
+examples
+.travis.yml
+codecov.yml
+*.conf.js
+yarn.lock
+.flowconfig
+.codeclimate.yml
+.eslintrc
+.babelrc
