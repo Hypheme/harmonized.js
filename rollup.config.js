@@ -28,10 +28,9 @@ export default {
     babel({
       exclude: 'node_modules/**',
       plugins: ['external-helpers'],
-      externalHelpers: true,
     }),
     gzip(),
     sourcemaps(),
-    ...(doMinify ? [uglify] : []),
+    ...(doMinify ? [uglify()] : []),
   ],
 };
