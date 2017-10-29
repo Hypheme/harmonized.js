@@ -1,19 +1,14 @@
 {
   "presets": [
-    "react",
-    "es2015",
+    "flow",
+    ["es2015", { "modules": false }],
     "stage-1"
-  ],
-  "plugins": [
-    "transform-flow-strip-types",
-    "es6-promise",
-    "transform-decorators-legacy"
   ],
   "env": {
     "test": {
       "plugins": [
         ["istanbul", { "exclude": ["src/**/*.spec.js", "test/**/*.js"] }]
-      ],
+      ]
     }
   }
 }
