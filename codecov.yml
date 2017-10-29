@@ -12,11 +12,6 @@ coverage:
         target: 98%
         threshold: 4
         branches:
-          - "!feature/*"
-      feature:
-        target: 98%
-        threshold: 4
-        branches:
           - "*/*"
       pr:
         target: 98%
