@@ -1,16 +1,8 @@
 {
   "presets": [
     "flow",
-    [
-      "es2015",
-      {
-        "modules": false
-      }
-    ],
+    ["es2015", { "modules": false }],
     "stage-1"
-  ],
-  "plugins": [
-    "external-helpers"
   ],
   "env": {
     "test": {

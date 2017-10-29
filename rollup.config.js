@@ -27,6 +27,8 @@ export default {
     nodeResolve(),
     babel({
       exclude: 'node_modules/**',
+      plugins: ['external-helpers'],
+      externalHelpers: true,
     }),
     gzip(),
     sourcemaps(),
