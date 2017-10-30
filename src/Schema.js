@@ -2,8 +2,6 @@
 import { observable } from 'mobx';
 import set from 'lodash/set';
 import get from 'lodash/get';
-import merge from 'lodash/merge';
-import pick from 'lodash/pick';
 import isPlainObject from 'lodash/isPlainObject';
 import Item from './Item';
 import { SOURCE, TARGET } from './constants';
@@ -175,15 +173,6 @@ class Schema {
       });
   }
 
-  _getPickedData(data: Object) {
-    const referenceKeys = Array.from(this.references.keys());
-    const references = pick(data, referenceKeys);
-
-    const filteredData = pick(data, [...this.observables, ...this.nonObservables]);
-
-    return { filteredData, references };
-  }
-
   _createReferenceOptions(
     definition: Object,
     path: string,
@@ -257,15 +246,19 @@ class Schema {
     return Promise.all(promises).then(() => item);
   }
 
-  _mergeFromSet({ item, data }: {item: Object, data: Object}) {
-    const oldAutosaveValue = item.autoSave;
-    item.autoSave = false;
+  _mergeByPaths({ item, data }: { item: Object, data: Object }) {
     [...this.observables, ...this.nonObservables].forEach((path) => {
       const dataValue = get(data, path);
       if (dataValue !== undefined) {
         set(item, path, dataValue);
       }
     });
+  }
+
+  _mergeFromSet({ item, data }: {item: Object, data: Object}) {
+    const oldAutosaveValue = item.autoSave;
+    item.autoSave = false;
+    this._mergeByPaths({ item, data });
     item.autoSave = oldAutosaveValue;
   }
 
@@ -326,10 +319,9 @@ class Schema {
   }
 
   _resolveFor(target: DataTarget, item: Item): Promise<*> {
-    const { references } = this._getPickedData(item);
     const unresolvedReferences = [];
     this.references.forEach((value, key) => {
-      const ref = get(references, key);
+      const ref = get(item, key);
       if (Array.isArray(ref)) {
         ref
           .filter(refItem => !refItem.isReadyFor(target))
@@ -344,7 +336,7 @@ class Schema {
 
     if (unresolvedReferences.length > 0) {
       return Promise.all(unresolvedReferences)
-        .then(() => this._resolveFor(target, references));
+        .then(() => this._resolveFor(target, item));
     }
 
     return Promise.resolve();
@@ -352,21 +344,23 @@ class Schema {
 
   getFor(target: DataTarget, item: Item, initialData: Object = {}): Promise<*> {
     const prefix = target === TARGET.CLIENT_STORAGE ? '_' : '';
-
+    const returnItem = { ...initialData };
     return this._resolveFor(target, item).then(() => {
-      const { references, filteredData } = this._getPickedData(item);
-      const convertedReferences = {};
+      this._mergeByPaths({
+        item: returnItem,
+        data: item,
+      });
       this.references.forEach((value, key) => {
-        const ref = get(references, key);
+        const ref = get(item, key);
         if (Array.isArray(ref)) {
           const refKeyArray = ref.map(refItem => refItem[value.items[`${prefix}key`]]);
-          set(convertedReferences, key, refKeyArray);
+          set(returnItem, key, refKeyArray);
         } else {
-          set(convertedReferences, key, ref[value[`${prefix}key`]]);
+          set(returnItem, key, ref[value[`${prefix}key`]]);
         }
       });
 
-      return merge({}, filteredData, initialData, convertedReferences);
+      return returnItem;
     });
   }
 
