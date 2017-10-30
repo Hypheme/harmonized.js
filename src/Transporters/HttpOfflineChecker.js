@@ -1,9 +1,8 @@
 // @flow
-import * as _ from 'lodash';
 import globToRegExp from 'glob-to-regexp';
 
 type ConstructorOptions = {
-  pattern: RegExp,
+  pattern: RegExp | string,
   checkUrl: string;
 };
 
@@ -14,8 +13,8 @@ export default class HttpOfflineChecker {
   urlPattern: RegExp;
   checkUrl: string;
   _isOffline: boolean;
-  _promise: ?Promise;
-  _checkTimeout: number;
+  _promise: ?Promise<*>;
+  _checkTimeout: number | void;
   _resolve: ?Function;
   _reject: ?Function;
 
@@ -27,7 +26,7 @@ export default class HttpOfflineChecker {
     this.checkUrl = checkUrl;
     if (pattern instanceof RegExp) {
       this.urlPattern = pattern;
-    } else if (_.isString(pattern)) {
+    } else if (typeof pattern === 'string') {
       this.urlPattern = globToRegExp(pattern);
     }
   }
@@ -36,11 +35,11 @@ export default class HttpOfflineChecker {
     return this.urlPattern.test(url);
   }
 
-  get isOffline() {
+  get isOffline(): boolean {
     return this._isOffline;
   }
 
-  setOffline(): Promise {
+  setOffline(): Promise<*> {
     this._isOffline = true;
     this._promise = this._promise || new Promise(this._checkOffline.bind(this));
     return this._promise;
@@ -83,7 +82,7 @@ export default class HttpOfflineChecker {
     }, pause);
   }
 
-  onceAvailable(): Promise {
+  onceAvailable(): Promise<*> {
     return this._promise || Promise.resolve();
   }
 }

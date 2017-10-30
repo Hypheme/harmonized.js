@@ -1,4 +1,4 @@
-import { observable, autorun/* , computed */ } from 'mobx';
+import { extendObservable, autorun } from 'mobx';
 import uuid from 'uuid/v4';
 import { STATE, SOURCE, PROMISE_STATE, TARGET } from './constants';
 import { genPromise } from './utils';
@@ -6,6 +6,11 @@ import { genPromise } from './utils';
 export default class Item {
 
   constructor({ store, autoSave, source = SOURCE.STATE, values = {} }) {
+    extendObservable(this, {
+      removed: false,
+      synced: true,
+      stored: true,
+    });
     this.autoSave = !(autoSave === false);
     this._store = store;
     this._createRunTimeId();
@@ -13,10 +18,6 @@ export default class Item {
     this._establishStatePromises();
     this._populateWithValues(values, source);
   }
-
-  @observable removed = false;
-  @observable synced = true;
-  @observable stored = true;
 
   // //////////////////
   // PUBLIC METHODS //

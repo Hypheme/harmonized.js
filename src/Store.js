@@ -1,5 +1,5 @@
 import {
-  observable,
+  extendObservable,
 } from 'mobx';
 
 import DefaultItem from './Item';
@@ -7,9 +7,6 @@ import EmptyTransporter from './Transporters/EmptyTransporter';
 import { ROLE, SOURCE, STATE, PROMISE_STATE } from './constants';
 
 export default class Store {
-
-  @observable items = [];
-  @observable loaded = false;
   incompleteItems = [];
 
   constructor({
@@ -29,6 +26,11 @@ export default class Store {
     this.schema = schema;
     this._options = options;
     this._Item = Item;
+
+    extendObservable(this, {
+      items: [],
+      loaded: false,
+    });
 
     this._isLoaded = {};
     this._isLoaded.promise = new Promise((resolve, reject) => {

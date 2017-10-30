@@ -1,6 +1,10 @@
 // @flow
 import { observable } from 'mobx';
-import _ from 'lodash';
+import set from 'lodash/set';
+import get from 'lodash/get';
+import merge from 'lodash/merge';
+import pick from 'lodash/pick';
+import isPlainObject from 'lodash/isPlainObject';
 import Item from './Item';
 import { SOURCE, TARGET } from './constants';
 
@@ -23,8 +27,7 @@ class Schema {
     this.observables = [];
     this.nonObservables = [];
     this.references = new Map();
-    this._definition = _.cloneDeep(definition);
-    Schema._normalizeDefinition(this._definition);
+    this._definition = Schema._buildNormalizedDefinition(definition);
 
     // Check for available primary key
     const properties = this._definition.properties;
@@ -65,7 +68,7 @@ class Schema {
 
   getObservables(item: Object) {
     const keys = this.observables.concat(Array.from(this.references.keys()));
-    return keys.map(key => _.get(item, key));
+    return keys.map(key => get(item, key));
   }
 
 
@@ -112,7 +115,7 @@ class Schema {
   }
 
   static createObservableItem(itemBranch: Object, definition: Object) {
-    if (!_.isPlainObject(definition.properties)) return;
+    if (!isPlainObject(definition.properties)) return;
 
     Object.keys(definition.properties)
       .filter(key => !Schema.isPrimaryKey(definition.properties[key]))
@@ -150,7 +153,7 @@ class Schema {
   }
 
   _createObservableKeyList(definition: Object, parentPath : string = '') {
-    if (!_.isPlainObject(definition.properties)) return;
+    if (!isPlainObject(definition.properties)) return;
 
     Object.keys(definition.properties)
       .filter(key => !Schema.isPrimaryKey(definition.properties[key]))
@@ -176,13 +179,13 @@ class Schema {
   }
 
   _getPickedData(data: Object) {
-    const observables = _.pick(data, this.observables);
-    const references = _.pick(data, Array.from(this.references.keys()));
-    const nonObservables = _.pick(data, this.nonObservables);
+    const observables = pick(data, this.observables);
+    const references = pick(data, Array.from(this.references.keys()));
+    const nonObservables = pick(data, this.nonObservables);
 
     // IDEA: Check if picking from concatinated array is cheaper
-    const allObservables = _.merge({}, observables, references);
-    const filteredData = _.merge({}, observables, nonObservables);
+    const allObservables = merge({}, observables, references);
+    const filteredData = merge({}, observables, nonObservables);
 
     return { observables, nonObservables, filteredData, allObservables, references };
   }
@@ -204,10 +207,10 @@ class Schema {
     if (lastDotIndex !== -1) {
       const parentPath = path.substr(0, lastDotIndex);
       refOptions.propertyKey = path.substr(lastDotIndex + 1);
-      refOptions.parentObj = _.get(item, parentPath);
+      refOptions.parentObj = get(item, parentPath);
       if (refOptions.parentObj === undefined) {
         refOptions.parentObj = {};
-        _.set(item, parentPath, refOptions.parentObj);
+        set(item, parentPath, refOptions.parentObj);
       }
     } else {
       refOptions.parentObj = item;
@@ -221,7 +224,7 @@ class Schema {
   _setForeignValues(item: Item, data: Object, prefix: string) {
     let promises:Array<Promise> = [];
     this.references.forEach((definition, path) => {
-      const thisValue = _.get(data, path);
+      const thisValue = get(data, path);
       if (!thisValue) return;
 
       const refOptions = this._createReferenceOptions(
@@ -263,7 +266,7 @@ class Schema {
   static _mergeFromSet({ item, filteredData }) {
     const oldAutosaveValue = item.autoSave;
     item.autoSave = false;
-    _.merge(item, filteredData);
+    merge(item, filteredData);
 
     item.autoSave = oldAutosaveValue;
   }
@@ -292,34 +295,35 @@ class Schema {
     });
   }
 
-  static _normalizeDefinition(definition: Object) {
-    if (!_.isPlainObject(definition.properties)) return;
-
-    const properties = definition.properties;
-    _.forEach(properties, (property, key) => {
-      if (!_.isPlainObject(property)) {
-        properties[key] = {
-          type: property,
-        };
-        return;
-      }
-
-      switch (property.type) {
-        case Array:
-          Schema._transformArrayType(property);
-          break;
-        case Object:
-          Schema._normalizeDefinition(property);
-          break;
-      }
-    });
+  static _normalizeProp(prop: any) {
+    return isPlainObject(prop) ? this._buildNormalizedDefinition(prop) :
+      this._buildNormalizedDefinition({ type: prop });
   }
 
-  static _transformArrayType(property) {
-    if (!_.isPlainObject(property.items)) {
-      property.items = {
-        type: property.items,
-      };
+  static _buildNormalizedProperties(props: Object) {
+    return Object.keys(props).reduce((propsObj, key) => {
+      const prop = props[key];
+      propsObj[key] = this._normalizeProp(prop);
+      return propsObj;
+    }, {});
+  }
+
+  static _buildNormalizedDefinition(prop: Object) {
+    switch (prop.type) {
+      case Object:
+      case undefined:
+        return {
+          ...prop,
+          properties: this._buildNormalizedProperties(prop.properties || {}),
+        };
+
+      case Array:
+        return {
+          ...prop,
+          items: this._buildNormalizedDefinition(this._normalizeProp(prop.items || {})),
+        };
+      default:
+        return { ...prop };
     }
   }
 
@@ -327,8 +331,8 @@ class Schema {
     const { references } = this._getPickedData(item);
     const unresolvedReferences = [];
     this.references.forEach((value, key) => {
-      const ref = _.get(references, key);
-      if (_.isArray(ref)) {
+      const ref = get(references, key);
+      if (Array.isArray(ref)) {
         ref
           .filter(refItem => !refItem.isReadyFor(target))
           .reduce((referenceList, refItem) => {
@@ -355,16 +359,16 @@ class Schema {
       const { references, filteredData } = this._getPickedData(item);
       const convertedReferences = {};
       this.references.forEach((value, key) => {
-        const ref = _.get(references, key);
-        if (_.isArray(ref)) {
+        const ref = get(references, key);
+        if (Array.isArray(ref)) {
           const refKeyArray = ref.map(refItem => refItem[value.items[`${prefix}key`]]);
-          _.set(convertedReferences, key, refKeyArray);
+          set(convertedReferences, key, refKeyArray);
         } else {
-          _.set(convertedReferences, key, ref[value[`${prefix}key`]]);
+          set(convertedReferences, key, ref[value[`${prefix}key`]]);
         }
       });
 
-      return _.merge({}, filteredData, initialData, convertedReferences);
+      return merge({}, filteredData, initialData, convertedReferences);
     });
   }
 

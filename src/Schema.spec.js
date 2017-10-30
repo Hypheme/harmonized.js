@@ -80,7 +80,6 @@ describe('Schema', function () {
     };
 
     const schema = new Schema(inputDefinition);
-
     expect(schema._definition).not.toBe(inputDefinition);
     expect(schema._definition).toEqual({
       properties: {
@@ -104,6 +103,7 @@ describe('Schema', function () {
         },
         empty: {
           type: Object,
+          properties: {},
         },
         oneToOne: {
           type: NumberKey,

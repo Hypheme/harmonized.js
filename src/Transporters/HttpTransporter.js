@@ -1,5 +1,5 @@
 // @flow
-import { differenceWith } from 'lodash/fp';
+import differenceWith from 'lodash/differenceWith';
 import Transporter from './Transporter';
 import HttpOfflineChecker from './HttpOfflineChecker';
 import { STATE, PROMISE_STATE } from '../constants';
@@ -123,8 +123,10 @@ export default class HttpTransporter extends Transporter {
     const key = this._store.schema.getKeyIdentifierFor(this._role.AS_TARGET);
     return this.fetch().then((items) => {
       const toDelete = differenceWith(
-        (val: Object, otherVal: Object) => val[key] === otherVal[key],
-      )(inputArray)(items.data)
+        inputArray, 
+        items.data, 
+        (val: Object, otherVal: Object) => val[key] === otherVal[key]
+      )
         .filter(item => item._transporterState !== STATE.BEING_CREATED &&
           item._transporterState !== STATE.BEING_DELETED);
       return {
