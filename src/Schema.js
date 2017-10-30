@@ -93,14 +93,12 @@ class Schema {
     }
   }
 
-  _setFromState(item: Object, data: Object): Promise {
-    const { allObservables, filteredData } = this._getPickedData(data);
-
-    Schema._mergeFromSet({ item, filteredData }, allObservables);
+  _setFromState(item: Object, data: Object): Promise<*> {
+    this._mergeFromSet({ item, data });
     return Promise.resolve(item);
   }
 
-  setFrom(source: DataSource, item: Item, data: Object): Promise {
+  setFrom(source: DataSource, item: Item, data: Object): Promise<*> {
     switch (source) {
       case SOURCE.TRANSPORTER:
         return this._setFromOutside('', item, data);
@@ -178,15 +176,12 @@ class Schema {
   }
 
   _getPickedData(data: Object) {
-    const observables = pick(data, this.observables);
-    const references = pick(data, Array.from(this.references.keys()));
-    const nonObservables = pick(data, this.nonObservables);
+    const referenceKeys = Array.from(this.references.keys());
+    const references = pick(data, referenceKeys);
 
-    // IDEA: Check if picking from concatinated array is cheaper
-    const allObservables = merge({}, observables, references);
-    const filteredData = merge({}, observables, nonObservables);
+    const filteredData = pick(data, [...this.observables, ...this.nonObservables]);
 
-    return { observables, nonObservables, filteredData, allObservables, references };
+    return { filteredData, references };
   }
 
   _createReferenceOptions(
@@ -221,7 +216,7 @@ class Schema {
   }
 
   _setForeignValues(item: Item, data: Object, prefix: string) {
-    let promises:Array<Promise> = [];
+    let promises:Array<Promise<*>> = [];
     this.references.forEach((definition, path) => {
       const thisValue = get(data, path);
       if (!thisValue) return;
@@ -255,18 +250,22 @@ class Schema {
     keyPrefix: string,
     item: Item,
     data: Object,
-  ): Promise {
-    const { observables, filteredData } = this._getPickedData(data);
-    Schema._mergeFromSet({ item, filteredData }, observables);
+  ): Promise<*> {
+    this._mergeFromSet({ item, data });
+
     const promises = this._setForeignValues(item, data, keyPrefix);
     return Promise.all(promises).then(() => item);
   }
 
-  static _mergeFromSet({ item, filteredData }) {
+  _mergeFromSet({ item, data }: {item: Object, data: Object}) {
     const oldAutosaveValue = item.autoSave;
     item.autoSave = false;
-    merge(item, filteredData);
-
+    [...this.observables, ...this.nonObservables].forEach((path) => {
+      const dataValue = get(data, path);
+      if (dataValue !== undefined) {
+        set(item, path, dataValue);
+      }
+    });
     item.autoSave = oldAutosaveValue;
   }
 
@@ -275,7 +274,7 @@ class Schema {
     foreignKey: string|Number,
     item: Item,
     index: ?Number,
-  ): Promise {
+  ): Promise<*> {
     const ref = (definition.items) ? definition.items.ref : definition.ref;
     return ref.onceLoaded().then(() => {
       const resolver = {};
@@ -326,7 +325,7 @@ class Schema {
     }
   }
 
-  _resolveFor(target: DataTarget, item: Item): Promise {
+  _resolveFor(target: DataTarget, item: Item): Promise<*> {
     const { references } = this._getPickedData(item);
     const unresolvedReferences = [];
     this.references.forEach((value, key) => {
@@ -351,7 +350,7 @@ class Schema {
     return Promise.resolve();
   }
 
-  getFor(target: DataTarget, item: Item, initialData: Object = {}): Promise {
+  getFor(target: DataTarget, item: Item, initialData: Object = {}): Promise<*> {
     const prefix = target === TARGET.CLIENT_STORAGE ? '_' : '';
 
     return this._resolveFor(target, item).then(() => {
