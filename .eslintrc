@@ -1,7 +1,6 @@
 {
-  "extends": ["airbnb"],
+  "extends": ["airbnb-base"],
   "ecmaFeatures": {
-    "jsx": true,
     "modules": true
   },
   "rules": {
@@ -24,10 +23,7 @@
     "es6": true
   },
   "parser": "babel-eslint",
-  "plugins": [
-    "react"
-  ],
-   "globals": {
+  "globals": {
     "afterEach": false,
     "beforeEach": false,
     "describe": false,

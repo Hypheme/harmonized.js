@@ -402,7 +402,7 @@ describe('Schema', function () {
         switch (autorunNav) {
           case 1:
             autorunNav = 2;
-          // we detach our first change as it would be recognized otherwise
+            // we detach our first change as it would be recognized otherwise
             detach(() => { testItem.brand = 'OtherTestCar'; });
             break;
           case 2:

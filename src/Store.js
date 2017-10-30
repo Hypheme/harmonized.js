@@ -39,32 +39,32 @@ export default class Store {
     });
 
     this.clientStorage.initialFetch([])
-    .then((csData) => {
-      if (csData.status === PROMISE_STATE.RESOLVED) {
-        csData.data.items.forEach((item) => {
-          item._transporterState = this._castItemTransporterState(item._transporterState);
-        });
-        this._createItems(csData.data.items, SOURCE.CLIENT_STORAGE);
-        return this.transporter.initialFetch(csData.data.items);
-      }
-      // for now we just go with a init error
-      throw new Error('cannot build store if local storage is not available');
-    })
-    .then((tData) => {
-      if (tData.status === PROMISE_STATE.RESOLVED) {
-        tData.data.items.forEach((item) => {
-          item._transporterState = this._castItemTransporterState(item._transporterState);
-        });
-        this._createItems(tData.data.items, SOURCE.TRANSPORTER);
-        this._removeItems(tData.data.toDelete, SOURCE.TRANSPORTER);
-      }
-      // if we can't load from transporter we don't care as we get the items
-      // from local storage anyway
-      // NOTE: this part is likly to change, but we want to get the first alpha release outside
-      // to get a bit of a feeling what is best right here.
-    })
-    .then(() => this._finishLoading())
-    .catch(err => this._finishLoading(err));
+      .then((csData) => {
+        if (csData.status === PROMISE_STATE.RESOLVED) {
+          csData.data.items.forEach((item) => {
+            item._transporterState = this._castItemTransporterState(item._transporterState);
+          });
+          this._createItems(csData.data.items, SOURCE.CLIENT_STORAGE);
+          return this.transporter.initialFetch(csData.data.items);
+        }
+        // for now we just go with a init error
+        throw new Error('cannot build store if local storage is not available');
+      })
+      .then((tData) => {
+        if (tData.status === PROMISE_STATE.RESOLVED) {
+          tData.data.items.forEach((item) => {
+            item._transporterState = this._castItemTransporterState(item._transporterState);
+          });
+          this._createItems(tData.data.items, SOURCE.TRANSPORTER);
+          this._removeItems(tData.data.toDelete, SOURCE.TRANSPORTER);
+        }
+        // if we can't load from transporter we don't care as we get the items
+        // from local storage anyway
+        // NOTE: this part is likly to change, but we want to get the first alpha release outside
+        // to get a bit of a feeling what is best right here.
+      })
+      .then(() => this._finishLoading())
+      .catch(err => this._finishLoading(err));
   }
 
   // ///////////////////
@@ -91,13 +91,13 @@ export default class Store {
 
   fetch(source = SOURCE.TRANSPORTER) {
     return this[source.NAME].fetchAll()
-    .then((result) => {
-      if (result.status === PROMISE_STATE.RESOLVED) {
-        this._workFetchResult(this.items, result.data, 0, source);
-      } else {
-        throw new Error(`${source.NAME} is currently not available`);
-      }
-    });
+      .then((result) => {
+        if (result.status === PROMISE_STATE.RESOLVED) {
+          this._workFetchResult(this.items, result.data, 0, source);
+        } else {
+          throw new Error(`${source.NAME} is currently not available`);
+        }
+      });
   } // maybe? fetches again from the given SOURCE, defaults to transporter
 
   find(identifiers) {

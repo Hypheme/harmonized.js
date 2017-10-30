@@ -87,26 +87,27 @@ describe('Store', function () {
     this.schema = new SchemaStub();
     spyOn(OriginalEmptyTransporter.prototype, 'setEnvironment');
     spyOn(OriginalEmptyTransporter.prototype, 'initialFetch')
-    .and.returnValue(Promise.resolve({
-      status: PROMISE_STATE.RESOLVED,
-      data: { items: [], toDelete: [] },
-    }));
+      .and.returnValue(Promise.resolve({
+        status: PROMISE_STATE.RESOLVED,
+        data: { items: [], toDelete: [] },
+      }));
   });
 
   describe('constructor', function () {
     it('should create a store and populate with fetched data', function () {
       this.clientStorage = new ClientStorageStub();
       spyOn(this.clientStorage, 'initialFetch')
-      .and.returnValue(Promise.resolve({
-        status: PROMISE_STATE.RESOLVED,
-        data: {
-          items: [
-          { _id: '1', _transporterState: 'BEING_DELETED' },
-          { _id: '2', _transporterState: 'BEING_UPDATED' },
-          { _id: '3', _transporterState: 'EXISTENT' },
-          { _id: '4', _transporterState: 'BEING_CREATED' }],
-        },
-      }));
+        .and.returnValue(Promise.resolve({
+          status: PROMISE_STATE.RESOLVED,
+          data: {
+            items: [
+              { _id: '1', _transporterState: 'BEING_DELETED' },
+              { _id: '2', _transporterState: 'BEING_UPDATED' },
+              { _id: '3', _transporterState: 'EXISTENT' },
+              { _id: '4', _transporterState: 'BEING_CREATED' },
+            ],
+          },
+        }));
       this.transporter = new TransporterStub();
       spyOn(this.transporter, 'initialFetch')
         .and.returnValue(Promise.resolve({
@@ -170,24 +171,23 @@ describe('Store', function () {
     it('should reject if client storage is not available', function () {
       this.clientStorage = new ClientStorageStub();
       spyOn(this.clientStorage, 'initialFetch')
-      .and.returnValue(Promise.resolve({
-        status: PROMISE_STATE.PENDING,
-      }));
+        .and.returnValue(Promise.resolve({
+          status: PROMISE_STATE.PENDING,
+        }));
       const store = new Store({
         clientStorage: this.clientStorage,
         schema: this.schema,
       });
       return store.onceLoaded()
-        .catch(err => expect(err)
-        .toEqual(new Error('cannot build store if local storage is not available')));
+        .catch(err => expect(err).toEqual(new Error('cannot build store if local storage is not available')));
     });
     // NOTE: this is to change
     it('should ignore if transporter is not available', function () {
       this.transporter = new TransporterStub();
       spyOn(this.transporter, 'initialFetch')
-      .and.returnValue(Promise.resolve({
-        status: PROMISE_STATE.PENDING,
-      }));
+        .and.returnValue(Promise.resolve({
+          status: PROMISE_STATE.PENDING,
+        }));
       const store = new Store({
         transporter: this.transporter,
         schema: this.schema,
@@ -205,55 +205,55 @@ describe('Store', function () {
         // clientStorage: new ClientStorageStub(),
       });
       return this.store.onceLoaded()
-      .then(() => {
-        const store = this.store;
-        function getItem(values) {
-          const item = new Item({ store, values });
-          item.constructorArg = undefined;
-          return item;
-        }
-        this.getItem = getItem;
-        this.storeData = [];
-        this.storeData.push(getItem({
-          id: '1',
-          name: 'hans',
-          lastname: 'wurst',
-        }));
-        this.storeData.push(getItem({
-          id: '2',
-          name: 'hans',
-          lastname: 'pan',
-        }));
-        this.storeData.push(getItem({
-          id: '3',
-          name: 'peter',
-          lastname: 'wurst',
-        }));
-        this.storeData.push(getItem({
-          id: '4',
-          name: 'peter',
-          lastname: 'pan',
-        }));
-        this.storeData.push(getItem({
-          id: '5',
-          name: 'hans',
-          lastname: 'wurst',
-        }));
-        this.storeData.push(getItem({
-          id: '6',
-          name: 'hans',
-          lastname: 'pan',
-        }));
-        this.storeData.push(getItem({
-          name: 'peter',
-          lastname: 'wurst',
-        }));
-        this.storeData.push(getItem({
-          name: 'peter',
-          lastname: 'pan',
-        }));
-        this.storeData.forEach(item => this.store.items.push(item));
-      });
+        .then(() => {
+          const store = this.store;
+          function getItem(values) {
+            const item = new Item({ store, values });
+            item.constructorArg = undefined;
+            return item;
+          }
+          this.getItem = getItem;
+          this.storeData = [];
+          this.storeData.push(getItem({
+            id: '1',
+            name: 'hans',
+            lastname: 'wurst',
+          }));
+          this.storeData.push(getItem({
+            id: '2',
+            name: 'hans',
+            lastname: 'pan',
+          }));
+          this.storeData.push(getItem({
+            id: '3',
+            name: 'peter',
+            lastname: 'wurst',
+          }));
+          this.storeData.push(getItem({
+            id: '4',
+            name: 'peter',
+            lastname: 'pan',
+          }));
+          this.storeData.push(getItem({
+            id: '5',
+            name: 'hans',
+            lastname: 'wurst',
+          }));
+          this.storeData.push(getItem({
+            id: '6',
+            name: 'hans',
+            lastname: 'pan',
+          }));
+          this.storeData.push(getItem({
+            name: 'peter',
+            lastname: 'wurst',
+          }));
+          this.storeData.push(getItem({
+            name: 'peter',
+            lastname: 'pan',
+          }));
+          this.storeData.forEach(item => this.store.items.push(item));
+        });
     });
 
     describe('isLoaded', function () {
@@ -270,13 +270,13 @@ describe('Store', function () {
     describe('onceLoaded', function () {
       beforeEach(function () {
         OriginalEmptyTransporter.prototype.initialFetch
-        .and.returnValue(new Promise((resolve, reject) => {
-          this.resolve = () => resolve({
-            status: PROMISE_STATE.RESOLVED,
-            data: { items: [], toDelete: [] },
-          });
-          this.reject = () => reject(new Error('loading err'));
-        }));
+          .and.returnValue(new Promise((resolve, reject) => {
+            this.resolve = () => resolve({
+              status: PROMISE_STATE.RESOLVED,
+              data: { items: [], toDelete: [] },
+            });
+            this.reject = () => reject(new Error('loading err'));
+          }));
         this.store = new Store({
           schema: this.schema,
         });
@@ -338,29 +338,29 @@ describe('Store', function () {
       describe('find', function () {
         it('should find all items that matches all filters', function () {
           expect(this.store.find({ name: 'hans', lastname: 'wurst' }))
-          .toEqual([
-            this.storeData[0], this.storeData[4],
-            this.incompleteStoreData[0], this.incompleteStoreData[4],
-          ]);
+            .toEqual([
+              this.storeData[0], this.storeData[4],
+              this.incompleteStoreData[0], this.incompleteStoreData[4],
+            ]);
         });
         it('should return an empty array if no item matches', function () {
           expect(this.store.find({ id: '10' }))
-          .toEqual([]);
+            .toEqual([]);
         });
       });
 
       describe('findOne', function () {
         it('should find the first item that machtes all filters', function () {
           expect(this.store.findOne({ name: 'peter', lastname: 'pan' }))
-          .toEqual(this.storeData[3]);
+            .toEqual(this.storeData[3]);
         });
         it('should return undefined if no item matches', function () {
           expect(this.store.findOne({ id: '10' }))
-          .toBe(undefined);
+            .toBe(undefined);
         });
         it('should return item from incompleteItems if nothing matches in store.items', function () {
           expect(this.store.findOne({ id: '11' }))
-          .toBe(this.incompleteStoreData[0]);
+            .toBe(this.incompleteStoreData[0]);
         });
       });
 

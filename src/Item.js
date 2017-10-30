@@ -4,7 +4,6 @@ import { STATE, SOURCE, PROMISE_STATE, TARGET } from './constants';
 import { genPromise } from './utils';
 
 export default class Item {
-
   constructor({ store, autoSave, source = SOURCE.STATE, values = {} }) {
     extendObservable(this, {
       removed: false,
@@ -41,10 +40,10 @@ export default class Item {
 
   update(values, source = SOURCE.STATE) {
     this._synchronize(
-        source === SOURCE.CLIENT_STORAGE ? STATE.EXISTENT : STATE.BEING_UPDATED,
-        source === SOURCE.TRANSPORTER ? STATE.EXISTENT : STATE.BEING_UPDATED,
-        source,
-        values,
+      source === SOURCE.CLIENT_STORAGE ? STATE.EXISTENT : STATE.BEING_UPDATED,
+      source === SOURCE.TRANSPORTER ? STATE.EXISTENT : STATE.BEING_UPDATED,
+      source,
+      values,
     );
     return this;
   }
@@ -269,7 +268,7 @@ export default class Item {
     }
     if (allowedNewStates.reduce((isAllowed, allowedNewState) =>
       isAllowed || (allowedNewState === newState), false) === false) {
-        // if the new state is not in the allowed we don't change the next state
+      // if the new state is not in the allowed we don't change the next state
       return next;
     }
     return this._mergeNextState(next, newState);
@@ -289,7 +288,7 @@ export default class Item {
     if (response.status === PROMISE_STATE.PENDING) {
       return this._waitForTargetToComeBackOnline(target);
     }
-      // the item was deleted by another client
+    // the item was deleted by another client
     if (response.status === PROMISE_STATE.NOT_FOUND && workingState !== STATE.BEING_DELETED) {
       return this._itemWasRemovedByTarget(target);
     }
@@ -413,7 +412,7 @@ export default class Item {
       case STATE.BEING_CREATED:
       case STATE.BEING_UPDATED:
         return this._store.schema.setFrom(this._source, this, this._values)
-        .then(() => this[target.GET_FOR](target, itemKeys));
+          .then(() => this[target.GET_FOR](target, itemKeys));
       default:
         return Promise.reject(new Error(`unkown working state ${workingState}`));
     }
@@ -522,8 +521,8 @@ export default class Item {
       this._synchronizeFor(TARGET.TRANSPORTER, transporterState),
       this._synchronizeFor(TARGET.CLIENT_STORAGE, clientStorageState),
     ])
-    .then(() => { this._values = undefined; })
-    .catch(err => this._lock(null, err));
+      .then(() => { this._values = undefined; })
+      .catch(err => this._lock(null, err));
   }
 
   _synchronizeFor(target, state) {
@@ -550,21 +549,21 @@ export default class Item {
   _triggerSync(target) {
     const workingState = this[target.STATES].next;
     return this._preparePayload(workingState, target)
-    .then((payload) => {
-      if (!this[target.STATES].next) {
-        // if next is no longer set due to merging create and delete action together
-        return Promise.resolve();
-      }
-      if (workingState !== this[target.STATES].next) {
-        // redo everything if sth has changed in the meantime
-        return this._triggerSync(target);
-      }
-      this[target.STATES].inProgress = workingState;
-      this[target.STATES].next = undefined;
-      // this is the actual call to the outside world
-      return this._store[target.PROCESSOR][workingState.ACTION](payload)
-        .then(result => this._handleTargetResponse(workingState, target, result));
-    });
+      .then((payload) => {
+        if (!this[target.STATES].next) {
+          // if next is no longer set due to merging create and delete action together
+          return Promise.resolve();
+        }
+        if (workingState !== this[target.STATES].next) {
+          // redo everything if sth has changed in the meantime
+          return this._triggerSync(target);
+        }
+        this[target.STATES].inProgress = workingState;
+        this[target.STATES].next = undefined;
+        // this is the actual call to the outside world
+        return this._store[target.PROCESSOR][workingState.ACTION](payload)
+          .then(result => this._handleTargetResponse(workingState, target, result));
+      });
   }
 
   _waitForTargetToComeBackOnline(target) {
@@ -575,11 +574,11 @@ export default class Item {
     );
     this[target.STATES].inProgress = undefined;
     return this._store[target.PROCESSOR].onceAvailable()
-    .then(() => {
-      if (this[target.STATES].next) { // need that bc create + delete response in undefined
-        return this._triggerSync(target);
-      }
-      return Promise.resolve();
-    });
+      .then(() => {
+        if (this[target.STATES].next) { // need that bc create + delete response in undefined
+          return this._triggerSync(target);
+        }
+        return Promise.resolve();
+      });
   }
 }

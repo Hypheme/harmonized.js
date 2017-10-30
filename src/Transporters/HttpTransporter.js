@@ -96,27 +96,27 @@ export default class HttpTransporter extends Transporter {
       req.body = JSON.stringify(payload);
     }
     return fetch(url, req)
-    .then((res) => {
-      if (res.ok) {
-        return res.json()
-          .catch(() => {})
-          .then(data => ({
-            res,
-            req,
-            data,
-            status: PROMISE_STATE.RESOLVED,
-          }));
-      }
-      return Promise.reject({ res, req });
-    }, (error) => {
-      this.offlineChecker.setOffline();
-      return Promise.resolve({
-        error,
-        req,
-        data: {},
-        status: PROMISE_STATE.PENDING,
+      .then((res) => {
+        if (res.ok) {
+          return res.json()
+            .catch(() => {})
+            .then(data => ({
+              res,
+              req,
+              data,
+              status: PROMISE_STATE.RESOLVED,
+            }));
+        }
+        return Promise.reject({ res, req });
+      }, (error) => {
+        this.offlineChecker.setOffline();
+        return Promise.resolve({
+          error,
+          req,
+          data: {},
+          status: PROMISE_STATE.PENDING,
+        });
       });
-    });
   }
 
   initialFetchStrategy(inputArray: Object[]) {

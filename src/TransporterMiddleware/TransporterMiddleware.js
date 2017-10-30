@@ -6,7 +6,6 @@ export default class TransporterMiddleware {
   // send(req, item) {}
   // receive(res, req, item) {}
   // transmissionError(res?, req, item) {}
-
   get name() {
     return this.constructor.uniqueName;
   }
@@ -33,5 +32,4 @@ export default class TransporterMiddleware {
 
     return newTransportMiddleware;
   }
-
 }
