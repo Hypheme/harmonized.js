@@ -1,4 +1,7 @@
 import ClientStorages from './ClientStorages';
+import HttpTransporter from './Transporters/HttpTransporter';
+import HttpOfflineChecker from './Transporters/HttpOfflineChecker';
+import EmptyTransporter from './Transporters/EmptyTransporter';
 import Transporters from './Transporters';
 import Item from './Item';
 import Store from './Store';
@@ -15,4 +18,7 @@ export {
   Schema,
   Store,
   Transporters,
+  HttpTransporter,
+  EmptyTransporter,
+  HttpOfflineChecker,
 };
