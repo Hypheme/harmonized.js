@@ -71,7 +71,6 @@ class Schema {
     return keys.map(key => get(item, key));
   }
 
-
   lock() {
     this._isLocked = true;
   }
