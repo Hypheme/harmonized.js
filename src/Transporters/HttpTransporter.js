@@ -3,7 +3,7 @@ import differenceWith from 'lodash/differenceWith';
 import Transporter from './Transporter';
 import HttpOfflineChecker from './HttpOfflineChecker';
 import { STATE, PROMISE_STATE } from '../constants';
-import { TransactionItem } from '../TransactionItem';
+import TransactionItem from '../TransactionItem';
 
 export default class HttpTransporter extends Transporter {
   static HttpOfflineChecker: HttpOfflineChecker = HttpOfflineChecker;

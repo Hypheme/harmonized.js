@@ -21,6 +21,15 @@ export default {
     'glob-to-regexp',
     'uuid/v4',
   ],
+  globals: {
+    mobx: 'mobx',
+    'uuid/v4': 'uuid',
+    'lodash/set': 'set',
+    'lodash/get': 'get',
+    'lodash/differenceWith': 'differenceWith',
+    'lodash/isPlainObject': 'isPlainObject',
+    'glob-to-regexp': 'globToRegexp',
+  },
   output: [{
     file: `lib/harmonized${suffix}.js`,
     format: 'cjs',
