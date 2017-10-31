@@ -1,5 +1,4 @@
 // @flow
-import _ from 'lodash';
 
 export default class TransporterMiddleware {
   // init() {}
@@ -7,7 +6,6 @@ export default class TransporterMiddleware {
   // send(req, item) {}
   // receive(res, req, item) {}
   // transmissionError(res?, req, item) {}
-
   get name() {
     return this.constructor.uniqueName;
   }
@@ -25,12 +23,13 @@ export default class TransporterMiddleware {
     const newTransportMiddleware: Object = new this(...args[0]);
     const filteredMethods = args.slice(1);
     if (filteredMethods.length > 0) {
-      _.difference(this.methods, filteredMethods).forEach((method) => {
-        newTransportMiddleware[method] = undefined;
-      });
+      this.methods
+        .filter(method => filteredMethods.indexOf(method) === -1)
+        .forEach((method) => {
+          newTransportMiddleware[method] = undefined;
+        });
     }
 
     return newTransportMiddleware;
   }
-
 }

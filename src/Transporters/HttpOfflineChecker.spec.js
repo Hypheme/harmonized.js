@@ -1,4 +1,3 @@
-import * as _ from 'lodash';
 import fetchMock from 'fetch-mock';
 import HttpOfflineChecker from './HttpOfflineChecker';
 
@@ -76,7 +75,7 @@ describe('HttpOfflineChecker', function () {
         });
         expect(this.offlineChecker._resolve instanceof Function).toBe(true);
         expect(this.offlineChecker._reject instanceof Function).toBe(true);
-        expect(_.isNumber(this.offlineChecker._checkTimeout)).toBe(true);
+        expect(Number.isInteger(this.offlineChecker._checkTimeout)).toBe(true);
         expect(this.offlineChecker.isOffline).toBe(true);
 
         switch (statusReqCount) {

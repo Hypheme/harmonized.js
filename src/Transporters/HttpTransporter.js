@@ -1,9 +1,9 @@
 // @flow
-import { differenceWith } from 'lodash/fp';
+import differenceWith from 'lodash/differenceWith';
 import Transporter from './Transporter';
 import HttpOfflineChecker from './HttpOfflineChecker';
 import { STATE, PROMISE_STATE } from '../constants';
-import { TransactionItem } from '../TransactionItem';
+import TransactionItem from '../TransactionItem';
 
 export default class HttpTransporter extends Transporter {
   static HttpOfflineChecker: HttpOfflineChecker = HttpOfflineChecker;
@@ -96,35 +96,37 @@ export default class HttpTransporter extends Transporter {
       req.body = JSON.stringify(payload);
     }
     return fetch(url, req)
-    .then((res) => {
-      if (res.ok) {
-        return res.json()
-          .catch(() => {})
-          .then(data => ({
-            res,
-            req,
-            data,
-            status: PROMISE_STATE.RESOLVED,
-          }));
-      }
-      return Promise.reject({ res, req });
-    }, (error) => {
-      this.offlineChecker.setOffline();
-      return Promise.resolve({
-        error,
-        req,
-        data: {},
-        status: PROMISE_STATE.PENDING,
+      .then((res) => {
+        if (res.ok) {
+          return res.json()
+            .catch(() => {})
+            .then(data => ({
+              res,
+              req,
+              data,
+              status: PROMISE_STATE.RESOLVED,
+            }));
+        }
+        return Promise.reject({ res, req });
+      }, (error) => {
+        this.offlineChecker.setOffline();
+        return Promise.resolve({
+          error,
+          req,
+          data: {},
+          status: PROMISE_STATE.PENDING,
+        });
       });
-    });
   }
 
   initialFetchStrategy(inputArray: Object[]) {
     const key = this._store.schema.getKeyIdentifierFor(this._role.AS_TARGET);
     return this.fetch().then((items) => {
       const toDelete = differenceWith(
+        inputArray,
+        items.data,
         (val: Object, otherVal: Object) => val[key] === otherVal[key],
-      )(inputArray)(items.data)
+      )
         .filter(item => item._transporterState !== STATE.BEING_CREATED &&
           item._transporterState !== STATE.BEING_DELETED);
       return {

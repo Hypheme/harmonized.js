@@ -1,9 +1,3 @@
-// import * as _ from 'lodash';
-import {
-  // observable,
-  // autorun,
-} from 'mobx';
-
 import Item from './Item';
 // import Store from '../test/unit/helpers/Test.Store';
 import Transporter from '../test/unit/helpers/Test.Transporter';
@@ -224,10 +218,10 @@ describe('Item', function () {
           undefined, undefined, SOURCE.TRANSPORTER, input,
         );
       }).then(() => myItem.onceReadyFor(TARGET.TRANSPORTER))
-      .then(() => {
-        myItem._isReady.clientStorage.resolve();
-        return myItem.onceReadyFor(TARGET.CLIENT_STORAGE);
-      });
+        .then(() => {
+          myItem._isReady.clientStorage.resolve();
+          return myItem.onceReadyFor(TARGET.CLIENT_STORAGE);
+        });
     });
   });
 
@@ -373,7 +367,7 @@ describe('Item', function () {
           checkDelete(this.item);
           checkDispose(this.item);
           expect(this.item._synchronize)
-          .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.BEING_DELETED, SOURCE.STATE);
+            .toHaveBeenCalledWith(STATE.BEING_UPDATED, STATE.BEING_DELETED, SOURCE.STATE);
         });
       });
 
@@ -519,19 +513,19 @@ describe('Item', function () {
         ]).then(() => {
           expect(this.item.stored).toBe(true);
           expect(testStore.clientStorage.create)
-          .toHaveBeenCalledWith({
-            data: 'clientStorage',
-            _transporterState: STATE.EXISTENT.STATE,
-          });
+            .toHaveBeenCalledWith({
+              data: 'clientStorage',
+              _transporterState: STATE.EXISTENT.STATE,
+            });
           expect(testStore.schema.getPrimaryKey)
-          .not.toHaveBeenCalled();
+            .not.toHaveBeenCalled();
           expect(testStore.schema.getFor)
-          .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item,
-            { _transporterState: STATE.EXISTENT.STATE });
+            .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item,
+              { _transporterState: STATE.EXISTENT.STATE });
           expect(testStore.schema.setPrimaryKey)
-          .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, this.item, { _id: 456 });
+            .toHaveBeenCalledWith(SOURCE.CLIENT_STORAGE, this.item, { _id: 456 });
           expect(testStore.schema.setFrom)
-          .toHaveBeenCalledWith(SOURCE.TRANSPORTER, this.item, input);
+            .toHaveBeenCalledWith(SOURCE.TRANSPORTER, this.item, input);
           expect(this.item._clientStorageStates).toEqual({
             current: STATE.EXISTENT,
             inProgress: undefined,
@@ -662,7 +656,7 @@ describe('Item', function () {
             inProgress: undefined,
             next: undefined,
           });
-            // after syncing, we check if the new status is stored in our clientStorage
+          // after syncing, we check if the new status is stored in our clientStorage
           expect(testStore.schema.getPrimaryKey)
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
           expect(testStore.schema.getFor)
@@ -704,7 +698,7 @@ describe('Item', function () {
             inProgress: undefined,
             next: undefined,
           });
-            // after syncing, we check if the new status is stored in our clientStorage
+          // after syncing, we check if the new status is stored in our clientStorage
           expect(testStore.schema.getPrimaryKey)
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
           expect(testStore.schema.getFor)
@@ -747,7 +741,7 @@ describe('Item', function () {
             inProgress: undefined,
             next: undefined,
           });
-            // after syncing, we check if the new status is stored in our clientStorage
+          // after syncing, we check if the new status is stored in our clientStorage
           expect(testStore.schema.getPrimaryKey)
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
           expect(testStore.schema.getFor)
@@ -786,7 +780,7 @@ describe('Item', function () {
             inProgress: undefined,
             next: undefined,
           });
-            // after syncing, we check if the new status is stored in our clientStorage
+          // after syncing, we check if the new status is stored in our clientStorage
           expect(testStore.schema.getPrimaryKey)
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
           expect(testStore.schema.getFor)
@@ -1100,8 +1094,7 @@ describe('Item', function () {
         });
       });
 
-      it('should remerge actions and update states if inProgress comes back pending',
-      function () {
+      it('should remerge actions and update states if inProgress comes back pending', function () {
         spyOn(testStore.transporter, 'onceAvailable')
           .and.returnValue(Promise.resolve());
         spyOn(testStore.transporter, 'update')
@@ -1134,7 +1127,7 @@ describe('Item', function () {
             next: undefined,
           });
           expect(testStore.transporter.onceAvailable).toHaveBeenCalled();
-            // after syncing, we check if the new status is stored in our clientStorage
+          // after syncing, we check if the new status is stored in our clientStorage
           expect(testStore.schema.getPrimaryKey)
             .toHaveBeenCalledWith(TARGET.CLIENT_STORAGE, this.item);
           expect(testStore.schema.getFor)
@@ -1149,8 +1142,7 @@ describe('Item', function () {
         });
       });
 
-      it('should work the next action if inProgress comes back resolved',
-      function () {
+      it('should work the next action if inProgress comes back resolved', function () {
         let syncs = 0;
         spyOn(testStore.clientStorage, 'update')
           .and.callFake(() => {
@@ -1171,13 +1163,12 @@ describe('Item', function () {
         });
       });
 
-      it('should redo the sync process if next action has changed in the preparation process',
-      function () {
+      it('should redo the sync process if next action has changed in the preparation process', function () {
         // (we never reach clientStorage.update in this case)
         spyOn(testStore.transporter, 'onceAvailable')
           .and.returnValue(Promise.resolve());
         spyOn(testStore.clientStorage, 'delete')
-            .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
 
         this.item._synchronize(STATE.BEING_UPDATED, STATE.EXISTENT);
         this.item._synchronize(STATE.BEING_DELETED, STATE.EXISTENT);
@@ -1190,8 +1181,7 @@ describe('Item', function () {
         });
       });
 
-      it('just finish syncing if remerge actions results in no next state',
-      function () {
+      it('just finish syncing if remerge actions results in no next state', function () {
         // (we never reach any clientStorage method in this case)
 
         spyOn(testStore.transporter, 'onceAvailable')
@@ -1212,16 +1202,15 @@ describe('Item', function () {
       it('just finish syncing if remerge actions results in no next state ' +
             'when inProgress comes back pending', function () {
         spyOn(testStore.transporter, 'onceAvailable')
-        .and.callFake(() => {
-          // we start another sync process and come back online
-          this.item._synchronize(STATE.EXISTENT, STATE.BEING_DELETED);
-          return Promise.resolve();
-        });
+          .and.callFake(() => {
+            // we start another sync process and come back online
+            this.item._synchronize(STATE.EXISTENT, STATE.BEING_DELETED);
+            return Promise.resolve();
+          });
         spyOn(testStore.transporter, 'create')
-        .and.returnValue(
-          Promise.resolve({ status: PROMISE_STATE.PENDING, data: {} }));
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.PENDING, data: {} }));
         spyOn(testStore.clientStorage, 'update')
-        .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
+          .and.returnValue(Promise.resolve({ status: PROMISE_STATE.RESOLVED, data: {} }));
         this.item._transporterStates.current = undefined;
 
         this.item._synchronize(STATE.EXISTENT, STATE.BEING_CREATED);
@@ -1243,7 +1232,7 @@ describe('Item', function () {
         return this.item.onceStored()
           .then(() => {
             expect(testStore.clientStorage.update)
-            .toHaveBeenCalled();
+              .toHaveBeenCalled();
           });
       });
 
@@ -1255,7 +1244,7 @@ describe('Item', function () {
         function end() {
           if (endCount++ === 1) {
             expect(testStore.clientStorage.update)
-            .toHaveBeenCalledTimes(1);
+              .toHaveBeenCalledTimes(1);
             done();
           }
         }
@@ -1280,21 +1269,20 @@ describe('Item', function () {
           });
       });
 
-      it('should behave normally if not found in target and we wanted to delete anyway',
-        function () {
-          spyOn(testStore.clientStorage, 'delete')
+      it('should behave normally if not found in target and we wanted to delete anyway', function () {
+        spyOn(testStore.clientStorage, 'delete')
           .and.returnValue(Promise.resolve({ status: PROMISE_STATE.NOT_FOUND, data: {} }));
 
-          this.item._synchronize(STATE.BEING_DELETED, STATE.EXISTENT);
+        this.item._synchronize(STATE.BEING_DELETED, STATE.EXISTENT);
 
-          return this.item.onceStored().then(() => {
-            expect(this.item._clientStorageStates).toEqual({
-              current: STATE.DELETED,
-              inProgress: undefined,
-              next: undefined,
-            });
+        return this.item.onceStored().then(() => {
+          expect(this.item._clientStorageStates).toEqual({
+            current: STATE.DELETED,
+            inProgress: undefined,
+            next: undefined,
           });
         });
+      });
     });
   });
 });

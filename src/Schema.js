@@ -1,6 +1,8 @@
 // @flow
 import { observable } from 'mobx';
-import _ from 'lodash';
+import set from 'lodash/set';
+import get from 'lodash/get';
+import isPlainObject from 'lodash/isPlainObject';
 import Item from './Item';
 import { SOURCE, TARGET } from './constants';
 
@@ -23,8 +25,7 @@ class Schema {
     this.observables = [];
     this.nonObservables = [];
     this.references = new Map();
-    this._definition = _.cloneDeep(definition);
-    Schema._normalizeDefinition(this._definition);
+    this._definition = Schema._buildNormalizedDefinition(definition);
 
     // Check for available primary key
     const properties = this._definition.properties;
@@ -65,9 +66,8 @@ class Schema {
 
   getObservables(item: Object) {
     const keys = this.observables.concat(Array.from(this.references.keys()));
-    return keys.map(key => _.get(item, key));
+    return keys.map(key => get(item, key));
   }
-
 
   lock() {
     this._isLocked = true;
@@ -91,14 +91,12 @@ class Schema {
     }
   }
 
-  _setFromState(item: Object, data: Object): Promise {
-    const { allObservables, filteredData } = this._getPickedData(data);
-
-    Schema._mergeFromSet({ item, filteredData }, allObservables);
+  _setFromState(item: Object, data: Object): Promise<*> {
+    this._mergeFromSet({ item, data });
     return Promise.resolve(item);
   }
 
-  setFrom(source: DataSource, item: Item, data: Object): Promise {
+  setFrom(source: DataSource, item: Item, data: Object): Promise<*> {
     switch (source) {
       case SOURCE.TRANSPORTER:
         return this._setFromOutside('', item, data);
@@ -112,7 +110,7 @@ class Schema {
   }
 
   static createObservableItem(itemBranch: Object, definition: Object) {
-    if (!_.isPlainObject(definition.properties)) return;
+    if (!isPlainObject(definition.properties)) return;
 
     Object.keys(definition.properties)
       .filter(key => !Schema.isPrimaryKey(definition.properties[key]))
@@ -150,7 +148,7 @@ class Schema {
   }
 
   _createObservableKeyList(definition: Object, parentPath : string = '') {
-    if (!_.isPlainObject(definition.properties)) return;
+    if (!isPlainObject(definition.properties)) return;
 
     Object.keys(definition.properties)
       .filter(key => !Schema.isPrimaryKey(definition.properties[key]))
@@ -175,18 +173,6 @@ class Schema {
       });
   }
 
-  _getPickedData(data: Object) {
-    const observables = _.pick(data, this.observables);
-    const references = _.pick(data, Array.from(this.references.keys()));
-    const nonObservables = _.pick(data, this.nonObservables);
-
-    // IDEA: Check if picking from concatinated array is cheaper
-    const allObservables = _.merge({}, observables, references);
-    const filteredData = _.merge({}, observables, nonObservables);
-
-    return { observables, nonObservables, filteredData, allObservables, references };
-  }
-
   _createReferenceOptions(
     definition: Object,
     path: string,
@@ -204,10 +190,10 @@ class Schema {
     if (lastDotIndex !== -1) {
       const parentPath = path.substr(0, lastDotIndex);
       refOptions.propertyKey = path.substr(lastDotIndex + 1);
-      refOptions.parentObj = _.get(item, parentPath);
+      refOptions.parentObj = get(item, parentPath);
       if (refOptions.parentObj === undefined) {
         refOptions.parentObj = {};
-        _.set(item, parentPath, refOptions.parentObj);
+        set(item, parentPath, refOptions.parentObj);
       }
     } else {
       refOptions.parentObj = item;
@@ -219,9 +205,9 @@ class Schema {
   }
 
   _setForeignValues(item: Item, data: Object, prefix: string) {
-    let promises:Array<Promise> = [];
+    let promises:Array<Promise<*>> = [];
     this.references.forEach((definition, path) => {
-      const thisValue = _.get(data, path);
+      const thisValue = get(data, path);
       if (!thisValue) return;
 
       const refOptions = this._createReferenceOptions(
@@ -253,18 +239,26 @@ class Schema {
     keyPrefix: string,
     item: Item,
     data: Object,
-  ): Promise {
-    const { observables, filteredData } = this._getPickedData(data);
-    Schema._mergeFromSet({ item, filteredData }, observables);
+  ): Promise<*> {
+    this._mergeFromSet({ item, data });
+
     const promises = this._setForeignValues(item, data, keyPrefix);
     return Promise.all(promises).then(() => item);
   }
 
-  static _mergeFromSet({ item, filteredData }) {
+  _mergeByPaths({ item, data }: { item: Object, data: Object }) {
+    [...this.observables, ...this.nonObservables].forEach((path) => {
+      const dataValue = get(data, path);
+      if (dataValue !== undefined) {
+        set(item, path, dataValue);
+      }
+    });
+  }
+
+  _mergeFromSet({ item, data }: {item: Object, data: Object}) {
     const oldAutosaveValue = item.autoSave;
     item.autoSave = false;
-    _.merge(item, filteredData);
-
+    this._mergeByPaths({ item, data });
     item.autoSave = oldAutosaveValue;
   }
 
@@ -273,7 +267,7 @@ class Schema {
     foreignKey: string|Number,
     item: Item,
     index: ?Number,
-  ): Promise {
+  ): Promise<*> {
     const ref = (definition.items) ? definition.items.ref : definition.ref;
     return ref.onceLoaded().then(() => {
       const resolver = {};
@@ -292,43 +286,43 @@ class Schema {
     });
   }
 
-  static _normalizeDefinition(definition: Object) {
-    if (!_.isPlainObject(definition.properties)) return;
-
-    const properties = definition.properties;
-    _.forEach(properties, (property, key) => {
-      if (!_.isPlainObject(property)) {
-        properties[key] = {
-          type: property,
-        };
-        return;
-      }
-
-      switch (property.type) {
-        case Array:
-          Schema._transformArrayType(property);
-          break;
-        case Object:
-          Schema._normalizeDefinition(property);
-          break;
-      }
-    });
+  static _normalizeProp(prop: any) {
+    return isPlainObject(prop) ? this._buildNormalizedDefinition(prop) :
+      this._buildNormalizedDefinition({ type: prop });
   }
 
-  static _transformArrayType(property) {
-    if (!_.isPlainObject(property.items)) {
-      property.items = {
-        type: property.items,
-      };
+  static _buildNormalizedProperties(props: Object) {
+    return Object.keys(props).reduce((propsObj, key) => {
+      const prop = props[key];
+      propsObj[key] = this._normalizeProp(prop);
+      return propsObj;
+    }, {});
+  }
+
+  static _buildNormalizedDefinition(prop: Object) {
+    switch (prop.type) {
+      case Object:
+      case undefined:
+        return {
+          ...prop,
+          properties: this._buildNormalizedProperties(prop.properties || {}),
+        };
+
+      case Array:
+        return {
+          ...prop,
+          items: this._buildNormalizedDefinition(this._normalizeProp(prop.items || {})),
+        };
+      default:
+        return { ...prop };
     }
   }
 
-  _resolveFor(target: DataTarget, item: Item): Promise {
-    const { references } = this._getPickedData(item);
+  _resolveFor(target: DataTarget, item: Item): Promise<*> {
     const unresolvedReferences = [];
     this.references.forEach((value, key) => {
-      const ref = _.get(references, key);
-      if (_.isArray(ref)) {
+      const ref = get(item, key);
+      if (Array.isArray(ref)) {
         ref
           .filter(refItem => !refItem.isReadyFor(target))
           .reduce((referenceList, refItem) => {
@@ -342,29 +336,31 @@ class Schema {
 
     if (unresolvedReferences.length > 0) {
       return Promise.all(unresolvedReferences)
-        .then(() => this._resolveFor(target, references));
+        .then(() => this._resolveFor(target, item));
     }
 
     return Promise.resolve();
   }
 
-  getFor(target: DataTarget, item: Item, initialData: Object = {}): Promise {
+  getFor(target: DataTarget, item: Item, initialData: Object = {}): Promise<*> {
     const prefix = target === TARGET.CLIENT_STORAGE ? '_' : '';
-
+    const returnItem = { ...initialData };
     return this._resolveFor(target, item).then(() => {
-      const { references, filteredData } = this._getPickedData(item);
-      const convertedReferences = {};
+      this._mergeByPaths({
+        item: returnItem,
+        data: item,
+      });
       this.references.forEach((value, key) => {
-        const ref = _.get(references, key);
-        if (_.isArray(ref)) {
+        const ref = get(item, key);
+        if (Array.isArray(ref)) {
           const refKeyArray = ref.map(refItem => refItem[value.items[`${prefix}key`]]);
-          _.set(convertedReferences, key, refKeyArray);
+          set(returnItem, key, refKeyArray);
         } else {
-          _.set(convertedReferences, key, ref[value[`${prefix}key`]]);
+          set(returnItem, key, ref[value[`${prefix}key`]]);
         }
       });
 
-      return _.merge({}, filteredData, initialData, convertedReferences);
+      return returnItem;
     });
   }
 

@@ -80,7 +80,6 @@ describe('Schema', function () {
     };
 
     const schema = new Schema(inputDefinition);
-
     expect(schema._definition).not.toBe(inputDefinition);
     expect(schema._definition).toEqual({
       properties: {
@@ -104,6 +103,7 @@ describe('Schema', function () {
         },
         empty: {
           type: Object,
+          properties: {},
         },
         oneToOne: {
           type: NumberKey,
@@ -402,7 +402,7 @@ describe('Schema', function () {
         switch (autorunNav) {
           case 1:
             autorunNav = 2;
-          // we detach our first change as it would be recognized otherwise
+            // we detach our first change as it would be recognized otherwise
             detach(() => { testItem.brand = 'OtherTestCar'; });
             break;
           case 2:

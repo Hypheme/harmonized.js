@@ -10,7 +10,26 @@ const suffix = doMinify ? '.min' : '';
 
 export default {
   input: './src/index.js',
-  external: ['mobx', 'lodash', 'lodash/fp', 'glob-to-regexp', 'uuid/v4'],
+  external: [
+    'mobx',
+    'lodash/differenceWith',
+    'lodash/get',
+    'lodash/set',
+    'lodash/pick',
+    'lodash/merge',
+    'lodash/isPlainObject',
+    'glob-to-regexp',
+    'uuid/v4',
+  ],
+  globals: {
+    mobx: 'mobx',
+    'uuid/v4': 'uuid',
+    'lodash/set': 'set',
+    'lodash/get': 'get',
+    'lodash/differenceWith': 'differenceWith',
+    'lodash/isPlainObject': 'isPlainObject',
+    'glob-to-regexp': 'globToRegexp',
+  },
   output: [{
     file: `lib/harmonized${suffix}.js`,
     format: 'cjs',

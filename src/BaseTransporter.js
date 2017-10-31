@@ -19,7 +19,10 @@ export default class BaseTransporter {
     }
   }
 
-  setEnvironment({ store, role }: {
+  setEnvironment({
+    store,
+    role,
+  }: {
     store: Object,
     role: Role,
   }) {
@@ -71,7 +74,7 @@ export default class BaseTransporter {
 
   _sendRequest(item: TransactionItem) {
     const preparedReq = this._prepareRequest(item);
-    const action = item.action;
+    const { action } = item;
 
     // run send middleware then send and afterwards work off the queue
     return this.constructor.runMiddleware('send', { req: preparedReq })
