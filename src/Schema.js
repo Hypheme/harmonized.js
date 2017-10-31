@@ -229,8 +229,10 @@ class Schema {
 
         item.autoSave = oldAutosaveValue;
         promises = promises.concat(thisValue.map(
-          (foreignKey, index) => Schema._resolveForeignValues(refOptions, foreignKey, item, source, index)),
-        );
+          (foreignKey, index) => Schema._resolveForeignValues(
+            refOptions, foreignKey, item, source, index,
+          ),
+        ));
       } else {
         promises.push(Schema._resolveForeignValues(refOptions, thisValue, item, source));
       }
@@ -268,7 +270,7 @@ class Schema {
   }
 
   static _resolveForeignValues(
-    { definition, key, propertyKey, parentObj },
+    { definition, propertyKey, parentObj },
     foreignKey: string|Number,
     item: Item,
     source: DataSource,
