@@ -99,9 +99,9 @@ class Schema {
   setFrom(source: DataSource, item: Item, data: Object): Promise<*> {
     switch (source) {
       case SOURCE.TRANSPORTER:
-        return this._setFromOutside('', item, data);
+        return this._setFromOutside('', item, data, source);
       case SOURCE.CLIENT_STORAGE:
-        return this._setFromOutside('_', item, data);
+        return this._setFromOutside('_', item, data, source);
       case SOURCE.STATE:
         return this._setFromState(item, data);
       default:
@@ -204,10 +204,14 @@ class Schema {
     return refOptions;
   }
 
-  _setForeignValues(item: Item, data: Object, prefix: string) {
+  _setForeignValues(item: Item, data: Object, prefix: string, source: DataSource) {
     let promises:Array<Promise<*>> = [];
     this.references.forEach((definition, path) => {
-      const thisValue = get(data, path);
+      const refKey = `${prefix}key`;
+      const dataKey = definition.type === Array ? definition.items[refKey] : definition[refKey];
+      const refPath = path.substr(0, path.lastIndexOf('.') + 1) + dataKey;
+      const thisValue = get(data, refPath);
+
       if (!thisValue) return;
 
       const refOptions = this._createReferenceOptions(
@@ -225,10 +229,10 @@ class Schema {
 
         item.autoSave = oldAutosaveValue;
         promises = promises.concat(thisValue.map(
-          (foreignKey, index) => Schema._resolveForeignValues(refOptions, foreignKey, item, index)),
+          (foreignKey, index) => Schema._resolveForeignValues(refOptions, foreignKey, item, source, index)),
         );
       } else {
-        promises.push(Schema._resolveForeignValues(refOptions, thisValue, item));
+        promises.push(Schema._resolveForeignValues(refOptions, thisValue, item, source));
       }
     });
 
@@ -239,10 +243,11 @@ class Schema {
     keyPrefix: string,
     item: Item,
     data: Object,
+    source: DataSource,
   ): Promise<*> {
     this._mergeFromSet({ item, data });
 
-    const promises = this._setForeignValues(item, data, keyPrefix);
+    const promises = this._setForeignValues(item, data, keyPrefix, source);
     return Promise.all(promises).then(() => item);
   }
 
@@ -266,14 +271,12 @@ class Schema {
     { definition, key, propertyKey, parentObj },
     foreignKey: string|Number,
     item: Item,
+    source: DataSource,
     index: ?Number,
   ): Promise<*> {
     const ref = (definition.items) ? definition.items.ref : definition.ref;
     return ref.onceLoaded().then(() => {
-      const resolver = {};
-      resolver[key] = foreignKey;
-      const newValue = ref.findOne(resolver);
-
+      const newValue = ref.findById(foreignKey, source);
       const oldAutosaveValue = item.autoSave;
       item.autoSave = false;
       if (index === undefined) {
@@ -281,7 +284,6 @@ class Schema {
       } else {
         parentObj[propertyKey][index] = newValue;
       }
-
       item.autoSave = oldAutosaveValue;
     });
   }
