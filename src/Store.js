@@ -119,6 +119,11 @@ export default class Store {
       this._createAndFetchFrom(key, source);
   }
 
+  findById(key, source = SOURCE.TRANSPORTER) {
+    const keyIdentifier = this.schema.getKeyIdentifierFor(source.AS_TARGET);
+    return this.findOne({ [keyIdentifier]: key });
+  }
+
   isLoaded() {
     return this.loaded;
   }
