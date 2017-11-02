@@ -12,8 +12,8 @@
     "test:travis": "NODE_ENV=test ./node_modules/karma/bin/karma start",
     "test": "NODE_ENV=test ./node_modules/karma/bin/karma start --auto-watch --no-single-run",
     "eslint": "./node_modules/.bin/eslint src/**",
-    "prepublish": "yarn build",
-    "build": "rimraf lib && yarn build:bundles && yarn build:bundles:min",
+    "prepublish": "npm run build",
+    "build": "rimraf lib && npm build:bundles && npm build:bundles:min",
     "build:bundles": "rollup -c",
     "build:bundles:min": "rollup -c --environment MINIFY"
   },
