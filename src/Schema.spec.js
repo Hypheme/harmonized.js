@@ -620,7 +620,7 @@ describe('Schema', function () {
         Promise.resolve(),
         Promise.resolve(),
       ),
-      findOne: jasmine.createSpy('find one').and.returnValues(
+      findById: jasmine.createSpy('find by id').and.returnValues(
         'item 123',
         'item 124',
         'item 125',
@@ -631,7 +631,7 @@ describe('Schema', function () {
 
     const oneToOneStoreInstance = {
       onceLoaded: jasmine.createSpy('once loaded').and.returnValue(Promise.resolve()),
-      findOne: jasmine.createSpy('find one').and.returnValue('over 9000'),
+      findById: jasmine.createSpy('find by id').and.returnValue('over 9000'),
     };
 
     const inputDefinition = {
@@ -645,8 +645,8 @@ describe('Schema', function () {
           type: Array,
           items: {
             type: NumberKey,
-            key: 'pid',
-            _key: '_pid',
+            key: 'passengerIds',
+            _key: '_passengerIds',
             ref: passengerStoreInstance,
           },
         },
@@ -655,8 +655,8 @@ describe('Schema', function () {
           properties: {
             oneToOne: {
               type: NumberKey,
-              key: 'pid',
-              _key: '_pid',
+              key: 'seatId',
+              _key: '_seatId',
               ref: oneToOneStoreInstance,
             },
             front: {
@@ -694,9 +694,9 @@ describe('Schema', function () {
     const data = {
       brand: 'testbrand',
       price: '9001€',
-      passengers: [123, 124, 125, 200],
+      passengerIds: [123, 124, 125, 200],
       seats: {
-        oneToOne: 9001,
+        seatId: 9001,
         front: 2,
         deeper: {
           test: 123,
@@ -718,33 +718,21 @@ describe('Schema', function () {
       expect(item.seats.deeper.evenDeeper.property2).toBe(true);
       expect(item.passengers).toEqual(['item 123', 'item 124', 'item 125', 'item 200']);
 
-      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledTimes(1);
-      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledWith({
-        pid: 9001,
-      });
+      expect(oneToOneStoreInstance.findById).toHaveBeenCalledTimes(1);
+      expect(oneToOneStoreInstance.findById).toHaveBeenCalledWith(9001, SOURCE.TRANSPORTER);
 
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(4);
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        pid: 123,
-      });
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        pid: 124,
-      });
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        pid: 125,
-      });
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        pid: 200,
-      });
+      expect(passengerStoreInstance.findById).toHaveBeenCalledTimes(4, SOURCE.TRANSPORTER);
+      expect(passengerStoreInstance.findById).toHaveBeenCalledWith(123, SOURCE.TRANSPORTER);
+      expect(passengerStoreInstance.findById).toHaveBeenCalledWith(124, SOURCE.TRANSPORTER);
+      expect(passengerStoreInstance.findById).toHaveBeenCalledWith(125, SOURCE.TRANSPORTER);
+      expect(passengerStoreInstance.findById).toHaveBeenCalledWith(200, SOURCE.TRANSPORTER);
 
-      data.passengers = [1];
+      data.passengerIds = [1];
       schema.setFrom(SOURCE.TRANSPORTER, item, data)
         .then(() => {
           expect(item.passengers).toEqual(['item one']);
-          expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(5);
-          expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-            pid: 1,
-          });
+          expect(passengerStoreInstance.findById).toHaveBeenCalledTimes(5);
+          expect(passengerStoreInstance.findById).toHaveBeenCalledWith(1, SOURCE.TRANSPORTER);
           done();
         });
     });
@@ -759,7 +747,7 @@ describe('Schema', function () {
         Promise.resolve(),
         Promise.resolve(),
       ),
-      findOne: jasmine.createSpy('find one').and.returnValues(
+      findById: jasmine.createSpy('find by id').and.returnValues(
         'item 123',
         'item 124',
         'item 125',
@@ -770,7 +758,7 @@ describe('Schema', function () {
 
     const oneToOneStoreInstance = {
       onceLoaded: jasmine.createSpy('once loaded').and.returnValue(Promise.resolve()),
-      findOne: jasmine.createSpy('find one').and.returnValue('over 9000'),
+      findById: jasmine.createSpy('find by id').and.returnValue('over 9000'),
     };
 
     const inputDefinition = {
@@ -784,8 +772,8 @@ describe('Schema', function () {
           type: Array,
           items: {
             type: NumberKey,
-            key: 'pid',
-            _key: '_pid',
+            key: 'passengerIds',
+            _key: '_passengerIds',
             ref: passengerStoreInstance,
           },
         },
@@ -794,8 +782,8 @@ describe('Schema', function () {
           properties: {
             oneToOne: {
               type: NumberKey,
-              key: 'pid',
-              _key: '_pid',
+              key: 'seatId',
+              _key: '_seatId',
               ref: oneToOneStoreInstance,
             },
             front: {
@@ -833,9 +821,9 @@ describe('Schema', function () {
     const data = {
       brand: 'testbrand',
       price: '9001€',
-      passengers: [123, 124, 125, 200],
+      _passengerIds: [123, 124, 125, 200],
       seats: {
-        oneToOne: 9001,
+        _seatId: 9001,
         front: 2,
         deeper: {
           test: 123,
@@ -857,32 +845,20 @@ describe('Schema', function () {
       expect(item.seats.deeper.evenDeeper.property2).toBe(true);
       expect(item.passengers).toEqual(['item 123', 'item 124', 'item 125', 'item 200']);
 
-      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledTimes(1);
-      expect(oneToOneStoreInstance.findOne).toHaveBeenCalledWith({
-        _pid: 9001,
-      });
+      expect(oneToOneStoreInstance.findById).toHaveBeenCalledTimes(1);
+      expect(oneToOneStoreInstance.findById).toHaveBeenCalledWith(9001, SOURCE.CLIENT_STORAGE);
 
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(4);
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        _pid: 123,
-      });
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        _pid: 124,
-      });
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        _pid: 125,
-      });
-      expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-        _pid: 200,
-      });
+      expect(passengerStoreInstance.findById).toHaveBeenCalledTimes(4);
+      expect(passengerStoreInstance.findById).toHaveBeenCalledWith(123, SOURCE.CLIENT_STORAGE);
+      expect(passengerStoreInstance.findById).toHaveBeenCalledWith(124, SOURCE.CLIENT_STORAGE);
+      expect(passengerStoreInstance.findById).toHaveBeenCalledWith(125, SOURCE.CLIENT_STORAGE);
+      expect(passengerStoreInstance.findById).toHaveBeenCalledWith(200, SOURCE.CLIENT_STORAGE);
 
-      data.passengers = [1];
+      data._passengerIds = [1];
       schema.setFrom(SOURCE.CLIENT_STORAGE, item, data).then(() => {
         expect(item.passengers).toEqual(['item one']);
-        expect(passengerStoreInstance.findOne).toHaveBeenCalledTimes(5);
-        expect(passengerStoreInstance.findOne).toHaveBeenCalledWith({
-          _pid: 1,
-        });
+        expect(passengerStoreInstance.findById).toHaveBeenCalledTimes(5);
+        expect(passengerStoreInstance.findById).toHaveBeenCalledWith(1, SOURCE.CLIENT_STORAGE);
 
         done();
       });
