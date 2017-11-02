@@ -3,7 +3,7 @@ import { isObservable, isObservableArray } from 'mobx';
 import Store from './Store';
 import BaseTransporter from './BaseTransporter';
 import Schema from './Schema';
-import { SOURCE, PROMISE_STATE } from './constants';
+import { TARGET, SOURCE, PROMISE_STATE } from './constants';
 
 import OriginalItem from './Item';
 import OriginalEmptyTransporter from './Transporters/EmptyTransporter';
@@ -397,6 +397,27 @@ describe('Store', function () {
           }).toThrow(new Error('missing identifier id'));
         });
       });
+
+      describe('findById', function () {
+        beforeEach(function () {
+          spyOn(this.store.schema, 'getKeyIdentifierFor').and.returnValue('id');
+        });
+
+        it('should return the item with default SOURCE (Transporter)', function () {
+          expect(this.store.findById('4'))
+            .toEqual(this.storeData[3]);
+          expect(this.store.schema.getKeyIdentifierFor).toHaveBeenCalledTimes(1);
+          expect(this.store.schema.getKeyIdentifierFor).toHaveBeenCalledWith(TARGET.TRANSPORTER);
+        });
+
+        it('should return the item with client storage TARGET', function () {
+          expect(this.store.findById('4', SOURCE.CLIENT_STORAGE))
+            .toEqual(this.storeData[3]);
+          expect(this.store.schema.getKeyIdentifierFor).toHaveBeenCalledTimes(1);
+          expect(this.store.schema.getKeyIdentifierFor).toHaveBeenCalledWith(TARGET.CLIENT_STORAGE);
+        });
+      });
+
       describe('fetchAndCreate', function () {
         it('should be the same as findOneOrFetch', function () {
           spyOn(this.store, 'findOneOrFetch').and.returnValue('sth');
