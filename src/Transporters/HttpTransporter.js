@@ -91,7 +91,7 @@ export default class HttpTransporter extends Transporter {
     req.method = method;
     req.headers = new Headers(headers);
     req.mode = mode;
-    if(credentials) { // hotfix until https://github.com/Hypheme/harmonized.js/issues/66 is solved
+    if (credentials) { // hotfix until https://github.com/Hypheme/harmonized.js/issues/66 is solved
       req.credentials = credentials;
     }
 
