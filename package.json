@@ -1,6 +1,5 @@
 {
   "name": "harmonized",
-  "version": "0.0.1",
   "description": "state, storage and server manager for react and react-native based on mobx.js",
   "main": "lib/harmonized.js",
   "umd:main": "lib/harmonized.umd.js",
