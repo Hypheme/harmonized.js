@@ -17,10 +17,8 @@
     "build:bundles": "rollup -c",
     "build:bundles:min": "rollup -c --environment MINIFY"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://JohannesMerz@github.com/Hypheme/harmonized.js.git"
-  },
+  "repository": "git@github.com:Hypheme/harmonized.js.git",
+  "private": false,
   "keywords": [
     "react",
     "react-native",
