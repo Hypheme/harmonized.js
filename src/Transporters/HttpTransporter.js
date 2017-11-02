@@ -84,13 +84,16 @@ export default class HttpTransporter extends Transporter {
     req: Object,
     mode: string,
   }) {
-    const { baseUrl, path, payload, pathTemplate, method, headers, mode } = input.req;
+    const { baseUrl, path, payload, pathTemplate, method, headers, mode, credentials } = input.req;
     const url: string = `${baseUrl}/${this.createPath(path, pathTemplate, payload)}`;
     // Build request
     const req = {};
     req.method = method;
     req.headers = new Headers(headers);
     req.mode = mode;
+    if(credentials) { // hotfix until https://github.com/Hypheme/harmonized.js/issues/66 is solved
+      req.credentials = credentials;
+    }
 
     if (method !== 'GET') {
       req.body = JSON.stringify(payload);

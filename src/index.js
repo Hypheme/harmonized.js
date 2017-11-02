@@ -2,6 +2,8 @@ import ClientStorages from './ClientStorages';
 import HttpTransporter from './Transporters/HttpTransporter';
 import HttpOfflineChecker from './Transporters/HttpOfflineChecker';
 import EmptyTransporter from './Transporters/EmptyTransporter';
+import TransporterMiddleware from './TransporterMiddleware/TransporterMiddleware';
+
 import Transporters from './Transporters';
 import Item from './Item';
 import Store from './Store';
@@ -21,4 +23,5 @@ export {
   HttpTransporter,
   EmptyTransporter,
   HttpOfflineChecker,
+  TransporterMiddleware,
 };
