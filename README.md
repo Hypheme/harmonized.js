@@ -28,13 +28,13 @@ When the connection is established again, it will sync all the changes with the 
 ## How harmonized works
 
 When building harmonized we tried it to be as close to the structure your API resources has. The
-structure of harmonized is therefore model base. For the best experience, your backend should expose
-simple model based resources (like car, driver, passenger, ...), so harmonized ca directly handle
+structure of harmonized is therefore model based. For the best experience, your backend should expose
+simple model based resources (like car, driver, passenger, ...), so harmonized can directly handle
 the data that is coming from the backend.
 
 The structure that you will use the most are **Stores** and **Items**. A `Store` is basically a list
-of Items. It just handles the creation of new items that belong to it. You can also fetch data from
-backend, search for one or more specific entries. The `Store` also holds the `Schema` that describes
+of Items. It just handles the creation of new items that belong to it. You can also fetch data from the
+backend and search for one or more specific entries. The `Store` also holds the `Schema` that describes
 the data structure of the Items. The `Item` represents one entry in this list. You will do the most
 work here. Just update the data here, save it (or with `autoSave` activated, it saves on any change
 to the item data), delete the item, or fetch a new state  just for this item from your backend.
@@ -64,9 +64,8 @@ to the backend or when receiving it)?
 
 ## Installation
 
-when using npm do:
 ```
-npm install git@github.com:Hypheme/harmonized.js.git --save
+yarn add harmonized
 ```
 
 ## First steps
@@ -75,11 +74,19 @@ First you need to create a `Store` with the corresponding `Schema` and additiona
 and/or `ClientStorage`. When not adding one of those, the `Store` will use a mock implementation
 instead, so both are optional.
 
-An basic person store that uses a `HttpTransporter` and a `IndexedDbStorage` (not available
+A basic person store that uses a `HttpTransporter` and a `IndexedDbStorage` (not available
 yet) can be created like this:
 
 ```JS
 import { Store, HttpTransporter, Schema } from 'harmonized';
+
+// checks if a server/service is offline by hitting the endpoint specified here
+HttpTransporter.addOfflineChecker({
+  pattern: /.*/, 
+  checkUrl: 'ttps://www.hyphe.me/api/people',
+  method: 'OPTIONS'
+});
+
 const peopleStore = new Store({
   schema: new Schema({
     firstName: String,
@@ -98,6 +105,17 @@ const peopleStore = new Store({
 
 To create a new store you need to define a `Schema`. It defines the structure of your data. You can
 find a deeper introduction into that further below. For now this simple example is enough to go on.
+
+In this case we create a store of people. A person has a firstName, lastName and an age as property. 
+For this example we asume following api endpoints exists:
+
+```
+GET https://www.hyphe.me/api/people returns all people
+GET https://www.hyphe.me/api/people/:id returns a person
+POST https://www.hyphe.me/api/people adds a new person
+PUT https://www.hyphe.me/api/:id updates a person
+DELETE https://www.hyphe.me/api/:id delets a person
+```
 
 After you created the store, it will fetch everything from the backend and local database (and
 initiates the local database if not there yet). To do something with the data, you need to wait for
@@ -131,15 +149,150 @@ const albert = peopleStore.create({
 });
 ```
 
-The newly created item will now be found in the `peopleStore.items` array.
+The newly created item will now be found in the `peopleStore.items` array. 
 
-If you want to fetch your data at a later point (maybe in some polling interval), you can use the
-`fetch()` method. This will fetch the data from your transporter only (and updates the local
-database when there are changes):
+Notice that all operations that result in a state change in harmonized are synchronous. It handles all changes synchronously and updates the database and the backend for you.
+If you want to know if a change is stored/synced you can either read the item properties stored/synced or hit `onceStored/onceSynced` methods.
+
+Its recommended to not use those methods to trigger critical routines as harmonized is offline capable and those promises can be pending quite a while (as long as you are offline).
+All asynchronous methods of Harmonized return promises.
+
+```
+albert.age // => 32
+albert.update({ age: albert.age + 1 })
+albert.age // => 33
+albert.synced // false
+albert.stored // false
+albert.onceStored().then(() => {
+  albert.stored // true, the change is now stored locally
+})
+albert.onceSynced().then(() => {
+  albert.synced // true, the change is now saved on you server
+})
+```
+
+## store methods
 
 ```JS
-peopleStore.fetch();
+create(values, source = SOURCE.STATE)
 ```
+
+Creates a new item in the store and returns it.
+
+```JS
+const albert = peopleStore.create({
+  firstName: 'Albert',
+  lastName: 'Einstein',
+  age: 32,
+});
+```
+
+- - - -
+
+```JS
+findOneOrFetch(key, source = SOURCE.TRANSPORTER)
+```
+
+Searches for an item locally. If its not found it searches in the given source (TRANSPORTER or CLIENT_STORAGE) and creates it.
+Note that this is still synchronous. If an item needs to be fetched a new Item is created and its fetch method called.
+
+Lets assume we have only one item in store, albert with the `id '123'`. If we search for him, the item with all its content is returned immediately while if we search for `id '124'` the item is created but needs to get populated by the server response first.
+
+```JS
+const albert = peopleStore.findOneOrFetch({ id: '123' })
+albert.age // 32
+albert.synced // true
+
+const isaac = peopleStore.findOneOrFetch({ id: '124' })
+isaac.age // undefined
+issac.synced // false
+isaac.onceSynced().then(() => {
+  isaac.age // 44
+  issac.synced // true
+})
+``` 
+
+- - - -
+
+```JS
+fetch(source = SOURCE.TRANSPORTER)
+```
+
+Fetches all elements from the given source. Returns a promise. Should not be used often as its an expensive method.
+
+```JS
+peopleStore.fetch()
+  .then(() => console.log('fetched all people from transporter'))
+``` 
+
+- - - - 
+
+```JS
+find(identifiers) 
+```
+
+Returns all items that matches all identifiers.
+
+```JS
+const allAlberts = peopleStore.find({ age: 33, firstname: 'Albert' })
+allAlberts.forEach(albert => console.log(albert.lastName))
+```
+
+- - - -
+
+```JS
+findOne(identifiers) 
+```
+
+Returns first item found that matches all identifiers.
+
+```JS
+const albert = peopleStore.findOne({ age: 33, firstname: 'Albert' })
+```
+
+- - - -
+
+```JS
+findById(key, source) 
+```
+
+Returns first item found that matches the given id.
+
+```JS
+const albert = peopleStore.findById('123')
+```
+
+- - - -
+
+```JS
+isLoaded() 
+```
+
+Returns true or false
+
+```JS
+peopleStore.isLoaded() // true
+```
+
+- - - -
+
+```JS
+onceLoaded() 
+```
+
+Returns promise that resolves as soon as the store is loaded
+
+```JS
+peopleStore.onceLoaded()
+  .then(() => console.log('store ready to use'))
+```
+
+- - - -
+
+
+
+## TODO ITEM methods
+
 
 To update properties of an item, just edit these properties directly. When you are ready and want to
 update the data on the local database and your backend, just use the `update()` method of the item:
@@ -160,8 +313,7 @@ albert.delete().then(() => {
 });
 ```
 
-Gratulations! You created your first `Store` with client storage and a HTTP backend, created an
-item, updated and deleted it. With this knowledge you can already build a simple app.
+
 
 ## The Schema
 
