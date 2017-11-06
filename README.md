@@ -289,29 +289,163 @@ peopleStore.onceLoaded()
 
 - - - -
 
+## item methods and properties
 
+As harmonized uses mobx and establishes observables on all properties you define in the schema, 
+you don't have to use any item methods most of the time.
 
-## TODO ITEM methods
-
-
-To update properties of an item, just edit these properties directly. When you are ready and want to
-update the data on the local database and your backend, just use the `update()` method of the item:
-
-```JS
-albert.age = 33;
-albert.lastName = 'Einstein';
-albert.update().then(() => {
-  console.log('The item was updated');
-});
-```
-
-To delete an item, you just have to use it's `delete()` method:
+There are a few additional properties besides the ones  defined in the item schema.
 
 ```JS
-albert.delete().then(() => {
-  console.log('The item was successfully everywhere');
-});
+item.stored // boolean and mobx observable
 ```
+
+Indicates whether the last update/change of an item is stored in the client storage or not.
+
+- - - - 
+
+```JS
+item.synced // boolean and mobx observable
+```
+
+Indicates whether the last update/change of an item is synced with the server through the transporter.
+
+- - - -
+
+```JS
+item.autoSave // boolean, you can set this to change item behaviour
+```
+
+If set to true, harmonized saves/syncs everytime an item property defined in the schema changes. If set to false, you have to explicity tell harmonized when to update the item.
+
+- - - -
+
+```JS
+item.__id // unique runtime id.
+```
+
+Id the item has in the current app state. As we have three representations of an item (state, clientStorage and transporter) we need three unique identifiers. They default to
+
+```JS
+item.__id // runtime id in the state
+item._id // id in the clientStorage
+item.id // id in the transporter
+```
+
+- - - -
+
+To update properties of an item, just edit these properties directly and harmonized handles everything else.
+
+```JS
+albert.autoSave // true
+albert.stored // true
+albert.synced // true
+albert.age = 33
+albert.stored // false
+albert.synced // false
+albert.onceStored().then(() => albert.stored) // true
+albert.onceSynced().then(() => albert.synced) // true
+```
+
+If you want to explicitly trigger item updates, set autoSave to false and trigger it by calling update.
+
+
+```JS
+update(values) 
+```
+
+Updates an item and pushes the changes to the clientStorage and transporter
+
+```JS
+albert.autoSave = false
+albert.stored // true
+albert.synced // true
+albert.age = 33
+albert.stored // true - no store routine triggered
+albert.synced // true - no transporter routine triggered
+albert.update()
+albert.stored // false
+albert.synced // false
+albert.onceStored().then(() => albert.stored) // true
+albert.onceSynced().then(() => albert.synced) // true
+```
+
+You can pass update new values that will get set before the changes are pushed.
+
+```JS
+albert.autoSave = false
+albert.update({
+  age: 33
+})
+albert.age // 33
+albert.stored // false
+albert.synced // false
+albert.onceStored().then(() => albert.stored) // true
+albert.onceSynced().then(() => albert.synced) // true
+```
+
+- - - -
+
+```JS
+remove() 
+```
+
+removes an item from the state, the backend and clientStorage.
+
+```JS
+albert.remove()
+peopleStore.findOne({ firstname : 'albert'}) // undefined
+```
+
+- - - -
+
+```JS
+delete() 
+```
+
+The same as remove.
+
+- - - -
+
+
+```JS
+fetch() 
+```
+
+Updates the item from the given source (defaults to transporter).
+
+```JS
+albert.fetch()
+albert.onceSynced().then(() => console.log('newest data from transporter arrived'))
+```
+
+- - - -
+
+
+There are four functions that give information about the current sync state of the item. 
+All  methods starting with once return promises, all others the actual values at that time.
+ 
+```JS
+onceReadyFor(target)
+```
+
+resolves as soon as the item can be used in either transporter or clientStorage based on the given target.
+
+
+```
+isReadyFor(target)
+```
+
+returns true/false
+
+```JS
+onceSynced()
+onceStored()
+```
+
+resolve when either a sync process through the transporter or a store process through the clientStorage has finished.
+
+
 
 
 
