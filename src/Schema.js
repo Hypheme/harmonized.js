@@ -138,7 +138,9 @@ class Schema {
 
 
     extendObservable(itemBranch, propertiesToExtend);
-    deeperObjectKeys.forEach((property, key) => Schema.createObservableItem(itemBranch[key], property));
+    deeperObjectKeys.forEach(
+      (property, key) => Schema.createObservableItem(itemBranch[key], property),
+    );
   }
 
   establishObservables(item: Item) {
