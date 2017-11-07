@@ -326,12 +326,9 @@ class Schema {
     const unresolvedReferences = [];
     this.references.forEach((value, key) => {
       const ref = get(item, key);
-      console.log(key, ref);
       if (ref === undefined || ref === null) {
         return;
       }
-
-      console.log('after this');
 
       if (Array.isArray(ref)) {
         ref
