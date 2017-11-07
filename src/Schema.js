@@ -326,13 +326,17 @@ class Schema {
     const unresolvedReferences = [];
     this.references.forEach((value, key) => {
       const ref = get(item, key);
+      console.log(key, ref);
+      if (ref === undefined || ref === null) {
+        return;
+      }
+
+      console.log('after this');
+
       if (Array.isArray(ref)) {
         ref
-          .filter(refItem => !refItem.isReadyFor(target))
-          .reduce((referenceList, refItem) => {
-            referenceList.push(refItem.onceReadyFor(target));
-            return referenceList;
-          }, unresolvedReferences);
+          .filter(refItem => refItem !== undefined && refItem !== null && !refItem.isReadyFor(target))
+          .forEach(refItem => unresolvedReferences.push(refItem.onceReadyFor(target)));
       } else if (!ref.isReadyFor(target)) {
         unresolvedReferences.push(ref.onceReadyFor(target));
       }
@@ -356,8 +360,14 @@ class Schema {
       });
       this.references.forEach((value, key) => {
         const ref = get(item, key);
+        if (ref === undefined || ref === null) {
+          return;
+        }
+
         if (Array.isArray(ref)) {
-          const refKeyArray = ref.map(refItem => refItem[value.items[`${prefix}key`]]);
+          const refKeyArray = ref
+            .filter(refItem => refItem !== undefined && refItem !== null)
+            .map(refItem => refItem[value.items[`${prefix}key`]]);
           set(returnItem, key, refKeyArray);
         } else {
           set(returnItem, key, ref[value[`${prefix}key`]]);
