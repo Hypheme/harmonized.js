@@ -1,5 +1,5 @@
 // @flow
-import { observable, extendObservable, isObservable } from 'mobx';
+import { observable, extendObservable } from 'mobx';
 import set from 'lodash/set';
 import get from 'lodash/get';
 import isPlainObject from 'lodash/isPlainObject';
