@@ -1234,5 +1234,65 @@ describe('Schema', function () {
         });
       });
     });
+
+    describe('with undefined references', function () {
+      beforeEach(function () {
+        this.item.seats.oneToOne = undefined;
+        this.item.passengers.push(undefined);
+        this.item.passengers.push(null);
+        delayItemReady(this.item.passengers[0]);
+        setItemReady(this.item.passengers[1]);
+        delayItemReady(this.item.passengers[2]);
+      });
+
+      it('should get for client storage', function (done) {
+        const schema = new Schema(this.inputDefinition);
+        schema.getFor(TARGET.CLIENT_STORAGE, this.item, this.initialData).then((returnedData) => {
+          expect(returnedData).toEqual({
+            brand: 'VW',
+            price: '10000€',
+            passengers: [1230, 1231, 1232],
+            seats: {
+              added: 'stuff',
+            },
+            supercool: 'property',
+            other: {
+              stuff: 'that',
+              is: 'included',
+            },
+          });
+
+          expect(this.item.passengers[0].isReadyFor).toHaveBeenCalledTimes(4);
+          expect(this.item.passengers[0].onceReadyFor).toHaveBeenCalledTimes(3);
+          expect(this.item.passengers[1].isReadyFor).toHaveBeenCalledTimes(4);
+          expect(this.item.passengers[1].onceReadyFor).toHaveBeenCalledTimes(0);
+          expect(this.item.passengers[2].isReadyFor).toHaveBeenCalledTimes(4);
+          expect(this.item.passengers[2].onceReadyFor).toHaveBeenCalledTimes(3);
+
+          done();
+        });
+      });
+
+      it('should get for transporter', function (done) {
+        const schema = new Schema(this.inputDefinition);
+        schema.getFor(TARGET.TRANSPORTER, this.item, this.initialData).then((returnedData) => {
+          expect(returnedData).toEqual({
+            brand: 'VW',
+            price: '10000€',
+            passengers: [123, 124, 125],
+            seats: {
+              added: 'stuff',
+            },
+            supercool: 'property',
+            other: {
+              stuff: 'that',
+              is: 'included',
+            },
+          });
+
+          done();
+        });
+      });
+    });
   });
 });

@@ -58,11 +58,13 @@ export default class HttpTransporter extends Transporter {
       baseUrl: this.baseUrl,
       path: this.path,
       pathTemplate: methodOptions.pathTemplate,
-      method: methodOptions.method,
-      headers: {
-        'Content-Type': 'application/json',
+      requestParts: {
+        method: methodOptions.method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        mode: 'cors',
       },
-      mode: 'cors',
     };
   }
 
@@ -84,18 +86,13 @@ export default class HttpTransporter extends Transporter {
     req: Object,
     mode: string,
   }) {
-    const { baseUrl, path, payload, pathTemplate, method, headers, mode, credentials } = input.req;
+    const { baseUrl, path, payload, pathTemplate, requestParts } = input.req;
     const url: string = `${baseUrl}/${this.createPath(path, pathTemplate, payload)}`;
     // Build request
-    const req = {};
-    req.method = method;
-    req.headers = new Headers(headers);
-    req.mode = mode;
-    if (credentials) { // hotfix until https://github.com/Hypheme/harmonized.js/issues/66 is solved
-      req.credentials = credentials;
-    }
+    const req = { mode: input.mode, ...requestParts };
+    req.headers = new Headers(req.headers);
 
-    if (method !== 'GET') {
+    if (req.method !== 'GET') {
       req.body = JSON.stringify(payload);
     }
     return fetch(url, req)
