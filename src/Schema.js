@@ -332,7 +332,9 @@ class Schema {
 
       if (Array.isArray(ref)) {
         ref
-          .filter(refItem => refItem !== undefined && refItem !== null && !refItem.isReadyFor(target))
+          .filter(refItem => refItem !== undefined &&
+            refItem !== null &&
+            !refItem.isReadyFor(target))
           .forEach(refItem => unresolvedReferences.push(refItem.onceReadyFor(target)));
       } else if (!ref.isReadyFor(target)) {
         unresolvedReferences.push(ref.onceReadyFor(target));
