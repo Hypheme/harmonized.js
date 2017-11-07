@@ -539,7 +539,7 @@ class MyAuthHttpMiddleware extends TransporterMiddleware {
 
   send(req) {
     // Add the token to the 'Authentication' header
-    req.headers['Authentication'] = `Bearer ${authToken}`;
+    req.requestParts.headers['Authentication'] = `Bearer ${authToken}`;
     return req;
   }
 
