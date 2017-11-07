@@ -1,5 +1,5 @@
 // @flow
-import { observable } from 'mobx';
+import { observable, extendObservable, isObservable } from 'mobx';
 import set from 'lodash/set';
 import get from 'lodash/get';
 import isPlainObject from 'lodash/isPlainObject';
@@ -111,28 +111,34 @@ class Schema {
 
   static createObservableItem(itemBranch: Object, definition: Object) {
     if (!isPlainObject(definition.properties)) return;
+    const deeperObjectKeys = new Map();
 
-    Object.keys(definition.properties)
+    const propertiesToExtend = Object.keys(definition.properties)
       .filter(key => !Schema.isPrimaryKey(definition.properties[key]))
-      .forEach((key) => {
+      .reduce((observableValues, key) => {
         const property = definition.properties[key];
         if (property.type !== Object) {
           if (property.observable === false) {
-            return;
+            return observableValues;
           }
 
           if (property.type === Array) {
-            itemBranch[key] = observable.array();
-            return;
+            observableValues[key] = observable.array();
+            return observableValues;
           }
 
-          itemBranch[key] = observable();
-          return;
+          observableValues[key] = undefined;
+          return observableValues;
         }
 
-        itemBranch[key] = observable({});
-        Schema.createObservableItem(itemBranch[key], property);
-      });
+        observableValues[key] = observable({});
+        deeperObjectKeys.set(key, property);
+        return observableValues;
+      }, {});
+
+
+    extendObservable(itemBranch, propertiesToExtend);
+    deeperObjectKeys.forEach((property, key) => Schema.createObservableItem(itemBranch[key], property));
   }
 
   establishObservables(item: Item) {
@@ -276,7 +282,7 @@ class Schema {
     source: DataSource,
     index: ?Number,
   ): Promise<*> {
-    const ref = (definition.items) ? definition.items.ref : definition.ref;
+    const ref = definition.items ? definition.items.ref : definition.ref;
     return ref.onceLoaded().then(() => {
       const newValue = ref.findById(foreignKey, source);
       const oldAutosaveValue = item.autoSave;
