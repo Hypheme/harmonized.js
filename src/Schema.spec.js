@@ -2,6 +2,7 @@ import {
   observable,
   autorun,
   isObservable,
+  isObservableArray,
 } from 'mobx';
 
 import Schema, { Key, NumberKey } from './Schema';
@@ -473,6 +474,10 @@ describe('Schema', function () {
             deeper: {
               type: Object,
               properties: {
+                arr: {
+                  type: Array,
+                  item: String,
+                },
                 test: Number,
                 evenDeeper: {
                   type: Object,
@@ -500,12 +505,14 @@ describe('Schema', function () {
 
 
     schema.establishObservables(item);
-    expect(isObservable(item.brand)).toBe(true);
-    expect(isObservable(item.price)).toBe(false);
-    expect(isObservable(item.seats.front)).toBe(false);
-    expect(isObservable(item.seats.deeper.test)).toBe(true);
-    expect(isObservable(item.seats.deeper.evenDeeper.property1)).toBe(false);
-    expect(isObservable(item.seats.deeper.evenDeeper.property2)).toBe(true);
+    expect(isObservable(item, 'brand')).toBe(true);
+    expect(isObservable(item, 'price')).toBe(false);
+    expect(isObservable(item.seats, 'front')).toBe(false);
+    expect(isObservable(item.seats.deeper, 'test')).toBe(true);
+    expect(isObservable(item.seats.deeper, 'arr')).toBe(true);
+    expect(isObservableArray(item.seats.deeper.arr)).toBe(true);
+    expect(isObservable(item.seats.deeper.evenDeeper, 'property1')).toBe(false);
+    expect(isObservable(item.seats.deeper.evenDeeper, 'property2')).toBe(true);
     done();
   });
 
@@ -624,7 +631,7 @@ describe('Schema', function () {
         'item 123',
         'item 124',
         'item 125',
-        'item 200',
+        undefined,
         'item one',
       ),
     };
@@ -716,7 +723,7 @@ describe('Schema', function () {
       expect(item.seats.deeper.test).toBe(123);
       expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
       expect(item.seats.deeper.evenDeeper.property2).toBe(true);
-      expect(item.passengers).toEqual(['item 123', 'item 124', 'item 125', 'item 200']);
+      expect(item.passengers).toEqual(['item 123', 'item 124', 'item 125', undefined]);
 
       expect(oneToOneStoreInstance.findById).toHaveBeenCalledTimes(1);
       expect(oneToOneStoreInstance.findById).toHaveBeenCalledWith(9001, SOURCE.TRANSPORTER);
