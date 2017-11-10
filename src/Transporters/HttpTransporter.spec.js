@@ -162,11 +162,13 @@ describe('HttpTransporter', function () {
           superid: 123,
           some: 'value',
         },
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+        requestParts: {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
         },
-        mode: 'cors',
       });
     });
 
@@ -182,11 +184,13 @@ describe('HttpTransporter', function () {
           superid: 123,
           some: 'value',
         },
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
+        requestParts: {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
         },
-        mode: 'cors',
       });
     });
 
@@ -202,11 +206,13 @@ describe('HttpTransporter', function () {
           superid: 123,
           some: 'value',
         },
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
+        requestParts: {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
         },
-        mode: 'cors',
       });
     });
 
@@ -222,11 +228,13 @@ describe('HttpTransporter', function () {
           superid: 123,
           some: 'value',
         },
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
+        requestParts: {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
         },
-        mode: 'cors',
       });
     });
 
@@ -240,11 +248,13 @@ describe('HttpTransporter', function () {
         path: 'login',
         pathTemplate: ':basePath',
         payload: undefined,
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
+        requestParts: {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
         },
-        mode: 'cors',
       });
     });
 
@@ -258,11 +268,13 @@ describe('HttpTransporter', function () {
         path: 'login',
         pathTemplate: ':basePath',
         payload: undefined,
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
+        requestParts: {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
         },
-        mode: 'cors',
       });
     });
 
@@ -369,11 +381,13 @@ describe('HttpTransporter', function () {
             hello: 'server',
           },
           pathTemplate: ':basePath/:id',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+          requestParts: {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            mode: 'cors',
           },
-          mode: 'cors',
         },
       }).then(({ res, req, data, status }) => {
         expect(data).toEqual({
@@ -424,11 +438,13 @@ describe('HttpTransporter', function () {
             hello: 'server',
           },
           pathTemplate: ':basePath/:id',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+          requestParts: {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            mode: 'cors',
           },
-          mode: 'cors',
         },
       }).catch(({ res, req }) => {
         expect(res.status).toBe(500);
@@ -484,11 +500,13 @@ describe('HttpTransporter', function () {
             hello: 'server',
           },
           pathTemplate: ':basePath/:id',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+          requestParts: {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            mode: 'cors',
           },
-          mode: 'cors',
         },
       }).then(({ error, req, data, status }) => {
         expect(data).toEqual({});

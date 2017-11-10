@@ -1,5 +1,5 @@
 // @flow
-import { observable } from 'mobx';
+import { observable, extendObservable } from 'mobx';
 import set from 'lodash/set';
 import get from 'lodash/get';
 import isPlainObject from 'lodash/isPlainObject';
@@ -111,28 +111,36 @@ class Schema {
 
   static createObservableItem(itemBranch: Object, definition: Object) {
     if (!isPlainObject(definition.properties)) return;
+    const deeperObjectKeys = new Map();
 
-    Object.keys(definition.properties)
+    const propertiesToExtend = Object.keys(definition.properties)
       .filter(key => !Schema.isPrimaryKey(definition.properties[key]))
-      .forEach((key) => {
+      .reduce((observableValues, key) => {
         const property = definition.properties[key];
         if (property.type !== Object) {
           if (property.observable === false) {
-            return;
+            return observableValues;
           }
 
           if (property.type === Array) {
-            itemBranch[key] = observable.array();
-            return;
+            observableValues[key] = observable.array();
+            return observableValues;
           }
 
-          itemBranch[key] = observable();
-          return;
+          observableValues[key] = undefined;
+          return observableValues;
         }
 
-        itemBranch[key] = observable({});
-        Schema.createObservableItem(itemBranch[key], property);
-      });
+        observableValues[key] = observable({});
+        deeperObjectKeys.set(key, property);
+        return observableValues;
+      }, {});
+
+
+    extendObservable(itemBranch, propertiesToExtend);
+    deeperObjectKeys.forEach(
+      (property, key) => Schema.createObservableItem(itemBranch[key], property),
+    );
   }
 
   establishObservables(item: Item) {
@@ -276,7 +284,7 @@ class Schema {
     source: DataSource,
     index: ?Number,
   ): Promise<*> {
-    const ref = (definition.items) ? definition.items.ref : definition.ref;
+    const ref = definition.items ? definition.items.ref : definition.ref;
     return ref.onceLoaded().then(() => {
       const newValue = ref.findById(foreignKey, source);
       const oldAutosaveValue = item.autoSave;
@@ -326,13 +334,16 @@ class Schema {
     const unresolvedReferences = [];
     this.references.forEach((value, key) => {
       const ref = get(item, key);
+      if (ref === undefined || ref === null) {
+        return;
+      }
+
       if (Array.isArray(ref)) {
         ref
-          .filter(refItem => !refItem.isReadyFor(target))
-          .reduce((referenceList, refItem) => {
-            referenceList.push(refItem.onceReadyFor(target));
-            return referenceList;
-          }, unresolvedReferences);
+          .filter(refItem => refItem !== undefined &&
+            refItem !== null &&
+            !refItem.isReadyFor(target))
+          .forEach(refItem => unresolvedReferences.push(refItem.onceReadyFor(target)));
       } else if (!ref.isReadyFor(target)) {
         unresolvedReferences.push(ref.onceReadyFor(target));
       }
@@ -356,8 +367,14 @@ class Schema {
       });
       this.references.forEach((value, key) => {
         const ref = get(item, key);
+        if (ref === undefined || ref === null) {
+          return;
+        }
+
         if (Array.isArray(ref)) {
-          const refKeyArray = ref.map(refItem => refItem[value.items[`${prefix}key`]]);
+          const refKeyArray = ref
+            .filter(refItem => refItem !== undefined && refItem !== null)
+            .map(refItem => refItem[value.items[`${prefix}key`]]);
           set(returnItem, key, refKeyArray);
         } else {
           set(returnItem, key, ref[value[`${prefix}key`]]);

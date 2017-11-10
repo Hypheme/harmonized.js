@@ -2,6 +2,7 @@ import {
   observable,
   autorun,
   isObservable,
+  isObservableArray,
 } from 'mobx';
 
 import Schema, { Key, NumberKey } from './Schema';
@@ -473,6 +474,10 @@ describe('Schema', function () {
             deeper: {
               type: Object,
               properties: {
+                arr: {
+                  type: Array,
+                  item: String,
+                },
                 test: Number,
                 evenDeeper: {
                   type: Object,
@@ -500,12 +505,14 @@ describe('Schema', function () {
 
 
     schema.establishObservables(item);
-    expect(isObservable(item.brand)).toBe(true);
-    expect(isObservable(item.price)).toBe(false);
-    expect(isObservable(item.seats.front)).toBe(false);
-    expect(isObservable(item.seats.deeper.test)).toBe(true);
-    expect(isObservable(item.seats.deeper.evenDeeper.property1)).toBe(false);
-    expect(isObservable(item.seats.deeper.evenDeeper.property2)).toBe(true);
+    expect(isObservable(item, 'brand')).toBe(true);
+    expect(isObservable(item, 'price')).toBe(false);
+    expect(isObservable(item.seats, 'front')).toBe(false);
+    expect(isObservable(item.seats.deeper, 'test')).toBe(true);
+    expect(isObservable(item.seats.deeper, 'arr')).toBe(true);
+    expect(isObservableArray(item.seats.deeper.arr)).toBe(true);
+    expect(isObservable(item.seats.deeper.evenDeeper, 'property1')).toBe(false);
+    expect(isObservable(item.seats.deeper.evenDeeper, 'property2')).toBe(true);
     done();
   });
 
@@ -624,7 +631,7 @@ describe('Schema', function () {
         'item 123',
         'item 124',
         'item 125',
-        'item 200',
+        undefined,
         'item one',
       ),
     };
@@ -716,7 +723,7 @@ describe('Schema', function () {
       expect(item.seats.deeper.test).toBe(123);
       expect(item.seats.deeper.evenDeeper.property1).toBe('hello');
       expect(item.seats.deeper.evenDeeper.property2).toBe(true);
-      expect(item.passengers).toEqual(['item 123', 'item 124', 'item 125', 'item 200']);
+      expect(item.passengers).toEqual(['item 123', 'item 124', 'item 125', undefined]);
 
       expect(oneToOneStoreInstance.findById).toHaveBeenCalledTimes(1);
       expect(oneToOneStoreInstance.findById).toHaveBeenCalledWith(9001, SOURCE.TRANSPORTER);
@@ -1227,6 +1234,66 @@ describe('Schema', function () {
             passengers: [123, 124, 125],
             seats: {
               oneToOne: 9001,
+            },
+          });
+
+          done();
+        });
+      });
+    });
+
+    describe('with undefined references', function () {
+      beforeEach(function () {
+        this.item.seats.oneToOne = undefined;
+        this.item.passengers.push(undefined);
+        this.item.passengers.push(null);
+        delayItemReady(this.item.passengers[0]);
+        setItemReady(this.item.passengers[1]);
+        delayItemReady(this.item.passengers[2]);
+      });
+
+      it('should get for client storage', function (done) {
+        const schema = new Schema(this.inputDefinition);
+        schema.getFor(TARGET.CLIENT_STORAGE, this.item, this.initialData).then((returnedData) => {
+          expect(returnedData).toEqual({
+            brand: 'VW',
+            price: '10000€',
+            passengers: [1230, 1231, 1232],
+            seats: {
+              added: 'stuff',
+            },
+            supercool: 'property',
+            other: {
+              stuff: 'that',
+              is: 'included',
+            },
+          });
+
+          expect(this.item.passengers[0].isReadyFor).toHaveBeenCalledTimes(4);
+          expect(this.item.passengers[0].onceReadyFor).toHaveBeenCalledTimes(3);
+          expect(this.item.passengers[1].isReadyFor).toHaveBeenCalledTimes(4);
+          expect(this.item.passengers[1].onceReadyFor).toHaveBeenCalledTimes(0);
+          expect(this.item.passengers[2].isReadyFor).toHaveBeenCalledTimes(4);
+          expect(this.item.passengers[2].onceReadyFor).toHaveBeenCalledTimes(3);
+
+          done();
+        });
+      });
+
+      it('should get for transporter', function (done) {
+        const schema = new Schema(this.inputDefinition);
+        schema.getFor(TARGET.TRANSPORTER, this.item, this.initialData).then((returnedData) => {
+          expect(returnedData).toEqual({
+            brand: 'VW',
+            price: '10000€',
+            passengers: [123, 124, 125],
+            seats: {
+              added: 'stuff',
+            },
+            supercool: 'property',
+            other: {
+              stuff: 'that',
+              is: 'included',
             },
           });
 
