@@ -83,7 +83,7 @@ import { Store, HttpTransporter, Schema } from 'harmonized';
 // checks if a server/service is offline by hitting the endpoint specified here
 HttpTransporter.addOfflineChecker({
   pattern: /.*/, 
-  checkUrl: 'ttps://www.hyphe.me/api/people',
+  checkUrl: 'https://www.hyphe.me/api/people',
   method: 'OPTIONS'
 });
 
@@ -107,14 +107,14 @@ To create a new store you need to define a `Schema`. It defines the structure of
 find a deeper introduction into that further below. For now this simple example is enough to go on.
 
 In this case we create a store of people. A person has a firstName, lastName and an age as property. 
-For this example we asume following api endpoints exists:
+For this example we assume following api endpoints exists:
 
 ```
 GET https://www.hyphe.me/api/people returns all people
 GET https://www.hyphe.me/api/people/:id returns a person
 POST https://www.hyphe.me/api/people adds a new person
-PUT https://www.hyphe.me/api/:id updates a person
-DELETE https://www.hyphe.me/api/:id delets a person
+PUT https://www.hyphe.me/api/people/:id updates a person
+DELETE https://www.hyphe.me/api/people/:id deletes a person
 ```
 
 After you created the store, it will fetch everything from the backend and local database (and
